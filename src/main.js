@@ -25,7 +25,10 @@ if (params.has('markup')) {
   }
 }
 
-if (token) {
+// Double-include guard: if the embed ends up in both a theme and the
+// plugin, only the first copy mounts.
+if (token && !window.__avalancheMarkup) {
+  window.__avalancheMarkup = true;
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => init(token));
   } else {

@@ -44,13 +44,20 @@ It prints the embed line and the share link. Requires two admin secrets in
 and a **personal access token** (account menu → Access Tokens). Both stay on
 this machine — never in `markup.js`, never in a theme.
 
-Then add the embed line to the site's `<head>` (WordPress: a `wp_head`
-action in the child theme — see the Gordon Water `avalanche-child` theme
-for the pattern):
+Then get the embed onto the site — for WordPress, use the plugin
+(preferred: no theme edits, installable through wp-admin with no code
+deploy): zip `wordpress-plugin/avalanche-markup/`, upload via
+*Plugins → Add New → Upload Plugin*, activate, and paste the token under
+*Settings → Avalanche Markup*.
+
+For non-WordPress sites, add one line to the `<head>`:
 
 ```html
 <script defer src="https://cdn.jsdelivr.net/gh/lancebeaudry/Web-Annotations@main/dist/markup.js" data-project="PROJECT_TOKEN"></script>
 ```
+
+(The bundle guards against double-inclusion, so a stray theme embed plus
+the plugin won't double-mount.)
 
 …and send the client: `https://clientsite.com/?markup=PROJECT_TOKEN`
 
