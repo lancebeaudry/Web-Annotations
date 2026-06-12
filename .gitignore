@@ -1,0 +1,6 @@
+node_modules/
+# dist is generated, but the real bundle is committed so the CDN can serve it
+dist/*
+!dist/markup.js
+.env
+.DS_Store

@@ -1,0 +1,19 @@
+{
+  "name": "avalanche-markup",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Avalanche Markup — click-to-comment visual feedback overlay for client sites",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:mock": "node build.mjs --mock",
+    "dev": "node build.mjs --watch",
+    "new-site": "node admin/new-site.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

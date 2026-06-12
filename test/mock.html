@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eastbrook Test Page — Avalanche Markup</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Georgia, serif; color: #222; }
+    .hero { background: #00263D; color: #fff; padding: 90px 24px; text-align: center; }
+    .hero h1 { font-size: 32px; font-weight: 600; margin-bottom: 12px; }
+    .hero p { font-size: 18px; opacity: 0.85; margin-bottom: 24px; }
+    .btn-primary {
+      display: inline-block; background: #1B6493; color: #fff; padding: 12px 28px;
+      border-radius: 6px; text-decoration: none; font-family: sans-serif;
+    }
+    section { padding: 60px 24px; max-width: 900px; margin: 0 auto; }
+    section h2 { font-size: 26px; color: #00263D; margin-bottom: 16px; }
+    section p { line-height: 1.7; margin-bottom: 14px; }
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 24px; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; }
+    .card h3 { font-size: 18px; margin-bottom: 8px; color: #1B6493; }
+    footer { background: #F9F9F9; padding: 40px 24px; text-align: center; color: #777; }
+  </style>
+  <!-- The one-line embed, exactly as it would appear on a client site -->
+  <script defer src="../dist/markup.mock.js" data-project="test-token"></script>
+</head>
+<body>
+  <div class="hero" id="hero">
+    <h1>Find Your Home</h1>
+    <p>Quality new homes across West Michigan</p>
+    <a href="#plans" class="btn-primary">Learn More</a>
+  </div>
+
+  <section id="plans">
+    <h2>Floor Plans</h2>
+    <p>Browse our collection of thoughtfully designed floor plans, from cozy ranches to spacious two-stories. Every plan can be customized to fit how your family lives.</p>
+    <div class="cards">
+      <div class="card"><h3>The Birchwood</h3><p>3 bed · 2 bath · 1,650 sq ft</p></div>
+      <div class="card"><h3>The Maplewood</h3><p>4 bed · 2.5 bath · 2,200 sq ft</p></div>
+      <div class="card"><h3>The Cedarcrest</h3><p>5 bed · 3 bath · 2,900 sq ft</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Why Build With Us</h2>
+    <p>For over 50 years we've helped families build homes they love. Our process is transparent, our craftsmanship is guaranteed, and our team is with you from first sketch to final walkthrough.</p>
+    <a href="#contact" class="btn-primary">Schedule a Visit</a>
+  </section>
+
+  <footer id="contact">
+    <p>© 2026 Test Client Site · Built by Avalanche Creative</p>
+  </footer>
+</body>
+</html>

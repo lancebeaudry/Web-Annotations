@@ -1,0 +1,282 @@
+import { createClient } from '@supabase/supabase-js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, TEAM_DOMAIN } from './config.js';
+import { fetchProject, fetchComments, subscribeRealtime } from './data.js';
+import { mountOverlay, toast, h } from './ui/overlay.js';
+import { renderAuthCard, removeAuthCard } from './ui/auth.js';
+import { renderPins } from './ui/pins.js';
+import { openCommentBox } from './ui/commentBox.js';
+import { closePopovers, refreshOpenThread } from './ui/popover.js';
+import { toggleSidebar, refreshSidebar, openRootCount } from './ui/sidebar.js';
+import { buildMarkdown, buildJson, copyToClipboard } from './export.js';
+
+function normalizePath(pathname) {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+}
+
+export async function init(token) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.warn('[markup] Supabase config missing — rebuild with .env populated.');
+    return;
+  }
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const app = {
+    token,
+    supabase,
+    teamDomain: TEAM_DOMAIN.toLowerCase(),
+    project: null,
+    session: null,
+    isTeam: false,
+    started: false,
+    commentMode: false,
+    comments: new Map(),
+    pagePath: normalizePath(location.pathname),
+    pageUrl: location.origin + normalizePath(location.pathname),
+    openThreadId: null,
+    ui: mountOverlay(),
+    refresh: null,
+  };
+  app.refresh = () => {
+    renderPins(app);
+    refreshSidebar(app);
+    if (app.sidebarBtn) {
+      const n = openRootCount(app);
+      app.sidebarBtn.textContent = n ? `Comments (${n})` : 'Comments';
+    }
+  };
+
+  // Magic-link redirects land back here with tokens in the URL hash;
+  // detectSessionInUrl (default on) turns that into a session, which
+  // arrives via onAuthStateChange.
+  supabase.auth.onAuthStateChange((_event, session) => {
+    if (session && !app.started) {
+      app.session = session;
+      start(app);
+    }
+  });
+
+  const { data } = await supabase.auth.getSession();
+  if (data.session && !app.started) {
+    app.session = data.session;
+    start(app);
+  } else if (!data.session) {
+    renderAuthCard(app);
+  }
+}
+
+async function start(app) {
+  app.started = true;
+  removeAuthCard(app);
+
+  const email = app.session.user.email.toLowerCase();
+  app.isTeam = email.endsWith(`@${app.teamDomain}`);
+
+  app.project = await fetchProject(app.supabase, app.token);
+  if (!app.project) {
+    toast(app.ui, 'Markup: unknown project token');
+    return;
+  }
+
+  // Fetch the whole project's comments (export covers all pages);
+  // pins only render for the current page_path.
+  for (const row of await fetchComments(app.supabase, app.project.id)) {
+    app.comments.set(row.id, row);
+  }
+
+  renderToolbar(app);
+  renderPins(app);
+
+  subscribeRealtime(app.supabase, app.project.id, (type, row) => {
+    if (!row || !row.id) return;
+    if (type === 'DELETE') app.comments.delete(row.id);
+    else app.comments.set(row.id, row);
+    renderPins(app);
+    refreshOpenThread(app);
+  });
+
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => renderPins(app), 150);
+  });
+  // Late layout shifts (fonts, images) move elements under the pins.
+  window.addEventListener('load', () => renderPins(app));
+
+  toast(app.ui, `Feedback mode ready — ${app.project.name}`);
+}
+
+/* ---------------- comment mode ---------------- */
+
+function onMouseMove(app, e) {
+  if (e.composedPath().includes(app.ui.host)) {
+    app.ui.highlight.style.display = 'none';
+    return;
+  }
+  const el = e.target;
+  if (!el || el === document.body || el === document.documentElement) {
+    app.ui.highlight.style.display = 'none';
+    return;
+  }
+  const rect = el.getBoundingClientRect();
+  const hl = app.ui.highlight;
+  hl.style.display = 'block';
+  hl.style.left = `${rect.left + window.scrollX}px`;
+  hl.style.top = `${rect.top + window.scrollY}px`;
+  hl.style.width = `${rect.width}px`;
+  hl.style.height = `${rect.height}px`;
+}
+
+function onClickCapture(app, e) {
+  if (e.composedPath().includes(app.ui.host)) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const el = e.target;
+  setCommentMode(app, false);
+  if (el && el !== document.body && el !== document.documentElement) {
+    openCommentBox(app, el, e);
+  }
+}
+
+function setCommentMode(app, on) {
+  if (app.commentMode === on) return;
+  app.commentMode = on;
+  app.modeBtn.classList.toggle('active', on);
+  app.modeBtnLabel.textContent = on ? 'Click an element…' : 'Comment';
+  document.documentElement.style.cursor = on ? 'crosshair' : '';
+  if (on) {
+    closePopovers(app);
+    app._move = (e) => onMouseMove(app, e);
+    app._click = (e) => onClickCapture(app, e);
+    document.addEventListener('mousemove', app._move, true);
+    document.addEventListener('click', app._click, true);
+  } else {
+    document.removeEventListener('mousemove', app._move, true);
+    document.removeEventListener('click', app._click, true);
+    app.ui.highlight.style.display = 'none';
+  }
+}
+
+/* ---------------- toolbar + export ---------------- */
+
+const PEN_ICON =
+  'M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z';
+
+function svgIcon(d) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'none');
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', d);
+  path.setAttribute('stroke', 'currentColor');
+  path.setAttribute('stroke-width', '2');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(path);
+  return svg;
+}
+
+function renderToolbar(app) {
+  app.modeBtnLabel = h('span', {}, 'Comment');
+  app.modeBtn = h(
+    'button',
+    { class: 'fab', onclick: () => setCommentMode(app, !app.commentMode) },
+    svgIcon(PEN_ICON),
+    app.modeBtnLabel
+  );
+
+  const n = openRootCount(app);
+  app.sidebarBtn = h(
+    'button',
+    { class: 'fab fab-secondary', onclick: () => toggleSidebar(app) },
+    n ? `Comments (${n})` : 'Comments'
+  );
+
+  const toolbar = h('div', { class: 'toolbar' }, app.modeBtn, app.sidebarBtn);
+
+  if (app.isTeam) {
+    const exportBtn = h(
+      'button',
+      { class: 'fab fab-secondary', onclick: () => toggleExportMenu(app) },
+      'Export'
+    );
+    toolbar.appendChild(exportBtn);
+  }
+
+  const exitBtn = h(
+    'button',
+    { class: 'fab fab-secondary', title: 'End feedback session', onclick: () => confirmExit(app) },
+    '✕'
+  );
+  toolbar.appendChild(exitBtn);
+
+  app.ui.layer.appendChild(toolbar);
+}
+
+// Ending the session forgets the token and reloads without ?markup so
+// the page comes back as a normal visit — confirmed first.
+function confirmExit(app) {
+  const existing = app.ui.layer.querySelector('.confirm-card');
+  if (existing) {
+    existing.remove();
+    return;
+  }
+  const stay = h('button', { class: 'btn btn-ghost' }, 'Keep going');
+  const end = h('button', { class: 'btn' }, 'End session');
+  const card = h(
+    'div',
+    { class: 'card confirm-card' },
+    h('div', { class: 'card-head' }, 'End feedback session?'),
+    h(
+      'div',
+      { class: 'card-body' },
+      h('p', {}, 'Your comments are saved. The page will reload as a normal visit — use your feedback link to come back.'),
+      h('div', { class: 'btn-row' }, stay, end)
+    )
+  );
+  stay.addEventListener('click', () => card.remove());
+  end.addEventListener('click', () => {
+    try {
+      sessionStorage.removeItem('markup_token');
+    } catch {
+      /* nothing stored */
+    }
+    const url = new URL(location.href);
+    url.searchParams.delete('markup');
+    location.href = url.toString();
+  });
+  app.ui.layer.appendChild(card);
+}
+
+function toggleExportMenu(app) {
+  const existing = app.ui.layer.querySelector('.export-menu');
+  if (existing) {
+    existing.remove();
+    return;
+  }
+
+  const option = (title, hint, fn) =>
+    h('button', { class: 'opt', onclick: async () => {
+      const { text, count } = fn();
+      menu.remove();
+      if (!count) {
+        toast(app.ui, 'No open comments to export');
+        return;
+      }
+      const ok = await copyToClipboard(text);
+      toast(app.ui, ok ? `Copied ${count} comment${count === 1 ? '' : 's'} to clipboard` : 'Copy failed');
+    } }, title, h('small', {}, hint));
+
+  const menu = h(
+    'div',
+    { class: 'card export-menu' },
+    h('div', { class: 'card-head' }, 'Export open comments'),
+    option('Markdown — this page', 'Paste into Claude Code', () => buildMarkdown(app, 'page')),
+    option('Markdown — whole project', 'All pages, grouped by path', () => buildMarkdown(app, 'project')),
+    option('JSON — this page', 'Raw comment objects', () => buildJson(app, 'page')),
+    option('JSON — whole project', 'Raw comment objects', () => buildJson(app, 'project'))
+  );
+
+  app.ui.layer.appendChild(menu);
+}
