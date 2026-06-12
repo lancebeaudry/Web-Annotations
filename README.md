@@ -44,15 +44,27 @@ It prints the embed line and the share link. Requires two admin secrets in
 and a **personal access token** (account menu → Access Tokens). Both stay on
 this machine — never in `markup.js`, never in a theme.
 
-Then:
+Then add the embed line to the site's `<head>` (WordPress: a `wp_head`
+action in the child theme — see the Gordon Water `avalanche-child` theme
+for the pattern):
 
-1. Host `dist/markup.js` somewhere public (any static host/CDN works — or copy
-   it into the site's child theme and enqueue it).
-2. Add the printed embed line to the site's `<head>`:
-   ```html
-   <script defer src="https://YOUR_CDN/markup.js" data-project="PROJECT_TOKEN"></script>
-   ```
-3. Send the client: `https://clientsite.com/?markup=PROJECT_TOKEN`
+```html
+<script defer src="https://cdn.jsdelivr.net/gh/lancebeaudry/Web-Annotations@main/dist/markup.js" data-project="PROJECT_TOKEN"></script>
+```
+
+…and send the client: `https://clientsite.com/?markup=PROJECT_TOKEN`
+
+`dist/markup.js` is committed and served to every site from jsDelivr
+(free CDN in front of this GitHub repo). To ship a tool update:
+
+```sh
+npm run build
+git add dist/markup.js && git commit -m "Rebuild markup.js" && git push
+curl -s https://purge.jsdelivr.net/gh/lancebeaudry/Web-Annotations@main/dist/markup.js
+```
+
+The purge call clears the CDN cache so sites pick up the new build within
+a minute or two instead of after ~12 hours.
 
 <details>
 <summary>Manual fallback (no admin secrets)</summary>
