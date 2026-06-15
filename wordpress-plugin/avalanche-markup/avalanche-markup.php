@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Avalanche Markup
  * Description: Click-to-comment visual feedback overlay for Avalanche client sites. Paste the site's project token under Settings → Avalanche Markup. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  */
@@ -12,21 +12,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 const AVMK_OPTION = 'avalanche_markup_token';
-// Shared CDN copy (github.com/lancebeaudry/Web-Annotations) — tool
-// updates roll out to every site at once.
-const AVMK_SRC = 'https://cdn.jsdelivr.net/gh/lancebeaudry/Web-Annotations@main/dist/markup.js';
+
+// Pin to a specific commit of github.com/lancebeaudry/Web-Annotations.
+// jsDelivr serves a commit-pinned URL instantly and immutably (cached
+// a year), so there's no @main resolution lag, no cache purges, and no
+// stale browser copies — when we ship an update the ref changes, which
+// is a brand-new URL every browser fetches fresh. Bump AVMK_REF on each
+// release with `npm run release` (admin/release.mjs).
+const AVMK_REF = '41effd9';
 
 add_action( 'wp_head', function () {
 	$token = get_option( AVMK_OPTION, '' );
 	if ( ! $token ) {
 		return;
 	}
-	// jsDelivr serves @main with a 7-day browser cache. Append an
-	// hourly-rotating version so browsers can't hold a stale copy:
-	// edge freshness is handled by purge-on-deploy, this handles the
-	// browser. Updates reach everyone within the hour automatically
-	// (instantly on a hard refresh).
-	$src = AVMK_SRC . '?v=' . gmdate( 'YmdH' );
+	$src = 'https://cdn.jsdelivr.net/gh/lancebeaudry/Web-Annotations@' . AVMK_REF . '/dist/markup.js';
 	printf(
 		'<script defer src="%s" data-project="%s"></script>' . "\n",
 		esc_url( $src ),

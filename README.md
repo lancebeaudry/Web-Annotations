@@ -62,16 +62,25 @@ the plugin won't double-mount.)
 …and send the client: `https://clientsite.com/?markup=PROJECT_TOKEN`
 
 `dist/markup.js` is committed and served to every site from jsDelivr
-(free CDN in front of this GitHub repo). To ship a tool update:
+(free CDN in front of this GitHub repo). The plugin pins to a **specific
+commit** (`AVMK_REF`), not `@main` — commit-pinned jsDelivr URLs are
+served instantly and immutably, which sidesteps `@main`'s resolution lag
+and all the cache-purge / browser-cache / per-query-string staleness that
+a moving ref suffers from.
+
+To ship a tool update:
 
 ```sh
 npm run build
-git add dist/markup.js && git commit -m "Rebuild markup.js" && git push
-curl -s https://purge.jsdelivr.net/gh/lancebeaudry/Web-Annotations@main/dist/markup.js
+# commit + push dist/markup.js via GitHub Desktop, then:
+npm run release
 ```
 
-The purge call clears the CDN cache so sites pick up the new build within
-a minute or two instead of after ~12 hours.
+`npm run release` ([admin/release.mjs](admin/release.mjs)) stamps the new
+commit into the plugin's `AVMK_REF`, redeploys the plugin to every local
+site, refreshes `~/Desktop/avalanche-markup.zip`, and verifies the pinned
+build is live. Commit the plugin ref bump afterward. Live (WP Engine)
+sites pick up the new build on their next plugin upload from the zip.
 
 <details>
 <summary>Manual fallback (no admin secrets)</summary>

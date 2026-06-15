@@ -9,7 +9,8 @@
     "build:mock": "node build.mjs --mock",
     "dev": "node build.mjs --watch",
     "new-site": "node admin/new-site.mjs",
-    "invite": "node admin/invite.mjs"
+    "invite": "node admin/invite.mjs",
+    "release": "node admin/release.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0"
