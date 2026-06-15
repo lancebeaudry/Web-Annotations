@@ -10,20 +10,47 @@ function fmtDate(iso) {
   return (iso || '').slice(0, 10);
 }
 
-function rootsByPage(app) {
+// Group root comments by page (current page first) and assign each a
+// stable pin number from its CREATION order within the page, so the
+// number keeps matching the pin on the page even when the list is
+// re-sorted or filtered. Then apply the active search / sort / status
+// filters for display.
+function groupedItems(app) {
+  const { q, sort, showResolved } = app.sidebarFilters;
+  const needle = q.trim().toLowerCase();
+
   const roots = [...app.comments.values()]
     .filter((c) => !c.parent_id)
     .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+
   const groups = new Map();
   for (const c of roots) {
     if (!groups.has(c.page_path)) groups.set(c.page_path, []);
     groups.get(c.page_path).push(c);
   }
-  // Current page floats to the top.
-  const ordered = new Map();
-  if (groups.has(app.pagePath)) ordered.set(app.pagePath, groups.get(app.pagePath));
-  for (const [path, list] of groups) if (path !== app.pagePath) ordered.set(path, list);
-  return ordered;
+
+  // Current page first, then the rest in encounter order.
+  const order = [app.pagePath, ...[...groups.keys()].filter((p) => p !== app.pagePath)];
+
+  const result = [];
+  for (const path of order) {
+    const list = groups.get(path);
+    if (!list) continue;
+    let items = list.map((comment, i) => ({ comment, number: i + 1 }));
+
+    items = items.filter(({ comment }) => {
+      if (!showResolved && comment.status === 'resolved') return false;
+      if (needle) {
+        const hay = `${comment.comment_text} ${comment.author_name || ''} ${comment.author_email} ${comment.current_text || ''} ${comment.selector || ''}`.toLowerCase();
+        if (!hay.includes(needle)) return false;
+      }
+      return true;
+    });
+
+    if (sort === 'latest') items.reverse(); // base order is oldest→newest
+    if (items.length) result.push([path, items]);
+  }
+  return result;
 }
 
 export function openRootCount(app) {
@@ -35,6 +62,47 @@ export function toggleSidebar(app) {
     closeSidebar(app);
     return;
   }
+  app.sidebarFilters = app.sidebarFilters || { q: '', sort: 'latest', showResolved: true };
+  const f = app.sidebarFilters;
+
+  const search = h('input', {
+    class: 'side-search',
+    type: 'search',
+    placeholder: 'Search comments…',
+    value: f.q,
+  });
+  search.addEventListener('input', () => {
+    f.q = search.value;
+    renderList(app);
+  });
+
+  const sortSel = h(
+    'select',
+    { class: 'side-select' },
+    h('option', { value: 'latest' }, 'Latest first'),
+    h('option', { value: 'oldest' }, 'Oldest first')
+  );
+  sortSel.value = f.sort;
+  sortSel.addEventListener('change', () => {
+    f.sort = sortSel.value;
+    renderList(app);
+  });
+
+  const resolvedBox = h('input', { type: 'checkbox' });
+  resolvedBox.checked = f.showResolved;
+  resolvedBox.addEventListener('change', () => {
+    f.showResolved = resolvedBox.checked;
+    renderList(app);
+  });
+  const resolvedLabel = h('label', { class: 'side-check' }, resolvedBox, 'Show resolved');
+
+  const controls = h(
+    'div',
+    { class: 'side-controls' },
+    search,
+    h('div', { class: 'side-filters' }, sortSel, resolvedLabel)
+  );
+
   const list = h('div', { class: 'side-list' });
   const panel = h(
     'div',
@@ -45,6 +113,7 @@ export function toggleSidebar(app) {
       h('span', { class: 'side-title' }, 'All comments'),
       h('button', { class: 'close', onclick: () => closeSidebar(app) }, '✕')
     ),
+    controls,
     list
   );
   app.sidebarEl = panel;
@@ -53,7 +122,7 @@ export function toggleSidebar(app) {
   panel.getBoundingClientRect(); // commit the off-screen position so the slide-in transition runs
   panel.classList.add('open');
   app.ui.layer.classList.add('sidebar-open');
-  refreshSidebar(app);
+  renderList(app);
 }
 
 export function closeSidebar(app) {
@@ -66,25 +135,36 @@ export function closeSidebar(app) {
   setTimeout(() => panel.remove(), 250);
 }
 
-export function refreshSidebar(app) {
+// Re-render just the list body (controls persist, so the search box
+// keeps focus). Exported as refreshSidebar so external callers
+// (app.refresh, realtime) keep working.
+function renderList(app) {
   if (!app.sidebarList) return;
   const list = app.sidebarList;
   list.replaceChildren();
 
-  const groups = rootsByPage(app);
-  if (!groups.size) {
-    list.appendChild(h('div', { class: 'side-empty' }, 'No comments yet. Hit Comment and click anywhere on the page.'));
-    return;
-  }
-
   const openTotal = openRootCount(app);
   app.sidebarEl.querySelector('.side-title').textContent = `All comments (${openTotal} open)`;
 
-  for (const [path, comments] of groups) {
+  const hasAny = [...app.comments.values()].some((c) => !c.parent_id);
+  const groups = groupedItems(app);
+
+  if (!groups.length) {
+    list.appendChild(
+      h('div', { class: 'side-empty' }, hasAny ? 'No comments match your search/filters.' : 'No comments yet. Hit Comment and click anywhere on the page.')
+    );
+    return;
+  }
+
+  for (const [path, items] of groups) {
     const here = path === app.pagePath;
     list.appendChild(h('div', { class: 'side-group-h' }, here ? `${path} — this page` : path));
-    comments.forEach((c, i) => list.appendChild(item(app, c, i + 1, here)));
+    items.forEach(({ comment, number }) => list.appendChild(item(app, comment, number, here)));
   }
+}
+
+export function refreshSidebar(app) {
+  renderList(app);
 }
 
 function item(app, comment, number, onThisPage) {

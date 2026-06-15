@@ -319,6 +319,47 @@ export const CSS = `
 }
 .sidebar.open { transform: none; }
 .sidebar .card-head { border-radius: 0; }
+.side-controls {
+  padding: 10px 12px;
+  background: #fff;
+  border-bottom: 1px solid #e3eaee;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.side-search {
+  width: 100%;
+  border: 1px solid #c9d6de;
+  border-radius: 6px;
+  padding: 7px 10px;
+  background: #fff;
+  color: #3A3A3A;
+}
+.side-search:focus { outline: 2px solid #9BE3FF; border-color: #1B6493; }
+.side-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.side-select {
+  border: 1px solid #c9d6de;
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: #fff;
+  color: #3A3A3A;
+  font-size: 12px;
+}
+.side-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #00263D;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.side-check input { margin: 0; cursor: pointer; }
 .side-list { flex: 1; overflow-y: auto; background: #F9F9F9; }
 .side-group-h {
   font-size: 11px;
