@@ -55,19 +55,51 @@ create index comments_thread_idx on comments(parent_id);
 alter table projects enable row level security;
 alter table comments enable row level security;
 
+-- ALLOWED_EMAILS: the invite list. Anyone on the Avalanche team domain
+-- is implicitly allowed; everyone else must be added here to use the
+-- tool at all. Rows are added by admin/invite.mjs (service-role key).
+create table allowed_emails (
+  email       text primary key,
+  note        text,
+  created_at  timestamptz default now()
+);
+alter table allowed_emails enable row level security;
+
+-- A signed-in user may check whether their own email is on the list
+-- (the snippet queries: select ... where email = me). No list access.
+create policy "read own allow" on allowed_emails
+  for select using (lower(email) = lower(auth.jwt()->>'email'));
+
+-- Helper condition: team domain OR explicitly invited.
+-- (Inlined into each comment policy below.)
+
 -- Projects: an authed user can read a project only by knowing its token
 -- (snippet queries: select ... where token = $1). No blanket list access.
 create policy "read project by token" on projects
   for select using (auth.role() = 'authenticated');
 
--- Comments: authed users can read/insert; updates limited to own rows
--- or to status changes (resolve/reopen) by team.
+-- Comments: only team or invited emails can read/insert; updates and
+-- deletes limited to own rows or team.
 create policy "read comments" on comments
-  for select using (auth.role() = 'authenticated');
+  for select using (
+    (auth.jwt()->>'email') like '%@avalanchegr.com'
+    or exists (
+      select 1 from allowed_emails ae
+      where lower(ae.email) = lower(auth.jwt()->>'email')
+    )
+  );
 
 create policy "insert comments" on comments
-  for insert with check (auth.role() = 'authenticated'
-    and author_email = auth.jwt()->>'email');
+  for insert with check (
+    author_email = auth.jwt()->>'email'
+    and (
+      (auth.jwt()->>'email') like '%@avalanchegr.com'
+      or exists (
+        select 1 from allowed_emails ae
+        where lower(ae.email) = lower(auth.jwt()->>'email')
+      )
+    )
+  );
 
 create policy "update own or team" on comments
   for update using (

@@ -13,6 +13,21 @@ export async function fetchProject(supabase, token) {
   return data;
 }
 
+// Is this signed-in email on the invite list? (Team-domain emails are
+// checked separately and don't need a row.)
+export async function isInvited(supabase, email) {
+  const { data, error } = await supabase
+    .from('allowed_emails')
+    .select('email')
+    .eq('email', email.toLowerCase())
+    .maybeSingle();
+  if (error) {
+    console.warn('[markup] invite check failed:', error.message);
+    return false;
+  }
+  return !!data;
+}
+
 export async function fetchComments(supabase, projectId) {
   const { data, error } = await supabase
     .from('comments')

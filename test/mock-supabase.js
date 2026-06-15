@@ -8,9 +8,18 @@ export function createClient() {
       { id: 'mock-project-1', token: 'test-token', name: 'Mock Project', site_url: 'http://localhost:8123' },
     ],
     comments: [],
+    // Invite list for testing the access gate. guest@client.com is
+    // invited (non-team); anyone else non-team is blocked.
+    allowed_emails: [{ email: 'guest@client.com', note: 'demo client' }],
   };
   let nextId = 1;
-  const session = { user: { email: 'mock-team@avalanchegr.com' }, access_token: 'mock' };
+  // Override the signed-in email with ?mockEmail= to test roles:
+  //   (default) mock-team@avalanchegr.com → team (full powers)
+  //   guest@client.com                    → invited (comment, no export)
+  //   anyone-else@x.com                   → blocked
+  const mockEmail =
+    new URLSearchParams(location.search).get('mockEmail') || 'mock-team@avalanchegr.com';
+  const session = { user: { email: mockEmail }, access_token: 'mock' };
 
   const ok = (data) => Promise.resolve({ data, error: null });
 
@@ -67,6 +76,7 @@ export function createClient() {
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
       getSession: () => Promise.resolve({ data: { session } }),
       signInWithOtp: () => Promise.resolve({ data: {}, error: null }),
+      signOut: () => Promise.resolve({ error: null }),
     },
     from,
     channel() {

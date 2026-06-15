@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, TEAM_DOMAIN } from './config.js';
-import { fetchProject, fetchComments, subscribeRealtime } from './data.js';
+import { fetchProject, fetchComments, subscribeRealtime, isInvited } from './data.js';
 import { mountOverlay, toast, h } from './ui/overlay.js';
 import { renderAuthCard, removeAuthCard } from './ui/auth.js';
 import { renderPins } from './ui/pins.js';
@@ -71,6 +71,14 @@ async function start(app) {
 
   const email = app.session.user.email.toLowerCase();
   app.isTeam = email.endsWith(`@${app.teamDomain}`);
+
+  // Access gate: team domain is always allowed; everyone else must be
+  // on the invite list. Export stays team-only regardless.
+  app.allowed = app.isTeam || (await isInvited(app.supabase, email));
+  if (!app.allowed) {
+    renderBlockedCard(app, email);
+    return;
+  }
 
   app.project = await fetchProject(app.supabase, app.token);
   if (!app.project) {
@@ -243,6 +251,29 @@ function renderToolbar(app) {
   // Push the page content up by the bar height so the bar sits beneath
   // the site rather than on top of it.
   document.body.style.paddingBottom = '52px';
+}
+
+// Signed in, but not on the invite list and not on the team domain.
+// Show a friendly dead-end with a way to sign out and try another email.
+function renderBlockedCard(app, email) {
+  const signOut = h('button', { class: 'btn btn-ghost' }, 'Use a different email');
+  const card = h(
+    'div',
+    { class: 'card auth-card' },
+    h('div', { class: 'card-head' }, 'Access needed'),
+    h(
+      'div',
+      { class: 'card-body' },
+      h('p', {}, `You're signed in as ${email}, but this address hasn't been invited yet.`),
+      h('p', { class: 'hint' }, 'Ask your Avalanche contact to add your email, then reload this page.'),
+      h('div', { class: 'btn-row' }, signOut)
+    )
+  );
+  signOut.addEventListener('click', async () => {
+    await app.supabase.auth.signOut();
+    location.reload();
+  });
+  app.ui.layer.appendChild(card);
 }
 
 // Ending the session forgets the token and reloads without ?markup so

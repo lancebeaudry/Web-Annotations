@@ -80,6 +80,28 @@ a minute or two instead of after ~12 hours.
 2. Authentication → URL Configuration → Redirect URLs: add `https://clientsite.com/**`
 </details>
 
+## Who can use it (invite list)
+
+Access is gated to two groups:
+
+- **Avalanche team** — any `@avalanchegr.com` email. Always allowed, full
+  powers (comment, resolve, delete any, **export**). Nothing to set up.
+- **Invited people** — specific outside emails you add. They can comment,
+  reply, and delete their own comments, but **cannot export**.
+
+Anyone else who signs in hits an "Access needed" screen. The gate is
+enforced in the database (RLS), not just hidden in the UI.
+
+Manage invites:
+
+```sh
+npm run invite -- add someone@example.com "optional note"
+npm run invite -- list
+npm run invite -- remove someone@example.com
+```
+
+(Requires the `SUPABASE_SERVICE_ROLE_KEY` in `.env`, same as `new-site`.)
+
 ## Using it
 
 - **Clients**: open the link, sign in via the emailed magic link, hit **Comment**, click any element, type what should change. Click numbered pins to read threads and reply.
