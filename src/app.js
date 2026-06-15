@@ -103,6 +103,18 @@ async function start(app) {
   // Late layout shifts (fonts, images) move elements under the pins.
   window.addEventListener('load', () => renderPins(app));
 
+  // Keyboard shortcuts: C = comment mode, B = browse mode. Ignored
+  // while typing in any field (including the shadow-DOM comment box).
+  document.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.composedPath()[0];
+    const tag = t && t.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+    const k = e.key.toLowerCase();
+    if (k === 'c') setCommentMode(app, true);
+    else if (k === 'b') setCommentMode(app, false);
+  });
+
   toast(app.ui, `Feedback mode ready — ${app.project.name}`);
 }
 
@@ -193,7 +205,22 @@ function renderToolbar(app) {
     n ? `Comments (${n})` : 'Comments'
   );
 
-  const toolbar = h('div', { class: 'toolbar' }, app.modeBtn, app.sidebarBtn);
+  const brand = h(
+    'div',
+    { class: 'toolbar-brand' },
+    h('span', { class: 'dot' }),
+    'Avalanche Markup'
+  );
+  const hint = h(
+    'span',
+    { class: 'toolbar-hint' },
+    h('kbd', {}, 'C'),
+    ' comment · ',
+    h('kbd', {}, 'B'),
+    ' browse'
+  );
+
+  const toolbar = h('div', { class: 'toolbar' }, brand, app.modeBtn, app.sidebarBtn, hint);
 
   if (app.isTeam) {
     const exportBtn = h(
@@ -206,12 +233,16 @@ function renderToolbar(app) {
 
   const exitBtn = h(
     'button',
-    { class: 'fab fab-secondary', title: 'End feedback session', onclick: () => confirmExit(app) },
+    { class: 'fab fab-secondary spacer', title: 'End feedback session', onclick: () => confirmExit(app) },
     '✕'
   );
   toolbar.appendChild(exitBtn);
 
   app.ui.layer.appendChild(toolbar);
+
+  // Push the page content up by the bar height so the bar sits beneath
+  // the site rather than on top of it.
+  document.body.style.paddingBottom = '52px';
 }
 
 // Ending the session forgets the token and reloads without ?markup so
