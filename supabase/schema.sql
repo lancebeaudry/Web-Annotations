@@ -113,6 +113,53 @@ create policy "delete own or team" on comments
     or (auth.jwt()->>'email') like '%@avalanchegr.com'
   );
 
+-- ---------------------------------------------------------------
+-- Invite management functions (SECURITY DEFINER, team-gated).
+-- These let an Avalanche team member manage the invite list from the
+-- overlay using only their normal signed-in session — no service-role
+-- key on the client. Each checks the caller's JWT email is on the
+-- team domain before touching allowed_emails.
+-- ---------------------------------------------------------------
+create or replace function public.invite_email(p_email text, p_note text default null)
+returns text language plpgsql security definer set search_path = public as $fn$
+declare caller text := lower(coalesce(auth.jwt()->>'email',''));
+begin
+  if caller not like '%@avalanchegr.com' then
+    raise exception 'Only Avalanche team members can invite';
+  end if;
+  if p_email is null or position('@' in p_email) = 0 then
+    raise exception 'Enter a valid email address';
+  end if;
+  insert into allowed_emails (email, note) values (lower(trim(p_email)), nullif(trim(p_note),''))
+  on conflict (email) do update set note = excluded.note;
+  return lower(trim(p_email));
+end; $fn$;
+revoke all on function public.invite_email(text, text) from public, anon;
+grant execute on function public.invite_email(text, text) to authenticated;
+
+create or replace function public.list_invites()
+returns setof allowed_emails language plpgsql security definer set search_path = public as $fn$
+begin
+  if lower(coalesce(auth.jwt()->>'email','')) not like '%@avalanchegr.com' then
+    raise exception 'Only Avalanche team members can view invites';
+  end if;
+  return query select * from allowed_emails order by created_at asc;
+end; $fn$;
+revoke all on function public.list_invites() from public, anon;
+grant execute on function public.list_invites() to authenticated;
+
+create or replace function public.revoke_invite(p_email text)
+returns text language plpgsql security definer set search_path = public as $fn$
+begin
+  if lower(coalesce(auth.jwt()->>'email','')) not like '%@avalanchegr.com' then
+    raise exception 'Only Avalanche team members can remove invites';
+  end if;
+  delete from allowed_emails where email = lower(trim(p_email));
+  return lower(trim(p_email));
+end; $fn$;
+revoke all on function public.revoke_invite(text) from public, anon;
+grant execute on function public.revoke_invite(text) to authenticated;
+
 -- Realtime: broadcast comment inserts/updates to subscribed clients
 alter publication supabase_realtime add table comments;
 

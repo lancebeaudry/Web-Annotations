@@ -78,6 +78,31 @@ export function createClient() {
       signInWithOtp: () => Promise.resolve({ data: {}, error: null }),
       signOut: () => Promise.resolve({ error: null }),
     },
+    // Team-gated invite functions (mocked). Mirrors the SECURITY
+    // DEFINER SQL: only a team-domain session may manage invites.
+    rpc(name, args = {}) {
+      const isTeam = mockEmail.toLowerCase().endsWith('@avalanchegr.com');
+      if (name === 'invite_email') {
+        if (!isTeam) return ok(null).then(() => ({ data: null, error: { message: 'Only Avalanche team members can invite' } }));
+        const email = (args.p_email || '').trim().toLowerCase();
+        const row = store.allowed_emails.find((r) => r.email === email);
+        if (row) row.note = args.p_note || null;
+        else store.allowed_emails.push({ email, note: args.p_note || null, created_at: new Date().toISOString() });
+        return ok(email);
+      }
+      if (name === 'list_invites') {
+        if (!isTeam) return Promise.resolve({ data: null, error: { message: 'Only Avalanche team members can view invites' } });
+        return ok(store.allowed_emails.slice());
+      }
+      if (name === 'revoke_invite') {
+        if (!isTeam) return Promise.resolve({ data: null, error: { message: 'Only Avalanche team members can remove invites' } });
+        const email = (args.p_email || '').trim().toLowerCase();
+        const i = store.allowed_emails.findIndex((r) => r.email === email);
+        if (i >= 0) store.allowed_emails.splice(i, 1);
+        return ok(email);
+      }
+      return Promise.resolve({ data: null, error: { message: `unknown rpc ${name}` } });
+    },
     from,
     channel() {
       const ch = { on: () => ch, subscribe: () => ch };

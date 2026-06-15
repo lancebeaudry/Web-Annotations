@@ -44,13 +44,13 @@ It prints the embed line and the share link. Requires two admin secrets in
 and a **personal access token** (account menu → Access Tokens). Both stay on
 this machine — never in `markup.js`, never in a theme.
 
-Then get the embed onto the site — for WordPress, use the plugin
-(preferred: no theme edits, installable through wp-admin with no code
-deploy): zip `wordpress-plugin/avalanche-markup/`, upload via
-*Plugins → Add New → Upload Plugin*, activate, and paste the token under
-*Settings → Avalanche Markup*.
+Then get the embed onto the site. **The WordPress plugin is the default
+way** — no theme edits, installs through wp-admin with no code deploy,
+and it's identical across every site: zip `wordpress-plugin/avalanche-markup/`,
+upload via *Plugins → Add New → Upload Plugin*, activate, and paste the
+token under *Settings → Avalanche Markup*.
 
-For non-WordPress sites, add one line to the `<head>`:
+For non-WordPress sites only, add one line to the `<head>`:
 
 ```html
 <script defer src="https://cdn.jsdelivr.net/gh/lancebeaudry/Web-Annotations@main/dist/markup.js" data-project="PROJECT_TOKEN"></script>
@@ -92,15 +92,20 @@ Access is gated to two groups:
 Anyone else who signs in hits an "Access needed" screen. The gate is
 enforced in the database (RLS), not just hidden in the UI.
 
-Manage invites:
+**Inviting from the tool (the normal way):** any team member, while
+signed in on a site, clicks **Invite** in the bottom bar, enters a
+client's email, and they're in. This is backed by team-gated database
+functions (`invite_email` / `list_invites` / `revoke_invite`,
+SECURITY DEFINER, restricted to `@avalanchegr.com` callers) — no
+service key on the client. The Invite button only appears for team.
+
+**From the command line** (admin fallback, needs `SUPABASE_SERVICE_ROLE_KEY`):
 
 ```sh
 npm run invite -- add someone@example.com "optional note"
 npm run invite -- list
 npm run invite -- remove someone@example.com
 ```
-
-(Requires the `SUPABASE_SERVICE_ROLE_KEY` in `.env`, same as `new-site`.)
 
 ## Using it
 

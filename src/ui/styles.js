@@ -264,6 +264,35 @@ export const CSS = `
 .export-menu .opt:hover { background: #F9F9F9; color: #00263D; }
 .export-menu .opt small { display: block; color: #6b7a85; font-size: 11px; }
 
+/* ---- invite (client access) menu ---- */
+.invite-menu {
+  position: fixed;
+  right: 20px; bottom: 64px;
+  width: 320px;
+  z-index: 46;
+}
+.invite-sub {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7a85;
+  margin: 4px 0 8px;
+}
+.invite-list { max-height: 220px; overflow-y: auto; }
+.invite-empty { font-size: 12px; color: #6b7a85; padding: 4px 0; }
+.invite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eef2f4;
+}
+.invite-row:last-child { border-bottom: none; }
+.invite-email { font-weight: 600; color: #00263D; font-size: 13px; word-break: break-all; }
+.invite-note { font-size: 11px; color: #6b7a85; }
+
 /* ---- exit-session confirm ---- */
 .confirm-card {
   position: fixed;

@@ -28,6 +28,27 @@ export async function isInvited(supabase, email) {
   return !!data;
 }
 
+// Invite management (team-only; enforced by the SECURITY DEFINER
+// functions in the DB, so a non-team caller just gets an error).
+export async function inviteEmail(supabase, email, note) {
+  const { error } = await supabase.rpc('invite_email', { p_email: email, p_note: note || null });
+  return error ? error.message : null;
+}
+
+export async function listInvites(supabase) {
+  const { data, error } = await supabase.rpc('list_invites');
+  if (error) {
+    console.warn('[markup] list invites failed:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
+export async function revokeInvite(supabase, email) {
+  const { error } = await supabase.rpc('revoke_invite', { p_email: email });
+  return error ? error.message : null;
+}
+
 export async function fetchComments(supabase, projectId) {
   const { data, error } = await supabase
     .from('comments')

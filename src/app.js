@@ -7,6 +7,7 @@ import { renderPins } from './ui/pins.js';
 import { openCommentBox } from './ui/commentBox.js';
 import { closePopovers, refreshOpenThread } from './ui/popover.js';
 import { toggleSidebar, refreshSidebar, openRootCount } from './ui/sidebar.js';
+import { toggleInviteMenu } from './ui/invite.js';
 import { buildMarkdown, buildJson, copyToClipboard } from './export.js';
 
 function normalizePath(pathname) {
@@ -231,12 +232,17 @@ function renderToolbar(app) {
   const toolbar = h('div', { class: 'toolbar' }, brand, app.modeBtn, app.sidebarBtn, hint);
 
   if (app.isTeam) {
+    const inviteBtn = h(
+      'button',
+      { class: 'fab fab-secondary', onclick: () => toggleInviteMenu(app) },
+      'Invite'
+    );
     const exportBtn = h(
       'button',
       { class: 'fab fab-secondary', onclick: () => toggleExportMenu(app) },
       'Export'
     );
-    toolbar.appendChild(exportBtn);
+    toolbar.append(inviteBtn, exportBtn);
   }
 
   const exitBtn = h(
