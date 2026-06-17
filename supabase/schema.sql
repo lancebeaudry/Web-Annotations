@@ -163,6 +163,10 @@ grant execute on function public.revoke_invite(text) to authenticated;
 -- Realtime: broadcast comment inserts/updates to subscribed clients
 alter publication supabase_realtime add table comments;
 
+-- @mentions + new-comment email notifications live in a separate file so
+-- this one can be re-run safely. On a fresh install, run it right after
+-- this: supabase/notifications.sql
+
 -- ---------------------------------------------------------------
 -- Seed a test project (edit name/url, keep the token handy —
 -- it's what goes in ?markup=TOKEN and data-project="TOKEN")

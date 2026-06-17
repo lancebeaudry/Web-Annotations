@@ -3,6 +3,7 @@ import { insertComment } from '../data.js';
 import { h, toast } from './overlay.js';
 import { savedName } from './auth.js';
 import { closePopovers } from './popover.js';
+import { attachMentions } from './mentions.js';
 
 // New-comment box, opened by clicking an element in comment mode.
 // Captures the technical context invisibly; the client only sees a
@@ -14,9 +15,10 @@ export function openCommentBox(app, el, clickEvent) {
   const xPct = rect.width ? ((clickEvent.clientX - rect.left) / rect.width) * 100 : 50;
   const yPct = rect.height ? ((clickEvent.clientY - rect.top) / rect.height) * 100 : 50;
 
-  const input = h('textarea', { placeholder: 'What should change here?', rows: '3' });
+  const input = h('textarea', { placeholder: 'What should change here? Type @ to notify someone', rows: '3' });
+  const mentions = attachMentions(app, input, app.ui.layer);
   const save = h('button', { class: 'btn', type: 'submit' }, 'Save comment');
-  const cancel = h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => box.remove() }, 'Cancel');
+  const cancel = h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { mentions.destroy(); box.remove(); } }, 'Cancel');
 
   const form = h('form', {}, h('div', { class: 'field' }, input), h('div', { class: 'btn-row' }, cancel, save));
 
@@ -45,6 +47,7 @@ export function openCommentBox(app, el, clickEvent) {
       comment_text: text,
       author_email: app.session.user.email,
       author_name: savedName() || null,
+      mentions: mentions.getMentions(),
     });
     if (!row) {
       save.disabled = false;
@@ -53,6 +56,7 @@ export function openCommentBox(app, el, clickEvent) {
       return;
     }
     app.comments.set(row.id, row);
+    mentions.destroy();
     box.remove();
     app.refresh();
     toast(app.ui, 'Comment saved');

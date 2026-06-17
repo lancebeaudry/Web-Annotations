@@ -49,6 +49,18 @@ export async function revokeInvite(supabase, email) {
   return error ? error.message : null;
 }
 
+// People who can be @mentioned on this project: everyone who has
+// participated here plus the team's notify list (project-scoped on the
+// server so it never leaks other clients' emails). Returns [{email, name}].
+export async function listMentionable(supabase, projectId) {
+  const { data, error } = await supabase.rpc('list_mentionable', { p_project: projectId });
+  if (error) {
+    console.warn('[markup] mentionable lookup failed:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
 export async function fetchComments(supabase, projectId) {
   const { data, error } = await supabase
     .from('comments')

@@ -226,6 +226,38 @@ export const CSS = `
 .entry .meta { font-size: 11px; color: #6b7a85; margin-bottom: 3px; }
 .entry .meta b { color: #00263D; }
 .entry .text { white-space: pre-wrap; }
+.mention-tag {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1B6493;
+}
+/* @-mention autocomplete dropdown (mounted in the page-coord layer) */
+.mention-menu {
+  position: absolute;
+  z-index: 40;
+  pointer-events: auto;
+  max-height: 196px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #cfd8de;
+  border-radius: 8px;
+  box-shadow: 0 6px 22px rgba(0, 38, 61, 0.18);
+}
+.mention-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: #00263D;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mention-item:hover { background: #F9F9F9; }
 .context {
   font-size: 11px;
   color: #6b7a85;

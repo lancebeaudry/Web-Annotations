@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Avalanche Markup
  * Description: Click-to-comment visual feedback overlay for Avalanche client sites. Paste the site's project token under Settings → Avalanche Markup. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 1.3.0
+ * Version: 1.4.0
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  */
@@ -11,7 +11,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const AVMK_OPTION = 'avalanche_markup_token';
+const AVMK_OPTION        = 'avalanche_markup_token';
+const AVMK_NOTIFY_OPTION = 'avalanche_markup_notify';
 
 // Pin to a specific commit of github.com/lancebeaudry/Web-Annotations.
 // jsDelivr serves a commit-pinned URL instantly and immutably (cached
@@ -40,7 +41,54 @@ add_action( 'admin_menu', function () {
 
 add_action( 'admin_init', function () {
 	register_setting( 'avalanche_markup', AVMK_OPTION, [ 'sanitize_callback' => 'sanitize_text_field' ] );
+	register_setting( 'avalanche_markup', AVMK_NOTIFY_OPTION, [ 'sanitize_callback' => 'avmk_sanitize_emails' ] );
 } );
+
+// Normalize the notify-list textarea to one valid, lower-cased, de-duped
+// email per line.
+function avmk_sanitize_emails( $raw ) {
+	$out = [];
+	foreach ( preg_split( '/[\s,;]+/', (string) $raw ) as $candidate ) {
+		$email = sanitize_email( trim( $candidate ) );
+		if ( $email && is_email( $email ) ) {
+			$out[ strtolower( $email ) ] = true;
+		}
+	}
+	return implode( "\n", array_keys( $out ) );
+}
+
+// Shared Supabase credentials from wp-config.php constants, or null if
+// the site hasn't been wired up. The service-role key must never live in
+// this file, the options table, or version control.
+function avmk_creds() {
+	$base = defined( 'AVALANCHE_MARKUP_SUPABASE_URL' ) ? AVALANCHE_MARKUP_SUPABASE_URL : '';
+	$key  = defined( 'AVALANCHE_MARKUP_SERVICE_KEY' ) ? AVALANCHE_MARKUP_SERVICE_KEY : '';
+	if ( ! $base || ! $key ) {
+		return null;
+	}
+	return [
+		'base'    => untrailingslashit( $base ),
+		'headers' => [
+			'apikey'        => $key,
+			'Authorization' => 'Bearer ' . $key,
+			'Content-Type'  => 'application/json',
+		],
+	];
+}
+
+// This site's Supabase project id (matched by site_url = home_url()), or
+// '' if it isn't registered yet.
+function avmk_project_id( $creds ) {
+	$res = wp_remote_get(
+		$creds['base'] . '/rest/v1/projects?select=id&site_url=eq.' . rawurlencode( untrailingslashit( home_url() ) ),
+		[ 'headers' => $creds['headers'], 'timeout' => 15 ]
+	);
+	if ( is_wp_error( $res ) ) {
+		return '';
+	}
+	$rows = json_decode( wp_remote_retrieve_body( $res ), true );
+	return ( is_array( $rows ) && ! empty( $rows[0]['id'] ) ) ? $rows[0]['id'] : '';
+}
 
 // Keep the Supabase `projects` row in sync with the token field. The
 // token lives in two places — this WP option (what the page sends) and
@@ -54,6 +102,16 @@ add_action( 'update_option_' . AVMK_OPTION, function ( $old, $new ) {
 	avmk_sync_token( $old, $new );
 }, 10, 2 );
 
+// Push the team notify-list to Supabase so the notifier Edge Function can
+// read it. Same two-places problem as the token: this list is edited in
+// WP, but the mailer lives in Supabase.
+add_action( 'add_option_' . AVMK_NOTIFY_OPTION, function ( $option, $value ) {
+	avmk_sync_notify( $value );
+}, 10, 2 );
+add_action( 'update_option_' . AVMK_NOTIFY_OPTION, function ( $old, $new ) {
+	avmk_sync_notify( $new );
+}, 10, 2 );
+
 /**
  * Rename (or create) this site's Supabase projects row so its token
  * matches what's saved here. The row is matched by site_url = home_url(),
@@ -62,11 +120,10 @@ add_action( 'update_option_' . AVMK_OPTION, function ( $old, $new ) {
  * this file, the options table, or version control.
  */
 function avmk_sync_token( $old_token, $new_token ) {
-	$base = defined( 'AVALANCHE_MARKUP_SUPABASE_URL' ) ? AVALANCHE_MARKUP_SUPABASE_URL : '';
-	$key  = defined( 'AVALANCHE_MARKUP_SERVICE_KEY' ) ? AVALANCHE_MARKUP_SERVICE_KEY : '';
+	$creds     = avmk_creds();
 	$new_token = trim( (string) $new_token );
 
-	if ( ! $base || ! $key ) {
+	if ( ! $creds ) {
 		avmk_notice( 'warning', 'Token saved locally, but not synced to Supabase: add AVALANCHE_MARKUP_SUPABASE_URL and AVALANCHE_MARKUP_SERVICE_KEY to wp-config.php.' );
 		return;
 	}
@@ -74,29 +131,17 @@ function avmk_sync_token( $old_token, $new_token ) {
 		return; // Cleared field — nothing to point at.
 	}
 
-	$base    = untrailingslashit( $base );
+	$base    = $creds['base'];
 	$site    = untrailingslashit( home_url() );
-	$headers = [
-		'apikey'        => $key,
-		'Authorization' => 'Bearer ' . $key,
-		'Content-Type'  => 'application/json',
-	];
+	$headers = $creds['headers'];
 
 	// Find the row for this site (independent of the token, which may
 	// be the value we're about to overwrite).
-	$lookup = wp_remote_get(
-		$base . '/rest/v1/projects?select=id&site_url=eq.' . rawurlencode( $site ),
-		[ 'headers' => $headers, 'timeout' => 15 ]
-	);
-	if ( is_wp_error( $lookup ) ) {
-		avmk_notice( 'error', 'Could not reach Supabase to sync the token: ' . $lookup->get_error_message() );
-		return;
-	}
-	$rows = json_decode( wp_remote_retrieve_body( $lookup ), true );
+	$project_id = avmk_project_id( $creds );
 
-	if ( is_array( $rows ) && ! empty( $rows[0]['id'] ) ) {
+	if ( $project_id ) {
 		$res = wp_remote_request(
-			$base . '/rest/v1/projects?id=eq.' . rawurlencode( $rows[0]['id'] ),
+			$base . '/rest/v1/projects?id=eq.' . rawurlencode( $project_id ),
 			[
 				'method'  => 'PATCH',
 				'headers' => $headers + [ 'Prefer' => 'return=minimal' ],
@@ -135,6 +180,60 @@ function avmk_sync_token( $old_token, $new_token ) {
 	}
 }
 
+/**
+ * Replace this project's notify_recipients in Supabase with the saved
+ * list. These are the people emailed when a client leaves a comment.
+ */
+function avmk_sync_notify( $value ) {
+	$creds = avmk_creds();
+	if ( ! $creds ) {
+		avmk_notice( 'warning', 'Notify list saved locally, but not synced: add the Supabase constants to wp-config.php.' );
+		return;
+	}
+	$project_id = avmk_project_id( $creds );
+	if ( ! $project_id ) {
+		avmk_notice( 'warning', 'Notify list saved, but this site has no Supabase project yet — save the token first, then re-save the list.' );
+		return;
+	}
+
+	$emails = array_filter( array_map( 'trim', preg_split( '/\R/', (string) $value ) ) );
+	$base   = $creds['base'];
+	$where  = '/rest/v1/notify_recipients?project_id=eq.' . rawurlencode( $project_id );
+
+	// Replace wholesale: clear this project's rows, then insert the set.
+	$del = wp_remote_request( $base . $where, [
+		'method'  => 'DELETE',
+		'headers' => $creds['headers'] + [ 'Prefer' => 'return=minimal' ],
+		'timeout' => 15,
+	] );
+	if ( is_wp_error( $del ) ) {
+		avmk_notice( 'error', 'Could not update the notify list in Supabase: ' . $del->get_error_message() );
+		return;
+	}
+
+	if ( ! $emails ) {
+		avmk_notice( 'success', 'Notify list cleared — no one will be emailed on new comments.' );
+		return;
+	}
+
+	$rows = array_map( fn( $e ) => [ 'project_id' => $project_id, 'email' => strtolower( $e ) ], $emails );
+	$ins  = wp_remote_post( $base . '/rest/v1/notify_recipients', [
+		'headers' => $creds['headers'] + [ 'Prefer' => 'return=minimal' ],
+		'body'    => wp_json_encode( $rows ),
+		'timeout' => 15,
+	] );
+	if ( is_wp_error( $ins ) ) {
+		avmk_notice( 'error', 'Could not save the notify list: ' . $ins->get_error_message() );
+		return;
+	}
+	$code = wp_remote_retrieve_response_code( $ins );
+	if ( $code >= 200 && $code < 300 ) {
+		avmk_notice( 'success', sprintf( 'Notify list synced — %d %s will be emailed on new client comments.', count( $emails ), count( $emails ) === 1 ? 'person' : 'people' ) );
+	} else {
+		avmk_notice( 'error', 'Supabase rejected the notify list (HTTP ' . $code . '): ' . esc_html( wp_remote_retrieve_body( $ins ) ) );
+	}
+}
+
 // Stash a one-shot notice to show after the post-save redirect.
 function avmk_notice( $type, $msg ) {
 	set_transient( 'avmk_sync_notice', [ 'type' => $type, 'msg' => $msg ], 60 );
@@ -160,15 +259,24 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function ( $li
 } );
 
 function avmk_settings_page() {
-	$token = get_option( AVMK_OPTION, '' );
+	$token  = get_option( AVMK_OPTION, '' );
+	$notify = get_option( AVMK_NOTIFY_OPTION, '' );
 	?>
 	<div class="wrap">
 		<h1>Avalanche Markup</h1>
 		<p>Paste this site's project token. Feedback mode then activates only for visits with <code>?markup=TOKEN</code> in the URL — regular visitors never see anything.</p>
 		<form method="post" action="options.php">
 			<?php settings_fields( 'avalanche_markup' ); ?>
+
+			<h2 class="title">Project token</h2>
 			<input type="text" class="regular-text code" name="<?php echo esc_attr( AVMK_OPTION ); ?>" value="<?php echo esc_attr( $token ); ?>" placeholder="e.g. client-name-1a2b3c4d">
-			<?php submit_button( 'Save token' ); ?>
+
+			<h2 class="title">Email notifications</h2>
+			<p>Who should be emailed when a client leaves a new comment on this site? One email address per line. Leave blank to turn notifications off.</p>
+			<textarea class="large-text code" rows="4" name="<?php echo esc_attr( AVMK_NOTIFY_OPTION ); ?>" placeholder="you@avalanchegr.com&#10;teammate@avalanchegr.com"><?php echo esc_textarea( $notify ); ?></textarea>
+			<p class="description">@mentions inside a comment always notify the person tagged — this list is the extra "tell the team about any new feedback" alert.</p>
+
+			<?php submit_button( 'Save settings' ); ?>
 		</form>
 		<?php if ( $token ) : ?>
 			<p>Share link for this site: <code><?php echo esc_html( home_url( '/?markup=' . $token ) ); ?></code></p>

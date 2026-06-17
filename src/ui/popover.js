@@ -1,6 +1,7 @@
 import { insertComment, updateComment, deleteComment } from '../data.js';
 import { h, toast } from './overlay.js';
 import { savedName } from './auth.js';
+import { attachMentions, mentionLabel } from './mentions.js';
 
 function fmtDate(iso) {
   return (iso || '').slice(0, 10);
@@ -24,7 +25,7 @@ function clampLeft(x, width) {
 }
 
 export function closePopovers(app) {
-  app.ui.layer.querySelectorAll('.popover').forEach((el) => el.remove());
+  app.ui.layer.querySelectorAll('.popover, .mention-menu').forEach((el) => el.remove());
   app.openThreadId = null;
 }
 
@@ -45,7 +46,8 @@ export function openThread(app, rootId) {
     thread.scrollTop = thread.scrollHeight;
   };
 
-  const replyInput = h('textarea', { placeholder: 'Reply…', rows: '2' });
+  const replyInput = h('textarea', { placeholder: 'Reply… (type @ to notify someone)', rows: '2' });
+  const replyMentions = attachMentions(app, replyInput, app.ui.layer);
   const replyBtn = h('button', { class: 'btn', type: 'submit' }, 'Reply');
   const replyForm = h('form', {}, h('div', { class: 'field' }, replyInput), h('div', { class: 'btn-row' }, replyBtn));
 
@@ -62,6 +64,7 @@ export function openThread(app, rootId) {
       comment_text: text,
       author_email: app.session.user.email,
       author_name: savedName() || null,
+      mentions: replyMentions.getMentions(),
     });
     replyBtn.disabled = false;
     if (!row) {
@@ -175,12 +178,15 @@ function pinNumber(app, rootId) {
 }
 
 function entry(app, comment) {
-  return h(
-    'div',
-    { class: 'entry' },
+  const parts = [
     h('div', { class: 'meta' }, h('b', {}, authorLabel(app, comment)), ` · ${fmtDate(comment.created_at)}`),
-    h('div', { class: 'text' }, comment.comment_text)
-  );
+    h('div', { class: 'text' }, comment.comment_text),
+  ];
+  if (comment.mentions && comment.mentions.length) {
+    const names = comment.mentions.map((e) => mentionLabel(app, e)).join(', ');
+    parts.push(h('div', { class: 'mention-tag' }, `@ ${names}`));
+  }
+  return h('div', { class: 'entry' }, ...parts);
 }
 
 // Refresh an open popover when realtime delivers a reply/status change.
