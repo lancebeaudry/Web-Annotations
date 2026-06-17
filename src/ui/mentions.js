@@ -31,7 +31,10 @@ export function attachMentions(app, input, layer) {
   let people = [];
   // If the roster is still loading when '@' is typed, pop the menu the
   // moment it arrives instead of silently showing nothing.
-  roster(app).then((r) => { people = r; if (query()) update(); });
+  roster(app).then((r) => {
+    people = r;
+    if (input.getRootNode().activeElement === input && query()) update();
+  });
 
   // Picked mentions, tracked as { label, email }; a mention only counts
   // if its label text is still present at submit time.
