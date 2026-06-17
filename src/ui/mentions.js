@@ -9,6 +9,11 @@ async function roster(app) {
   return app._mentionables; // [{ email, name }]
 }
 
+// Warm the roster cache at session start so the first '@' is instant.
+export function prefetchMentionables(app) {
+  roster(app).catch(() => {});
+}
+
 // Resolve a list of mention emails to display names for rendering.
 export function mentionLabel(app, email) {
   const hit = (app._mentionables || []).find((p) => p.email === email);
@@ -24,7 +29,9 @@ export function attachMentions(app, input, layer) {
   layer.appendChild(menu);
 
   let people = [];
-  roster(app).then((r) => { people = r; });
+  // If the roster is still loading when '@' is typed, pop the menu the
+  // moment it arrives instead of silently showing nothing.
+  roster(app).then((r) => { people = r; if (query()) update(); });
 
   // Picked mentions, tracked as { label, email }; a mention only counts
   // if its label text is still present at submit time.

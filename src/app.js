@@ -8,6 +8,7 @@ import { openCommentBox } from './ui/commentBox.js';
 import { closePopovers, refreshOpenThread } from './ui/popover.js';
 import { toggleSidebar, refreshSidebar, openRootCount } from './ui/sidebar.js';
 import { toggleInviteMenu } from './ui/invite.js';
+import { prefetchMentionables } from './ui/mentions.js';
 import { buildMarkdown, buildJson, copyToClipboard } from './export.js';
 
 function normalizePath(pathname) {
@@ -92,6 +93,8 @@ async function start(app) {
   for (const row of await fetchComments(app.supabase, app.project.id)) {
     app.comments.set(row.id, row);
   }
+
+  prefetchMentionables(app); // warm the @-mention roster (fire-and-forget)
 
   renderToolbar(app);
   renderPins(app);
