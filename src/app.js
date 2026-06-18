@@ -63,7 +63,33 @@ export async function init(token) {
     app.session = data.session;
     start(app);
   } else if (!data.session) {
-    renderAuthCard(app);
+    // Already logged into WordPress? Sign them in automatically via the
+    // plugin bridge before falling back to the email code form.
+    const bridged = await tryWordPressSession(app);
+    if (!bridged) renderAuthCard(app);
+  }
+}
+
+// If the visitor is logged into WordPress, the plugin's /session route
+// returns a freshly minted Supabase session. Set it and onAuthStateChange
+// starts the app. Logged out / no plugin / any error -> false, and the
+// caller shows the email code form instead.
+async function tryWordPressSession(app) {
+  try {
+    const res = await fetch(`${location.origin}/wp-json/avalanche-markup/v1/session`, {
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+    if (!res.ok) return false;
+    const d = await res.json();
+    if (!d.bridge || !d.access_token || !d.refresh_token) return false;
+    const { error } = await app.supabase.auth.setSession({
+      access_token: d.access_token,
+      refresh_token: d.refresh_token,
+    });
+    return !error; // onAuthStateChange fires start() on success
+  } catch {
+    return false;
   }
 }
 
