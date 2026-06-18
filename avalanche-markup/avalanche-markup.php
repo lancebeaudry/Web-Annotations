@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Avalanche Markup
  * Description: Click-to-comment visual feedback overlay for Avalanche client sites. Paste the site's project token under Settings → Avalanche Markup. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 1.4.0
+ * Version: 1.5.0
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  */
@@ -20,7 +20,7 @@ const AVMK_NOTIFY_OPTION = 'avalanche_markup_notify';
 // stale browser copies — when we ship an update the ref changes, which
 // is a brand-new URL every browser fetches fresh. Bump AVMK_REF on each
 // release with `npm run release` (admin/release.mjs).
-const AVMK_REF = '8f6ed1b';
+const AVMK_REF = '2f26079';
 
 add_action( 'wp_head', function () {
 	$token = get_option( AVMK_OPTION, '' );
@@ -38,6 +38,59 @@ add_action( 'wp_head', function () {
 add_action( 'admin_menu', function () {
 	add_options_page( 'Avalanche Markup', 'Avalanche Markup', 'manage_options', 'avalanche-markup', 'avmk_settings_page' );
 } );
+
+// WordPress -> Supabase auto-sign-in bridge. The overlay calls this from
+// the visitor's browser; if they're logged into WordPress, we ask the
+// Supabase `wp-session` Edge Function (proven by a shared secret kept in
+// wp-config) to mint a real session for their WP email and hand the
+// tokens back. Logged-out visitors fall through to the 6-digit code flow.
+// Returns no per-user data unless the request carries the user's own auth
+// cookie, so cached responses can't leak one user's session to another.
+add_action( 'rest_api_init', function () {
+	register_rest_route( 'avalanche-markup/v1', '/session', [
+		'methods'             => 'GET',
+		'permission_callback' => '__return_true',
+		'callback'            => 'avmk_rest_session',
+	] );
+} );
+
+function avmk_rest_session() {
+	nocache_headers();
+
+	if ( ! is_user_logged_in() ) {
+		return [ 'loggedIn' => false ];
+	}
+
+	$secret = defined( 'AVALANCHE_MARKUP_WP_AUTH_SECRET' ) ? AVALANCHE_MARKUP_WP_AUTH_SECRET : '';
+	$base   = defined( 'AVALANCHE_MARKUP_SUPABASE_URL' ) ? AVALANCHE_MARKUP_SUPABASE_URL : '';
+	if ( ! $secret || ! $base ) {
+		// Logged in, but this site hasn't enabled the WP bridge.
+		return [ 'loggedIn' => true, 'bridge' => false ];
+	}
+
+	$user = wp_get_current_user();
+	$res  = wp_remote_post( untrailingslashit( $base ) . '/functions/v1/wp-session', [
+		'headers' => [ 'Content-Type' => 'application/json', 'x-wp-auth-secret' => $secret ],
+		'body'    => wp_json_encode( [
+			'email'       => $user->user_email,
+			'name'        => $user->display_name,
+			'redirect_to' => home_url( '/' ),
+		] ),
+		'timeout' => 15,
+	] );
+
+	if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
+		return [ 'loggedIn' => true, 'bridge' => false ];
+	}
+	$data = json_decode( wp_remote_retrieve_body( $res ), true );
+	return [
+		'loggedIn'      => true,
+		'bridge'        => true,
+		'access_token'  => $data['access_token'] ?? null,
+		'refresh_token' => $data['refresh_token'] ?? null,
+		'email'         => $data['email'] ?? $user->user_email,
+	];
+}
 
 add_action( 'admin_init', function () {
 	register_setting( 'avalanche_markup', AVMK_OPTION, [ 'sanitize_callback' => 'sanitize_text_field' ] );
