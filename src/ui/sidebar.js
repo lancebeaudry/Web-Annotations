@@ -250,7 +250,7 @@ function jumpTo(app, comment, onThisPage) {
     location.href = comment.page_url;
     return;
   }
-  closeSidebar(app);
+  // Keep the sidebar open — just scroll to the pin and open its thread.
   closePopovers(app);
   const target = resolveElement(comment);
   if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
