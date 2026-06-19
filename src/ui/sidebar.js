@@ -1,6 +1,6 @@
 import { h, toast } from './overlay.js';
 import { updateComment, deleteComment } from '../data.js';
-import { resolveElement } from '../capture.js';
+import { resolveElement, looksAddressed } from '../capture.js';
 import { openThread, closePopovers } from './popover.js';
 
 // Slide-out panel listing every comment in the project, grouped by
@@ -92,7 +92,12 @@ export function toggleSidebar(app) {
   resolvedBox.checked = f.showResolved;
   resolvedBox.addEventListener('change', () => {
     f.showResolved = resolvedBox.checked;
-    renderList(app);
+    try {
+      localStorage.setItem('markup_show_resolved', resolvedBox.checked ? '1' : '0');
+    } catch {
+      /* storage blocked — preference just won't persist */
+    }
+    app.refresh(); // updates both the list and the pins on the page
   });
   const resolvedLabel = h('label', { class: 'side-check' }, resolvedBox, 'Show resolved');
 
@@ -222,13 +227,16 @@ function item(app, comment, number, onThisPage) {
     actions.appendChild(deleteBtn);
   }
 
+  const addressed = onThisPage && looksAddressed(comment);
+
   const el = h(
     'div',
     {
-      class: `side-item${comment.status === 'resolved' ? ' resolved' : ''}`,
+      class: `side-item${comment.status === 'resolved' ? ' resolved' : ''}${addressed ? ' addressed' : ''}`,
       onclick: () => jumpTo(app, comment, onThisPage),
     },
     h('div', { class: 'side-top' }, h('span', { class: 'side-num' }, String(number)), h('span', { class: 'side-text' }, comment.comment_text)),
+    addressed ? h('div', { class: 'side-addressed' }, '✎ Content changed here — looks addressed') : null,
     h('div', { class: 'side-meta' }, `${name} · ${fmtDate(comment.created_at)}${replyCount ? ` · ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'}` : ''}`),
     actions
   );

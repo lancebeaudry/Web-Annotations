@@ -135,6 +135,18 @@ export const CSS = `
 }
 .pin:hover { transform: scale(1.15); }
 .pin.resolved { background: #13A89E; opacity: 0.55; }
+/* "looks addressed": amber dot badge — the content here changed since
+   the comment was written, so it likely got handled. */
+.pin.addressed::after {
+  content: '';
+  position: absolute;
+  top: -4px; right: -4px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #F5A623;
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 38, 61, 0.35);
+}
 
 /* ---- cards (auth, comment box, popover, export) ---- */
 .card {
@@ -426,6 +438,17 @@ export const CSS = `
   margin-top: 1px;
 }
 .side-item.resolved .side-num { background: #13A89E; }
+.side-item.addressed { border-color: #F5C97A; }
+.side-addressed {
+  font-size: 11px;
+  font-weight: 600;
+  color: #B8740F;
+  background: #FFF7E6;
+  border-radius: 5px;
+  padding: 3px 8px;
+  margin: 6px 0 0 28px;
+  display: inline-block;
+}
 .side-text {
   display: -webkit-box;
   -webkit-line-clamp: 2;

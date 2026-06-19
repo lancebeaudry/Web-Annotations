@@ -15,6 +15,15 @@ function normalizePath(pathname) {
   return pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
 }
 
+// "Show resolved" preference, remembered across reloads (default: on).
+function readShowResolved() {
+  try {
+    return localStorage.getItem('markup_show_resolved') !== '0';
+  } catch {
+    return true;
+  }
+}
+
 export async function init(token) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     console.warn('[markup] Supabase config missing — rebuild with .env populated.');
@@ -38,6 +47,9 @@ export async function init(token) {
     openThreadId: null,
     ui: mountOverlay(),
     refresh: null,
+    // Persisted so resolved pins/comments stay hidden across reloads once
+    // the user unticks "Show resolved". Read by both the sidebar and pins.
+    sidebarFilters: { q: '', sort: 'latest', showResolved: readShowResolved() },
   };
   app.refresh = () => {
     renderPins(app);

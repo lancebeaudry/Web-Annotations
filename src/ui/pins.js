@@ -1,4 +1,4 @@
-import { resolveElement } from '../capture.js';
+import { resolveElement, looksAddressed } from '../capture.js';
 import { h } from './overlay.js';
 import { openThread } from './popover.js';
 
@@ -26,14 +26,20 @@ export function pinPosition(comment) {
 
 export function renderPins(app) {
   app.ui.pinLayer.replaceChildren();
+  // Hide resolved pins unless "Show resolved" is on. Numbering still
+  // follows creation order (i + 1), so visible pins keep the same number
+  // as their sidebar entry even when resolved ones are skipped.
+  const showResolved = app.sidebarFilters ? app.sidebarFilters.showResolved : true;
   pagePins(app).forEach((comment, i) => {
+    if (!showResolved && comment.status === 'resolved') return;
     const pos = pinPosition(comment);
     if (!pos) return;
+    const addressed = looksAddressed(comment);
     const pin = h(
       'div',
       {
-        class: `pin${comment.status === 'resolved' ? ' resolved' : ''}`,
-        title: comment.comment_text,
+        class: `pin${comment.status === 'resolved' ? ' resolved' : ''}${addressed ? ' addressed' : ''}`,
+        title: addressed ? `${comment.comment_text}\n\n(content here changed since this comment — looks addressed)` : comment.comment_text,
         onclick: () => openThread(app, comment.id),
       },
       String(i + 1)

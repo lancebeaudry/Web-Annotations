@@ -96,6 +96,28 @@ export function capture(el) {
   };
 }
 
+function normText(s) {
+  return (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+// Heuristic "looks addressed": has the content this open comment points
+// at changed since it was written? Re-resolve via the stable SELECTOR
+// only (the text fallback would be circular) and compare normalized text
+// to what was captured. Used purely to flag the comment for the team to
+// confirm — it never auto-resolves. Style-only changes aren't detected.
+export function looksAddressed(comment) {
+  if (comment.status !== 'open' || !comment.selector || !comment.current_text) return false;
+  let el;
+  try {
+    el = document.querySelector(comment.selector);
+  } catch {
+    return false;
+  }
+  if (!el) return false;
+  const now = (el.textContent || '').trim().slice(0, 300);
+  return normText(now) !== normText(comment.current_text);
+}
+
 // Resolve a stored comment back to its live element. Selector first;
 // if the site changed under us, fall back to tag + text matching.
 export function resolveElement(comment) {
