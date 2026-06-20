@@ -20,7 +20,7 @@ const AVMK_NOTIFY_OPTION = 'avalanche_markup_notify';
 // stale browser copies — when we ship an update the ref changes, which
 // is a brand-new URL every browser fetches fresh. Bump AVMK_REF on each
 // release with `npm run release` (admin/release.mjs).
-const AVMK_REF = 'aa5ae1b';
+const AVMK_REF = 'e978be9';
 
 add_action( 'wp_head', function () {
 	$token = get_option( AVMK_OPTION, '' );
