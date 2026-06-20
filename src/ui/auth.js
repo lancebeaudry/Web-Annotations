@@ -75,8 +75,8 @@ function renderCodeStep(app, body, email) {
     type: 'text',
     inputmode: 'numeric',
     autocomplete: 'one-time-code',
-    maxlength: '6',
-    placeholder: '123456',
+    maxlength: '8',
+    placeholder: '12345678',
   });
   const verify = h('button', { class: 'btn', type: 'submit' }, 'Verify & start');
   const back = h('button', { class: 'btn btn-ghost', type: 'button' }, 'Use a different email');
@@ -84,7 +84,7 @@ function renderCodeStep(app, body, email) {
   const form = h(
     'form',
     {},
-    h('p', {}, 'We emailed a 6-digit code to ', h('b', {}, email), '. Enter it below — or just click the link in that email.'),
+    h('p', {}, 'We emailed a code to ', h('b', {}, email), '. Enter it below — or just click the link in that email.'),
     h('div', { class: 'field' }, h('label', {}, 'Sign-in code'), codeInput),
     h('div', { class: 'btn-row' }, back, verify)
   );
@@ -97,7 +97,7 @@ function renderCodeStep(app, body, email) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const token = codeInput.value.trim();
-    if (token.length < 6) return;
+    if (token.length < 4) return; // codes are 8 digits; floor guards empty/typo submits
     verify.disabled = true;
     verify.textContent = 'Verifying…';
     // New users come through as a 'signup' OTP, existing users as 'email';
