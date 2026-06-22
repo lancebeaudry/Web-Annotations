@@ -105,6 +105,18 @@ async function tryWordPressSession(app) {
   }
 }
 
+// Read the project, tolerating the brief window after sign-in where the
+// new session hasn't propagated to PostgREST yet (anon reads are blocked
+// by RLS). Retries a few times before giving up on the token.
+async function fetchProjectSettled(app) {
+  let project = await fetchProject(app.supabase, app.token);
+  for (let i = 0; !project && i < 4; i++) {
+    await new Promise((r) => setTimeout(r, 200));
+    project = await fetchProject(app.supabase, app.token);
+  }
+  return project;
+}
+
 async function start(app) {
   app.started = true;
   removeAuthCard(app);
@@ -112,17 +124,22 @@ async function start(app) {
   const email = app.session.user.email.toLowerCase();
   app.isTeam = email.endsWith(`@${app.teamDomain}`);
 
+  // First authed read. On the code-verification path the just-attached
+  // session can lag the first request by a tick (it reads as anon, so RLS
+  // returns nothing — which looked like "unknown project token"). Retry
+  // briefly before trusting an empty result; this also settles the
+  // session for the invite check and comment reads that follow.
+  app.project = await fetchProjectSettled(app);
+  if (!app.project) {
+    toast(app.ui, 'Markup: unknown project token');
+    return;
+  }
+
   // Access gate: team domain is always allowed; everyone else must be
   // on the invite list. Export stays team-only regardless.
   app.allowed = app.isTeam || (await isInvited(app.supabase, email));
   if (!app.allowed) {
     renderBlockedCard(app, email);
-    return;
-  }
-
-  app.project = await fetchProject(app.supabase, app.token);
-  if (!app.project) {
-    toast(app.ui, 'Markup: unknown project token');
     return;
   }
 
