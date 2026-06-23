@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Avalanche Markup
  * Description: Click-to-comment visual feedback overlay for Avalanche client sites. Paste the site's project token under Settings → Avalanche Markup. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 1.6.0
+ * Version: 1.6.1
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  */
@@ -13,6 +13,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 const AVMK_OPTION        = 'avalanche_markup_token';
 const AVMK_NOTIFY_OPTION = 'avalanche_markup_notify';
+
+// Self-hosted update feed. The plugin checks this manifest (committed in
+// the repo, served raw from GitHub) and offers a one-click update on the
+// Plugins screen whenever its `version` is newer than what's installed —
+// so pushing a plugin change makes the update available on every site.
+const AVMK_UPDATE_MANIFEST = 'https://raw.githubusercontent.com/lancebeaudry/Web-Annotations/main/wordpress-plugin/update.json';
 
 // Pin to a specific commit of github.com/lancebeaudry/Web-Annotations.
 // jsDelivr serves a commit-pinned URL instantly and immutably (cached
@@ -67,6 +73,76 @@ function avmk_adminbar_css() {
 }
 add_action( 'wp_head', 'avmk_adminbar_css' );
 add_action( 'admin_head', 'avmk_adminbar_css' );
+
+// ---------------------------------------------------------------------
+// Self-hosted updates: read the repo's update.json and offer a one-click
+// update on the Plugins screen when a newer version is published. Lets a
+// plain `git push` of a plugin change roll out to every WP Engine site.
+// ---------------------------------------------------------------------
+
+// Fetch + cache the update manifest (1h) so we don't hit GitHub on every
+// admin page load.
+function avmk_update_manifest() {
+	$cached = get_transient( 'avmk_update_manifest' );
+	if ( false !== $cached ) {
+		return $cached ?: null;
+	}
+	$res = wp_remote_get( AVMK_UPDATE_MANIFEST, [ 'timeout' => 10 ] );
+	$data = null;
+	if ( ! is_wp_error( $res ) && 200 === (int) wp_remote_retrieve_response_code( $res ) ) {
+		$data = json_decode( wp_remote_retrieve_body( $res ) );
+	}
+	set_transient( 'avmk_update_manifest', $data ?: 0, HOUR_IN_SECONDS );
+	return $data;
+}
+
+// Inject our update into the list WordPress shows on the Plugins screen.
+add_filter( 'site_transient_update_plugins', function ( $transient ) {
+	if ( empty( $transient->checked ) ) {
+		return $transient;
+	}
+	$basename  = plugin_basename( __FILE__ );
+	$installed = $transient->checked[ $basename ] ?? '0';
+	$m         = avmk_update_manifest();
+	if ( $m && ! empty( $m->version ) && version_compare( $m->version, $installed, '>' ) ) {
+		$transient->response[ $basename ] = (object) [
+			'slug'        => 'avalanche-markup',
+			'plugin'      => $basename,
+			'new_version' => $m->version,
+			'package'     => $m->download_url ?? '',
+			'url'         => $m->homepage ?? 'https://avalanchegr.com',
+			'tested'      => $m->tested ?? '',
+		];
+	}
+	return $transient;
+}, 10, 1 );
+
+// Provide the "View details" popup content.
+add_filter( 'plugins_api', function ( $result, $action, $args ) {
+	if ( 'plugin_information' !== $action || empty( $args->slug ) || 'avalanche-markup' !== $args->slug ) {
+		return $result;
+	}
+	$m = avmk_update_manifest();
+	if ( ! $m ) {
+		return $result;
+	}
+	return (object) [
+		'name'          => 'Avalanche Markup',
+		'slug'          => 'avalanche-markup',
+		'version'       => $m->version ?? '',
+		'author'        => 'Avalanche Creative',
+		'homepage'      => $m->homepage ?? 'https://avalanchegr.com',
+		'download_link' => $m->download_url ?? '',
+		'tested'        => $m->tested ?? '',
+		'sections'      => [ 'changelog' => $m->changelog ?? 'See the repository for changes.' ],
+	];
+}, 20, 3 );
+
+// Drop our manifest cache right after WordPress runs an update check, so
+// a manual "Check again" reflects a fresh push without a stale 1h wait.
+add_action( 'upgrader_process_complete', function () {
+	delete_transient( 'avmk_update_manifest' );
+} );
 
 // WordPress -> Supabase auto-sign-in bridge. The overlay calls this from
 // the visitor's browser; if they're logged into WordPress, we ask the
