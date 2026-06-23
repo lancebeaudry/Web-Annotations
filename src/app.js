@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, TEAM_DOMAIN } from './config.js';
-import { fetchProject, fetchComments, subscribeRealtime, isInvited } from './data.js';
+import { fetchProject, fetchComments, subscribeRealtime, isMember } from './data.js';
 import { mountOverlay, toast, h } from './ui/overlay.js';
 import { renderAuthCard, removeAuthCard } from './ui/auth.js';
 import { renderPins } from './ui/pins.js';
@@ -135,9 +135,9 @@ async function start(app) {
     return;
   }
 
-  // Access gate: team domain is always allowed; everyone else must be
-  // on the invite list. Export stays team-only regardless.
-  app.allowed = app.isTeam || (await isInvited(app.supabase, email));
+  // Access gate: team domain is always allowed; everyone else must be a
+  // member of THIS project. Export stays team-only regardless.
+  app.allowed = app.isTeam || (await isMember(app.supabase, app.project.id));
   if (!app.allowed) {
     renderBlockedCard(app, email);
     return;

@@ -31,7 +31,7 @@ export function toggleInviteMenu(app) {
     h(
       'div',
       { class: 'card-head' },
-      h('span', {}, 'Client access'),
+      h('span', {}, `Access · ${app.project.name}`),
       h('button', { class: 'close', onclick: () => menu.remove() }, '✕')
     ),
     h('div', { class: 'card-body' }, form, h('div', { class: 'invite-sub' }, 'Invited clients'), list)
@@ -39,9 +39,9 @@ export function toggleInviteMenu(app) {
 
   async function refreshList() {
     list.replaceChildren(h('div', { class: 'invite-empty' }, 'Loading…'));
-    const rows = await listInvites(app.supabase);
+    const rows = await listInvites(app.supabase, app.project.id);
     if (!rows.length) {
-      list.replaceChildren(h('div', { class: 'invite-empty' }, 'No clients invited yet. Team members (@avalanchegr.com) always have access.'));
+      list.replaceChildren(h('div', { class: 'invite-empty' }, 'No one invited to this project yet. Team members (@avalanchegr.com) always have access.'));
       return;
     }
     list.replaceChildren(
@@ -49,7 +49,7 @@ export function toggleInviteMenu(app) {
         const remove = h('button', { class: 'mini-btn danger' }, 'Remove');
         remove.addEventListener('click', async () => {
           remove.disabled = true;
-          const err = await revokeInvite(app.supabase, r.email);
+          const err = await revokeInvite(app.supabase, app.project.id, r.email);
           if (err) {
             remove.disabled = false;
             toast(app.ui, err);
@@ -73,7 +73,7 @@ export function toggleInviteMenu(app) {
     if (!email) return;
     sendBtn.disabled = true;
     sendBtn.textContent = 'Sending…';
-    const err = await inviteEmail(app.supabase, email, noteInput.value.trim());
+    const err = await inviteEmail(app.supabase, app.project.id, email, noteInput.value.trim());
     sendBtn.disabled = false;
     sendBtn.textContent = 'Send invite';
     if (err) {

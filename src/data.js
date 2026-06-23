@@ -13,30 +13,26 @@ export async function fetchProject(supabase, token) {
   return data;
 }
 
-// Is this signed-in email on the invite list? (Team-domain emails are
-// checked separately and don't need a row.)
-export async function isInvited(supabase, email) {
-  const { data, error } = await supabase
-    .from('allowed_emails')
-    .select('email')
-    .eq('email', email.toLowerCase())
-    .maybeSingle();
+// Is the signed-in user a member of this project? (Team-domain emails are
+// checked separately and don't need a membership row.)
+export async function isMember(supabase, projectId) {
+  const { data, error } = await supabase.rpc('is_member', { p_project: projectId });
   if (error) {
-    console.warn('[markup] invite check failed:', error.message);
+    console.warn('[markup] membership check failed:', error.message);
     return false;
   }
   return !!data;
 }
 
-// Invite management (team-only; enforced by the SECURITY DEFINER
-// functions in the DB, so a non-team caller just gets an error).
-export async function inviteEmail(supabase, email, note) {
-  const { error } = await supabase.rpc('invite_email', { p_email: email, p_note: note || null });
+// Invite management — now per project (team-only; enforced by the
+// SECURITY DEFINER functions, so a non-team caller just gets an error).
+export async function inviteEmail(supabase, projectId, email, note) {
+  const { error } = await supabase.rpc('invite_email', { p_project: projectId, p_email: email, p_note: note || null });
   return error ? error.message : null;
 }
 
-export async function listInvites(supabase) {
-  const { data, error } = await supabase.rpc('list_invites');
+export async function listInvites(supabase, projectId) {
+  const { data, error } = await supabase.rpc('list_invites', { p_project: projectId });
   if (error) {
     console.warn('[markup] list invites failed:', error.message);
     return [];
@@ -44,8 +40,8 @@ export async function listInvites(supabase) {
   return data || [];
 }
 
-export async function revokeInvite(supabase, email) {
-  const { error } = await supabase.rpc('revoke_invite', { p_email: email });
+export async function revokeInvite(supabase, projectId, email) {
+  const { error } = await supabase.rpc('revoke_invite', { p_project: projectId, p_email: email });
   return error ? error.message : null;
 }
 

@@ -37,11 +37,12 @@ Deno.serve(async (req) => {
     return json(401, { error: "bad secret" });
   }
 
-  let email = "", name = "", redirectTo = SUPABASE_URL;
+  let email = "", name = "", token = "", redirectTo = SUPABASE_URL;
   try {
     const b = await req.json();
     email = (b.email || "").toLowerCase().trim();
     name = (b.name || "").toString().slice(0, 120);
+    token = (b.token || "").toString().trim();
     if (b.redirect_to) redirectTo = b.redirect_to;
   } catch {
     return json(400, { error: "bad payload" });
@@ -51,6 +52,15 @@ Deno.serve(async (req) => {
     return json(403, { error: "team accounts must use email sign-in" });
   }
 
+  // Resolve the site's project from its token — a WP user is granted
+  // access to THAT project only, not everything.
+  const projects = await fetch(
+    `${SUPABASE_URL}/rest/v1/projects?token=eq.${encodeURIComponent(token)}&select=id`,
+    { headers: svc },
+  ).then((r) => r.json()).catch(() => []);
+  const projectId = projects?.[0]?.id;
+  if (!projectId) return json(400, { error: "unknown project token" });
+
   // Ensure the auth user exists (idempotent — ignore "already registered").
   await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
     method: "POST",
@@ -58,11 +68,11 @@ Deno.serve(async (req) => {
     body: JSON.stringify({ email, email_confirm: true, user_metadata: { name } }),
   }).catch(() => {});
 
-  // A WP user of the site belongs here — put them on the access list.
-  await fetch(`${SUPABASE_URL}/rest/v1/allowed_emails`, {
+  // Grant membership to this project (and only this project).
+  await fetch(`${SUPABASE_URL}/rest/v1/project_members`, {
     method: "POST",
     headers: { ...svc, Prefer: "resolution=merge-duplicates" },
-    body: JSON.stringify({ email, note: "WordPress user" }),
+    body: JSON.stringify({ project_id: projectId, email, note: "WordPress user" }),
   }).catch(() => {});
 
   // Mint a real session: generate a magic link, then follow the verify
