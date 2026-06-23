@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Avalanche Markup
  * Description: Click-to-comment visual feedback overlay for Avalanche client sites. Paste the site's project token under Settings → Avalanche Markup. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 1.5.0
+ * Version: 1.6.0
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  */
@@ -38,6 +38,35 @@ add_action( 'wp_head', function () {
 add_action( 'admin_menu', function () {
 	add_options_page( 'Avalanche Markup', 'Avalanche Markup', 'manage_options', 'avalanche-markup', 'avmk_settings_page' );
 } );
+
+// Admin-bar shortcut for logged-in users: one click to enter feedback
+// mode on the page you're viewing (adds ?markup=TOKEN). Only shown when a
+// token is configured. On a wp-admin screen it links to the site home.
+add_action( 'admin_bar_menu', function ( $bar ) {
+	$token = get_option( AVMK_OPTION, '' );
+	if ( ! $token ) {
+		return;
+	}
+	$href = is_admin()
+		? home_url( '/?markup=' . rawurlencode( $token ) )
+		: esc_url_raw( add_query_arg( 'markup', $token ) );
+	$bar->add_node( [
+		'id'    => 'avalanche-markup',
+		'title' => '<span class="ab-icon"></span>Markup',
+		'href'  => $href,
+		'meta'  => [ 'title' => 'Enter feedback / markup mode on this page' ],
+	] );
+}, 100 );
+
+// Dashicon for the admin-bar item (front end + wp-admin).
+function avmk_adminbar_css() {
+	if ( ! is_admin_bar_showing() || ! get_option( AVMK_OPTION, '' ) ) {
+		return;
+	}
+	echo '<style>#wpadminbar #wp-admin-bar-avalanche-markup .ab-icon:before{content:"\f464";top:3px;}</style>' . "\n";
+}
+add_action( 'wp_head', 'avmk_adminbar_css' );
+add_action( 'admin_head', 'avmk_adminbar_css' );
 
 // WordPress -> Supabase auto-sign-in bridge. The overlay calls this from
 // the visitor's browser; if they're logged into WordPress, we ask the
