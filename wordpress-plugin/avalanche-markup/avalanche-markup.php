@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Avalanche Markup
  * Description: Click-to-comment visual feedback overlay for Avalanche client sites. Paste the site's project token under Settings → Avalanche Markup. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 1.6.1
+ * Version: 1.6.2
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  */
@@ -164,6 +164,15 @@ function avmk_rest_session() {
 
 	if ( ! is_user_logged_in() ) {
 		return [ 'loggedIn' => false ];
+	}
+
+	// Only WordPress roles that actually edit the site auto-sign-in.
+	// Low-privilege roles (subscribers, customers, members) fall through
+	// to the email-code flow and still need an explicit invite — so an
+	// ecommerce/membership site's customers can't slip in via the bridge.
+	$cap = apply_filters( 'avalanche_markup_bridge_capability', 'edit_posts' );
+	if ( ! current_user_can( $cap ) ) {
+		return [ 'loggedIn' => true, 'bridge' => false ];
 	}
 
 	$secret = defined( 'AVALANCHE_MARKUP_WP_AUTH_SECRET' ) ? AVALANCHE_MARKUP_WP_AUTH_SECRET : '';
