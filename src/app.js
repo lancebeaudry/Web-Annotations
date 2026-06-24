@@ -211,17 +211,26 @@ function onClickCapture(app, e) {
   e.preventDefault();
   e.stopPropagation();
   const el = e.target;
-  setCommentMode(app, false);
+  // Stay in comment mode — each click drops another pin. The user leaves
+  // by pressing B or clicking the Browse button. openCommentBox closes any
+  // box still open before opening the new one.
   if (el && el !== document.body && el !== document.documentElement) {
     openCommentBox(app, el, e);
   }
 }
 
+function updateModeButtons(app) {
+  if (app.modeBtn) app.modeBtn.classList.toggle('active', app.commentMode);
+  if (app.browseBtn) app.browseBtn.classList.toggle('active', !app.commentMode);
+}
+
 function setCommentMode(app, on) {
-  if (app.commentMode === on) return;
+  if (app.commentMode === on) {
+    updateModeButtons(app);
+    return;
+  }
   app.commentMode = on;
-  app.modeBtn.classList.toggle('active', on);
-  app.modeBtnLabel.textContent = on ? 'Click an element…' : 'Comment';
+  updateModeButtons(app);
   document.documentElement.style.cursor = on ? 'crosshair' : '';
   if (on) {
     closePopovers(app);
@@ -240,6 +249,7 @@ function setCommentMode(app, on) {
 
 const PEN_ICON =
   'M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z';
+const CURSOR_ICON = 'M3 3l7.07 17 2.51-7.39L20 10.07 3 3z';
 
 function svgIcon(d) {
   const ns = 'http://www.w3.org/2000/svg';
@@ -257,12 +267,19 @@ function svgIcon(d) {
 }
 
 function renderToolbar(app) {
-  app.modeBtnLabel = h('span', {}, 'Comment');
+  // Comment and Browse are explicit, sticky modes — you stay in the one
+  // you pick until you switch (button or C / B shortcut).
   app.modeBtn = h(
     'button',
-    { class: 'fab', onclick: () => setCommentMode(app, !app.commentMode) },
+    { class: 'fab', onclick: () => setCommentMode(app, true) },
     svgIcon(PEN_ICON),
-    app.modeBtnLabel
+    'Comment'
+  );
+  app.browseBtn = h(
+    'button',
+    { class: 'fab fab-secondary', onclick: () => setCommentMode(app, false) },
+    svgIcon(CURSOR_ICON),
+    'Browse'
   );
 
   const n = openRootCount(app);
@@ -287,7 +304,10 @@ function renderToolbar(app) {
     ' browse'
   );
 
-  const toolbar = h('div', { class: 'toolbar' }, brand, app.modeBtn, app.sidebarBtn, hint);
+  const toolbar = h('div', { class: 'toolbar' }, brand, app.modeBtn, app.browseBtn, app.sidebarBtn, hint);
+  // Flexible gap pushes the management buttons (Invite/Export/Exit) to
+  // the far right of the bar.
+  toolbar.appendChild(h('div', { class: 'toolbar-spacer' }));
 
   if (app.isTeam) {
     const inviteBtn = h(
@@ -305,12 +325,13 @@ function renderToolbar(app) {
 
   const exitBtn = h(
     'button',
-    { class: 'fab fab-secondary spacer', title: 'End feedback session', onclick: () => confirmExit(app) },
+    { class: 'fab fab-secondary', title: 'End feedback session', onclick: () => confirmExit(app) },
     '✕'
   );
   toolbar.appendChild(exitBtn);
 
   app.ui.layer.appendChild(toolbar);
+  updateModeButtons(app); // reflect the current mode on the buttons
 
   // Push the page content up by the bar height so the bar sits beneath
   // the site rather than on top of it.

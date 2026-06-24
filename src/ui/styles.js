@@ -71,6 +71,7 @@ export const CSS = `
   padding: 1px 5px;
 }
 .toolbar .spacer { margin-left: auto; }
+.toolbar-spacer { flex: 1 1 auto; }
 .fab {
   display: flex;
   align-items: center;
@@ -292,8 +293,13 @@ export const CSS = `
   position: fixed;
   right: 20px; bottom: 64px;
   width: 260px;
-  z-index: 40;
+  z-index: 46;
 }
+/* When the comments sidebar is open, slide the pop-up menus left of it so
+   they're not hidden behind the panel. */
+.layer.sidebar-open .export-menu,
+.layer.sidebar-open .invite-menu,
+.layer.sidebar-open .confirm-card { right: 360px; }
 .export-menu .opt {
   display: block;
   width: 100%;
