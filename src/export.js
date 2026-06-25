@@ -1,6 +1,8 @@
 // Team-only export: open comments grouped by page, as Markdown ready
 // to paste into Claude Code, or raw JSON for scripting.
 
+import { deviceLabel } from './capture.js';
+
 function rgbToHex(value) {
   const m = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/.exec(value || '');
   if (!m) return value;
@@ -69,6 +71,8 @@ export function buildMarkdown(app, scope) {
     const lines = [`## Feedback: ${path}  (${siteHost}${path === '/' ? '' : path})`, ''];
     comments.forEach((c, i) => {
       lines.push(`${i + 1}. **<${c.element_tag || '?'}> — ${label(c)}**`);
+      const device = deviceLabel(c.viewport_w);
+      if (device) lines.push(`   - Viewport: ${device} (${c.viewport_w}px wide)`);
       if (c.selector) lines.push(`   - Selector: \`${c.selector}\``);
       if (c.current_text) lines.push(`   - Current text: "${c.current_text}"`);
       const styles = stylesLine(c.computed_styles);

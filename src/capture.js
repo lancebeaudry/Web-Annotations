@@ -96,6 +96,17 @@ export function capture(el) {
   };
 }
 
+// Classify the viewport width a pin was placed at into a device bucket.
+// Desktop is the default/baseline, so it returns null (not worth labeling);
+// only tablet/mobile pins get a badge, to flag size-specific feedback.
+export function deviceLabel(viewportW) {
+  const w = Number(viewportW);
+  if (!w) return null;
+  if (w < 600) return 'Mobile';
+  if (w < 1024) return 'Tablet';
+  return null;
+}
+
 function normText(s) {
   return (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
 }

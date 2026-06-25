@@ -2,6 +2,7 @@ import { insertComment, updateComment, deleteComment } from '../data.js';
 import { h, toast } from './overlay.js';
 import { savedName } from './auth.js';
 import { attachMentions, mentionLabel } from './mentions.js';
+import { deviceLabel } from '../capture.js';
 
 function fmtDate(iso) {
   return (iso || '').slice(0, 10);
@@ -178,8 +179,12 @@ function pinNumber(app, rootId) {
 }
 
 function entry(app, comment) {
+  const meta = h('div', { class: 'meta' }, h('b', {}, authorLabel(app, comment)), ` · ${fmtDate(comment.created_at)}`);
+  const device = deviceLabel(comment.viewport_w);
+  if (device) meta.append(h('span', { class: 'device-pill' }, device));
+
   const parts = [
-    h('div', { class: 'meta' }, h('b', {}, authorLabel(app, comment)), ` · ${fmtDate(comment.created_at)}`),
+    meta,
     h('div', { class: 'text' }, comment.comment_text),
   ];
   if (comment.mentions && comment.mentions.length) {

@@ -300,6 +300,20 @@ export const CSS = `
   font-weight: 600;
   color: #1B6493;
 }
+/* device badge: which viewport (tablet/mobile) a pin was placed at */
+.device-pill {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #1B6493;
+  background: #eef2f4;
+  border-radius: 4px;
+  padding: 1px 6px;
+  vertical-align: middle;
+}
 /* @-mention autocomplete dropdown (mounted in the page-coord layer) */
 .mention-menu {
   position: absolute;

@@ -1,6 +1,6 @@
 import { h, toast } from './overlay.js';
 import { updateComment, deleteComment } from '../data.js';
-import { resolveElement, looksAddressed } from '../capture.js';
+import { resolveElement, looksAddressed, deviceLabel } from '../capture.js';
 import { openThread, closePopovers } from './popover.js';
 
 // Slide-out panel listing every comment in the project, grouped by
@@ -229,6 +229,10 @@ function item(app, comment, number, onThisPage) {
 
   const addressed = onThisPage && looksAddressed(comment);
 
+  const metaEl = h('div', { class: 'side-meta' }, `${name} · ${fmtDate(comment.created_at)}${replyCount ? ` · ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'}` : ''}`);
+  const device = deviceLabel(comment.viewport_w);
+  if (device) metaEl.append(h('span', { class: 'device-pill' }, device));
+
   const el = h(
     'div',
     {
@@ -237,7 +241,7 @@ function item(app, comment, number, onThisPage) {
     },
     h('div', { class: 'side-top' }, h('span', { class: 'side-num' }, String(number)), h('span', { class: 'side-text' }, comment.comment_text)),
     addressed ? h('div', { class: 'side-addressed' }, '✎ Content changed here — looks addressed') : null,
-    h('div', { class: 'side-meta' }, `${name} · ${fmtDate(comment.created_at)}${replyCount ? ` · ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'}` : ''}`),
+    metaEl,
     actions
   );
   return el;
