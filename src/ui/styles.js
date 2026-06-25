@@ -39,7 +39,12 @@ export const CSS = `
   background: #fff;
   border-top: 1px solid #dbe3e8;
   box-shadow: 0 -3px 18px rgba(0, 38, 61, 0.12);
+  overflow-x: auto;          /* never cut buttons off — scroll if truly tight */
+  overflow-y: hidden;
 }
+/* Keep items from squishing/wrapping; they scroll instead. */
+.toolbar > * { flex: none; }
+.toolbar-spacer { flex: 1 1 auto; min-width: 0; }
 .toolbar-brand {
   display: flex;
   align-items: center;
@@ -71,7 +76,17 @@ export const CSS = `
   padding: 1px 5px;
 }
 .toolbar .spacer { margin-left: auto; }
-.toolbar-spacer { flex: 1 1 auto; }
+/* Narrow widths (e.g. inside the tablet/mobile preview frame): drop the
+   non-essential brand + shortcut hint so the action buttons all fit.
+   Placed after the base .toolbar-brand/.toolbar-hint rules so it wins. */
+@media (max-width: 860px) {
+  .toolbar { gap: 6px; padding: 0 10px; }
+  .toolbar-brand, .toolbar-hint { display: none; }
+}
+/* Phones: Comment/Browse become icon-only so the row fits. */
+@media (max-width: 560px) {
+  .toolbar .fab-label { display: none; }
+}
 
 /* ---- device-preview toggle + stage ---- */
 .device-toggle {
@@ -111,10 +126,14 @@ export const CSS = `
 }
 .device-bar {
   flex: none;
-  height: 46px;
+  margin-top: 12px;
+  padding: 6px 12px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 3px 14px rgba(0, 38, 61, 0.18);
 }
 .device-label { font-size: 12px; color: #6b7a85; text-transform: capitalize; }
 .device-frame {

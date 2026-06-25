@@ -339,15 +339,15 @@ function renderToolbar(app) {
   // you pick until you switch (button or C / B shortcut).
   app.modeBtn = h(
     'button',
-    { class: 'fab', onclick: () => setCommentMode(app, true) },
+    { class: 'fab', title: 'Comment mode (C)', onclick: () => setCommentMode(app, true) },
     svgIcon(PEN_ICON),
-    'Comment'
+    h('span', { class: 'fab-label' }, 'Comment')
   );
   app.browseBtn = h(
     'button',
-    { class: 'fab fab-secondary', onclick: () => setCommentMode(app, false) },
+    { class: 'fab fab-secondary', title: 'Browse mode (B)', onclick: () => setCommentMode(app, false) },
     svgIcon(CURSOR_ICON),
-    'Browse'
+    h('span', { class: 'fab-label' }, 'Browse')
   );
 
   const n = openRootCount(app);
