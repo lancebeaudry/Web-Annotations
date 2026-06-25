@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Avalanche Markup
  * Description: Click-to-comment visual feedback overlay for Avalanche client sites. Paste the site's project token under Settings → Avalanche Markup. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 1.6.5
+ * Version: 1.6.6
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  */
@@ -26,7 +26,7 @@ const AVMK_UPDATE_MANIFEST = 'https://raw.githubusercontent.com/lancebeaudry/Web
 // stale browser copies — when we ship an update the ref changes, which
 // is a brand-new URL every browser fetches fresh. Bump AVMK_REF on each
 // release with `npm run release` (admin/release.mjs).
-const AVMK_REF = 'f1236a3';
+const AVMK_REF = '3b26ba5';
 
 add_action( 'wp_head', function () {
 	$token = get_option( AVMK_OPTION, '' );
