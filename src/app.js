@@ -6,10 +6,15 @@ import { renderAuthCard, removeAuthCard } from './ui/auth.js';
 import { renderPins } from './ui/pins.js';
 import { openCommentBox } from './ui/commentBox.js';
 import { closePopovers, refreshOpenThread } from './ui/popover.js';
-import { toggleSidebar, refreshSidebar, openRootCount } from './ui/sidebar.js';
+import { toggleSidebar, closeSidebar, refreshSidebar, openRootCount } from './ui/sidebar.js';
 import { toggleInviteMenu } from './ui/invite.js';
 import { prefetchMentionables } from './ui/mentions.js';
 import { buildMarkdown, buildJson, copyToClipboard } from './export.js';
+
+// True when the overlay is running inside the device-preview iframe (a
+// same-origin copy of the page). In that context we hide the device
+// toggle (no nesting) and the exit button, but keep full commenting.
+const IN_FRAME = window.self !== window.top;
 
 function normalizePath(pathname) {
   return pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
@@ -250,6 +255,69 @@ function setCommentMode(app, on) {
 const PEN_ICON =
   'M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z';
 const CURSOR_ICON = 'M3 3l7.07 17 2.51-7.39L20 10.07 3 3z';
+const DESKTOP_ICON = 'M3 5h18v11H3zM8 20h8M12 16v4';
+const TABLET_ICON = 'M6 3h12v18H6zM11 18h2';
+const MOBILE_ICON = 'M8 2h8v20H8zM11 18h2';
+
+// Device-preview widths. 'desktop' = no frame (the live page).
+const DEVICE_WIDTHS = { tablet: 768, mobile: 390 };
+
+// A small segmented control (desktop / tablet / mobile). Reflects the
+// current app.device; rendered in the toolbar.
+function makeDeviceControl(app) {
+  const btn = (device, icon, title) =>
+    h('button', {
+      class: `dev-btn${app.device === device ? ' active' : ''}`,
+      title,
+      'data-device': device,
+      onclick: () => setDevice(app, device),
+    }, svgIcon(icon));
+  return h('div', { class: 'device-toggle' },
+    btn('desktop', DESKTOP_ICON, 'Desktop'),
+    btn('tablet', TABLET_ICON, 'Tablet'),
+    btn('mobile', MOBILE_ICON, 'Mobile'));
+}
+
+// Switch the preview size. Tablet/mobile render the page inside a
+// device-width iframe (a same-origin copy with ?markup, so the overlay
+// runs inside it and you can comment at that size). Desktop tears it down.
+function setDevice(app, device) {
+  app.device = device;
+  app.ui.layer.querySelectorAll('.dev-btn').forEach((b) =>
+    b.classList.toggle('active', b.dataset.device === device));
+
+  if (device === 'desktop') {
+    if (app.deviceStage) { app.deviceStage.remove(); app.deviceStage = null; }
+    if (app.toolbarEl) app.toolbarEl.style.display = '';
+    return;
+  }
+
+  const width = DEVICE_WIDTHS[device] || 390;
+  if (app.deviceStage) {
+    // Already framed — just resize, no iframe reload.
+    const frame = app.deviceStage.querySelector('.device-frame');
+    if (frame) frame.style.width = `${width}px`;
+    const label = app.deviceStage.querySelector('.device-label');
+    if (label) label.textContent = `${device} · ${width}px`;
+    return;
+  }
+
+  // Enter device mode: clear page-level UI, hide the main toolbar, and
+  // mount the framed copy with its own floating device switcher.
+  setCommentMode(app, false);
+  closeSidebar(app);
+  closePopovers(app);
+  if (app.toolbarEl) app.toolbarEl.style.display = 'none';
+
+  const iframe = h('iframe', { class: 'device-frame', src: location.href });
+  iframe.style.width = `${width}px`;
+  const bar = h('div', { class: 'device-bar' },
+    makeDeviceControl(app),
+    h('span', { class: 'device-label' }, `${device} · ${width}px`));
+  const stage = h('div', { class: 'device-stage' }, bar, iframe);
+  app.deviceStage = stage;
+  app.ui.layer.appendChild(stage);
+}
 
 function svgIcon(d) {
   const ns = 'http://www.w3.org/2000/svg';
@@ -304,7 +372,11 @@ function renderToolbar(app) {
     ' browse'
   );
 
-  const toolbar = h('div', { class: 'toolbar' }, brand, app.modeBtn, app.browseBtn, app.sidebarBtn, hint);
+  const toolbar = h('div', { class: 'toolbar' }, brand, app.modeBtn, app.browseBtn, app.sidebarBtn);
+  // Device-preview toggle — not inside the framed copy (no nesting).
+  app.device = app.device || 'desktop';
+  if (!IN_FRAME) toolbar.appendChild(makeDeviceControl(app));
+  toolbar.appendChild(hint);
   // Flexible gap pushes the management buttons (Invite/Export/Exit) to
   // the far right of the bar.
   toolbar.appendChild(h('div', { class: 'toolbar-spacer' }));
@@ -323,13 +395,18 @@ function renderToolbar(app) {
     toolbar.append(inviteBtn, exportBtn);
   }
 
-  const exitBtn = h(
-    'button',
-    { class: 'fab fab-secondary', title: 'End feedback session', onclick: () => confirmExit(app) },
-    '✕'
-  );
-  toolbar.appendChild(exitBtn);
+  // Exit ends the whole session — only meaningful on the top page, not
+  // inside the device-preview frame.
+  if (!IN_FRAME) {
+    const exitBtn = h(
+      'button',
+      { class: 'fab fab-secondary', title: 'End feedback session', onclick: () => confirmExit(app) },
+      '✕'
+    );
+    toolbar.appendChild(exitBtn);
+  }
 
+  app.toolbarEl = toolbar;
   app.ui.layer.appendChild(toolbar);
   updateModeButtons(app); // reflect the current mode on the buttons
 

@@ -72,6 +72,61 @@ export const CSS = `
 }
 .toolbar .spacer { margin-left: auto; }
 .toolbar-spacer { flex: 1 1 auto; }
+
+/* ---- device-preview toggle + stage ---- */
+.device-toggle {
+  display: inline-flex;
+  gap: 2px;
+  background: #eef2f4;
+  border-radius: 8px;
+  padding: 3px;
+  margin-left: 2px;
+}
+.device-toggle .dev-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 28px;
+  border: none;
+  background: transparent;
+  color: #6b7a85;
+  border-radius: 6px;
+}
+.device-toggle .dev-btn svg { width: 16px; height: 16px; }
+.device-toggle .dev-btn:hover { color: #1B6493; }
+.device-toggle .dev-btn.active {
+  background: #fff;
+  color: #1B6493;
+  box-shadow: 0 1px 3px rgba(0, 38, 61, 0.18);
+}
+.device-stage {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 48;
+  background: #e9edf1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+}
+.device-bar {
+  flex: none;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.device-label { font-size: 12px; color: #6b7a85; text-transform: capitalize; }
+.device-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 390px;
+  max-width: 100%;
+  border: none;
+  background: #fff;
+  box-shadow: 0 8px 34px rgba(0, 38, 61, 0.28);
+  border-radius: 14px 14px 0 0;
+}
 .fab {
   display: flex;
   align-items: center;
