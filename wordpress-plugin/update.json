@@ -1,11 +1,11 @@
 {
   "name": "Avalanche Markup",
   "slug": "avalanche-markup",
-  "version": "1.6.6",
+  "version": "1.6.7",
   "download_url": "https://raw.githubusercontent.com/lancebeaudry/Web-Annotations/main/wordpress-plugin/avalanche-markup.zip",
   "homepage": "https://avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "1.6.6 \u2014 Comments now show which viewport (tablet/mobile) they were placed at, in the thread, sidebar, and export."
+  "changelog": "1.6.7 \u2014 Responsive toolbar: no more overflow/cut-off buttons at tablet/mobile widths."
 }
