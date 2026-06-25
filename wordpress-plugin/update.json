@@ -1,11 +1,11 @@
 {
   "name": "Avalanche Markup",
   "slug": "avalanche-markup",
-  "version": "1.6.4",
+  "version": "1.6.5",
   "download_url": "https://raw.githubusercontent.com/lancebeaudry/Web-Annotations/main/wordpress-plugin/avalanche-markup.zip",
   "homepage": "https://avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "1.6.4 \u2014 Toolbar: sticky comment mode, Browse button, far-right actions, export-menu fix."
+  "changelog": "1.6.5 \u2014 Desktop/tablet/mobile device preview (commentable in every view)."
 }
