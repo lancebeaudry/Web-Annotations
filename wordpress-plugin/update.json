@@ -1,11 +1,11 @@
 {
   "name": "Avalanche Markup",
   "slug": "avalanche-markup",
-  "version": "1.6.7",
+  "version": "1.6.8",
   "download_url": "https://raw.githubusercontent.com/lancebeaudry/Web-Annotations/main/wordpress-plugin/avalanche-markup.zip",
   "homepage": "https://avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "1.6.7 \u2014 Responsive toolbar: no more overflow/cut-off buttons at tablet/mobile widths."
+  "changelog": "1.6.8 \u2014 Sidebar stays open and jumps to the comment when navigating across pages."
 }
