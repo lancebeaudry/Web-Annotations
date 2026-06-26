@@ -6,7 +6,7 @@ import { renderAuthCard, removeAuthCard } from './ui/auth.js';
 import { renderPins } from './ui/pins.js';
 import { openCommentBox } from './ui/commentBox.js';
 import { closePopovers, refreshOpenThread } from './ui/popover.js';
-import { toggleSidebar, closeSidebar, refreshSidebar, openRootCount } from './ui/sidebar.js';
+import { toggleSidebar, closeSidebar, refreshSidebar, openRootCount, resumeJumpAfterNav } from './ui/sidebar.js';
 import { toggleInviteMenu } from './ui/invite.js';
 import { prefetchMentionables } from './ui/mentions.js';
 import { buildMarkdown, buildJson, copyToClipboard } from './export.js';
@@ -188,6 +188,10 @@ async function start(app) {
   });
 
   toast(app.ui, `Feedback mode ready — ${app.project.name}`);
+
+  // If we got here from a cross-page comment click, reopen the sidebar
+  // and jump to that comment. (Top page only — not the preview frame.)
+  if (!IN_FRAME) resumeJumpAfterNav(app);
 }
 
 /* ---------------- comment mode ---------------- */

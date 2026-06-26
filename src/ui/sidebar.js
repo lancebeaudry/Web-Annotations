@@ -249,9 +249,16 @@ function item(app, comment, number, onThisPage) {
 
 function jumpTo(app, comment, onThisPage) {
   if (!onThisPage) {
-    // Session token persists across navigation, so the overlay (and
-    // this comment's pin) will be live on the destination page.
-    location.href = comment.page_url;
+    // Remember the target so the destination page can reopen the sidebar
+    // and jump straight to this comment after it loads.
+    try {
+      sessionStorage.setItem('markup_jump', comment.id);
+    } catch {
+      /* storage blocked — navigation still works, just no auto-jump */
+    }
+    const url = new URL(comment.page_url);
+    if (app.token) url.searchParams.set('markup', app.token);
+    location.href = url.toString();
     return;
   }
   // Keep the sidebar open — just scroll to the pin and open its thread.
@@ -259,4 +266,23 @@ function jumpTo(app, comment, onThisPage) {
   const target = resolveElement(comment);
   if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
   setTimeout(() => openThread(app, comment.id), target ? 450 : 0);
+}
+
+// After a cross-page jump, reopen the sidebar and go to the clicked
+// comment. Called once the overlay is ready on the destination page.
+export function resumeJumpAfterNav(app) {
+  let id;
+  try {
+    id = sessionStorage.getItem('markup_jump');
+    if (id) sessionStorage.removeItem('markup_jump');
+  } catch {
+    return;
+  }
+  if (!id) return;
+  const comment = app.comments.get(id);
+  if (!comment || comment.page_path !== app.pagePath) return;
+  if (!app.sidebarEl) toggleSidebar(app);
+  const target = resolveElement(comment);
+  if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => openThread(app, comment.id), target ? 600 : 0);
 }
