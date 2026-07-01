@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Avalanche Markup
  * Description: Click-to-comment visual feedback overlay for Avalanche client sites. Paste the site's project token under Settings → Avalanche Markup. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 1.6.8
+ * Version: 1.7.0
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  */
@@ -20,23 +20,26 @@ const AVMK_NOTIFY_OPTION = 'avalanche_markup_notify';
 // so pushing a plugin change makes the update available on every site.
 const AVMK_UPDATE_MANIFEST = 'https://raw.githubusercontent.com/lancebeaudry/Web-Annotations/main/wordpress-plugin/update.json';
 
-// Pin to a specific commit of github.com/lancebeaudry/Web-Annotations.
-// jsDelivr serves a commit-pinned URL instantly and immutably (cached
-// a year), so there's no @main resolution lag, no cache purges, and no
-// stale browser copies — when we ship an update the ref changes, which
-// is a brand-new URL every browser fetches fresh. Bump AVMK_REF on each
-// release with `npm run release` (admin/release.mjs).
-const AVMK_REF = '59319b6';
-
+// The overlay bundle (markup.js) is shipped INSIDE the plugin and served
+// from the site itself — no third-party CDN. This removes the jsDelivr
+// dependency (an outage there used to break the tool on every site) and
+// guarantees the served bundle always matches this plugin version. The
+// bundle updates with the plugin via the self-updater. Cache-busted by
+// the file's mtime so a new version is picked up immediately.
 add_action( 'wp_head', function () {
 	$token = get_option( AVMK_OPTION, '' );
 	if ( ! $token ) {
 		return;
 	}
-	$src = 'https://cdn.jsdelivr.net/gh/lancebeaudry/Web-Annotations@' . AVMK_REF . '/dist/markup.js';
+	$file = plugin_dir_path( __FILE__ ) . 'markup.js';
+	if ( ! file_exists( $file ) ) {
+		return;
+	}
+	$src = plugins_url( 'markup.js', __FILE__ );
 	printf(
-		'<script defer src="%s" data-project="%s"></script>' . "\n",
+		'<script defer src="%s?ver=%s" data-project="%s"></script>' . "\n",
 		esc_url( $src ),
+		esc_attr( (string) filemtime( $file ) ),
 		esc_attr( $token )
 	);
 } );
