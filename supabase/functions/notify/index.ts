@@ -70,7 +70,6 @@ Deno.serve(async (req) => {
   }
 
   const author = (record.author_email || "").toLowerCase();
-  const authorIsTeam = author.endsWith(`@${TEAM_DOMAIN}`);
   const isReply = !!record.parent_id;
 
   // Look up the project for naming + deep links.
@@ -89,8 +88,10 @@ Deno.serve(async (req) => {
     if (e && e !== author) recipients.set(e, "mention");
   }
 
-  // Team notify list: only for client-authored comments (pins + replies).
-  if (!authorIsTeam) {
+  // Team notify list: alert the project's recipients on any new comment
+  // (pins + replies), whether the author is a client or a teammate. The
+  // author themselves is never emailed about their own comment.
+  {
     const list = await db(
       `notify_recipients?project_id=eq.${record.project_id}&select=email`,
     );
