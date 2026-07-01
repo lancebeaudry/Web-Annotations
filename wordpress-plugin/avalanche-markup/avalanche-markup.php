@@ -26,7 +26,7 @@ const AVMK_UPDATE_MANIFEST = 'https://raw.githubusercontent.com/lancebeaudry/Web
 // stale browser copies — when we ship an update the ref changes, which
 // is a brand-new URL every browser fetches fresh. Bump AVMK_REF on each
 // release with `npm run release` (admin/release.mjs).
-const AVMK_REF = '59319b6';
+const AVMK_REF = '13c6912';
 
 add_action( 'wp_head', function () {
 	$token = get_option( AVMK_OPTION, '' );
