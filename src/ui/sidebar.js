@@ -256,7 +256,17 @@ function jumpTo(app, comment, onThisPage) {
     } catch {
       /* storage blocked — navigation still works, just no auto-jump */
     }
-    const url = new URL(comment.page_url);
+    // Navigate by the comment's PATH against the CURRENT origin — never the
+    // stored page_url's origin. Comments are matched by page_path everywhere,
+    // so the same comment lives on whatever host you're viewing (local,
+    // staging, production). Jumping to page_path + current origin keeps you in
+    // your environment instead of bouncing you to the host the comment was
+    // first created on.
+    let path = comment.page_path;
+    if (!path) {
+      try { path = new URL(comment.page_url).pathname; } catch { path = '/'; }
+    }
+    const url = new URL(path, location.origin);
     if (app.token) url.searchParams.set('markup', app.token);
     location.href = url.toString();
     return;
