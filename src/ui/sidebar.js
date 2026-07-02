@@ -29,8 +29,24 @@ function groupedItems(app) {
     groups.get(c.page_path).push(c);
   }
 
-  // Current page first, then the rest in encounter order.
-  const order = [app.pagePath, ...[...groups.keys()].filter((p) => p !== app.pagePath)];
+  // Order the page groups by the active sort so "Latest first" actually
+  // surfaces the newest comments at the very top, no matter which page
+  // they live on. (Previously the current page was always pinned first,
+  // which made the sort look broken when newer comments were on another
+  // page.) Rank each page by its newest comment for "latest", oldest for
+  // "oldest".
+  const rank = (path) => {
+    const times = groups.get(path).map((c) => c.created_at);
+    return sort === 'latest'
+      ? times.reduce((m, t) => (t > m ? t : m))
+      : times.reduce((m, t) => (t < m ? t : m));
+  };
+  const order = [...groups.keys()].sort((a, b) => {
+    const ra = rank(a);
+    const rb = rank(b);
+    if (ra === rb) return 0;
+    return sort === 'latest' ? (ra < rb ? 1 : -1) : (ra < rb ? -1 : 1);
+  });
 
   const result = [];
   for (const path of order) {
