@@ -78,6 +78,9 @@ export function buildMarkdown(app, scope) {
       const styles = stylesLine(c.computed_styles);
       if (styles) lines.push(`   - Current styles: ${styles}`);
       lines.push(`   - Requested change: ${c.comment_text}`);
+      if (c.attachments && c.attachments.length) {
+        lines.push(`   - Attachments: ${c.attachments.map((a) => a.url).join(', ')}`);
+      }
       lines.push(`   - — ${authorLine(app, c)}`);
       for (const r of repliesOf(app, c.id)) {
         lines.push(`   - Reply (${authorLine(app, r)}): ${r.comment_text}`);

@@ -70,6 +70,22 @@ export async function fetchComments(supabase, projectId) {
   return data || [];
 }
 
+// Upload one image to the comment-media bucket, namespaced by project.
+// Returns { url, name, type } to store on the comment, or null on failure.
+export async function uploadAttachment(supabase, projectId, file) {
+  const ext = ((file.name || '').split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+  const path = `${projectId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage
+    .from('comment-media')
+    .upload(path, file, { contentType: file.type || 'image/png', upsert: false });
+  if (error) {
+    console.warn('[markup] attachment upload failed:', error.message);
+    return null;
+  }
+  const { data } = supabase.storage.from('comment-media').getPublicUrl(path);
+  return { url: data.publicUrl, name: file.name || 'image', type: file.type || 'image/png' };
+}
+
 export async function insertComment(supabase, row) {
   const { data, error } = await supabase
     .from('comments')

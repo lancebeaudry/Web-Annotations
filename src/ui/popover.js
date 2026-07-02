@@ -2,6 +2,7 @@ import { insertComment, updateComment, deleteComment } from '../data.js';
 import { h, toast } from './overlay.js';
 import { savedName } from './auth.js';
 import { attachMentions, mentionLabel } from './mentions.js';
+import { attachImages } from './attach.js';
 import { deviceLabel } from '../capture.js';
 
 function fmtDate(iso) {
@@ -49,8 +50,9 @@ export function openThread(app, rootId) {
 
   const replyInput = h('textarea', { placeholder: 'Reply… (type @ to notify someone)', rows: '2' });
   const replyMentions = attachMentions(app, replyInput, app.ui.layer);
+  const replyImages = attachImages(app, replyInput);
   const replyBtn = h('button', { class: 'btn', type: 'submit' }, 'Reply');
-  const replyForm = h('form', {}, h('div', { class: 'field' }, replyInput), h('div', { class: 'btn-row' }, replyBtn));
+  const replyForm = h('form', {}, h('div', { class: 'field' }, replyInput), replyImages.control, h('div', { class: 'btn-row' }, replyBtn));
 
   replyForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -66,6 +68,7 @@ export function openThread(app, rootId) {
       author_email: app.session.user.email,
       author_name: savedName() || null,
       mentions: replyMentions.getMentions(),
+      attachments: replyImages.getAttachments(),
     });
     replyBtn.disabled = false;
     if (!row) {
@@ -190,6 +193,15 @@ function entry(app, comment) {
   if (comment.mentions && comment.mentions.length) {
     const names = comment.mentions.map((e) => mentionLabel(app, e)).join(', ');
     parts.push(h('div', { class: 'mention-tag' }, `@ ${names}`));
+  }
+  if (comment.attachments && comment.attachments.length) {
+    const media = h('div', { class: 'entry-media' });
+    for (const a of comment.attachments) {
+      const img = h('img', { class: 'entry-thumb', src: a.url, alt: a.name || 'attachment', title: 'Open full size' });
+      img.addEventListener('click', () => window.open(a.url, '_blank', 'noopener'));
+      media.appendChild(img);
+    }
+    parts.push(media);
   }
   return h('div', { class: 'entry' }, ...parts);
 }

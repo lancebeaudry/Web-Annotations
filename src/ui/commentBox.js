@@ -4,6 +4,7 @@ import { h, toast } from './overlay.js';
 import { savedName } from './auth.js';
 import { closePopovers } from './popover.js';
 import { attachMentions } from './mentions.js';
+import { attachImages } from './attach.js';
 
 // New-comment box, opened by clicking an element in comment mode.
 // Captures the technical context invisibly; the client only sees a
@@ -17,10 +18,11 @@ export function openCommentBox(app, el, clickEvent) {
 
   const input = h('textarea', { placeholder: 'What should change here? Type @ to notify someone', rows: '3' });
   const mentions = attachMentions(app, input, app.ui.layer);
+  const images = attachImages(app, input);
   const save = h('button', { class: 'btn', type: 'submit' }, 'Save comment');
   const cancel = h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { mentions.destroy(); box.remove(); } }, 'Cancel');
 
-  const form = h('form', {}, h('div', { class: 'field' }, input), h('div', { class: 'btn-row' }, cancel, save));
+  const form = h('form', {}, h('div', { class: 'field' }, input), images.control, h('div', { class: 'btn-row' }, cancel, save));
 
   const box = h(
     'div',
@@ -48,6 +50,7 @@ export function openCommentBox(app, el, clickEvent) {
       author_email: app.session.user.email,
       author_name: savedName() || null,
       mentions: mentions.getMentions(),
+      attachments: images.getAttachments(),
     });
     if (!row) {
       save.disabled = false;

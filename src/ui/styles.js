@@ -291,6 +291,60 @@ export const CSS = `
 }
 .field textarea { resize: vertical; min-height: 70px; }
 
+/* ---- image attach control (comment/reply forms) ---- */
+.attach { margin: 0 0 10px; }
+.attach-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1B6493;
+  background: #F9F9F9;
+  border: 1px solid #c9d6de;
+  border-radius: 6px;
+  padding: 5px 10px;
+}
+.attach-btn:hover { background: #eef2f4; }
+.attach-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.attach-thumb {
+  position: relative;
+  width: 54px; height: 54px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #dbe3e8;
+  background: #F9F9F9;
+  display: flex; align-items: center; justify-content: center;
+}
+.attach-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.attach-thumb.uploading { animation: markup-pulse 1.2s ease-out infinite; }
+.attach-spin {
+  width: 14px; height: 14px;
+  border: 2px solid #c9d6de;
+  border-top-color: #1B6493;
+  border-radius: 50%;
+  animation: attach-spin 0.7s linear infinite;
+}
+@keyframes attach-spin { to { transform: rotate(360deg); } }
+.attach-rm {
+  position: absolute;
+  top: 2px; right: 2px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 38, 61, 0.72);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+/* attached images shown inside a comment thread */
+.entry-media { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.entry-thumb {
+  width: 72px; height: 72px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #dbe3e8;
+  cursor: zoom-in;
+}
+
 /* ---- auth card ---- */
 .auth-card {
   position: fixed;
