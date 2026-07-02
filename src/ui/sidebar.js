@@ -16,7 +16,7 @@ function fmtDate(iso) {
 // re-sorted or filtered. Then apply the active search / sort / status
 // filters for display.
 function groupedItems(app) {
-  const { q, sort, showResolved } = app.sidebarFilters;
+  const { q, sort, showResolved, thisPageOnly } = app.sidebarFilters;
   const needle = q.trim().toLowerCase();
 
   const roots = [...app.comments.values()]
@@ -50,6 +50,7 @@ function groupedItems(app) {
 
   const result = [];
   for (const path of order) {
+    if (thisPageOnly && path !== app.pagePath) continue;
     const list = groups.get(path);
     if (!list) continue;
     let items = list.map((comment, i) => ({ comment, number: i + 1 }));
@@ -117,11 +118,19 @@ export function toggleSidebar(app) {
   });
   const resolvedLabel = h('label', { class: 'side-check' }, resolvedBox, 'Show resolved');
 
+  const thisPageBox = h('input', { type: 'checkbox' });
+  thisPageBox.checked = !!f.thisPageOnly;
+  thisPageBox.addEventListener('change', () => {
+    f.thisPageOnly = thisPageBox.checked;
+    renderList(app);
+  });
+  const thisPageLabel = h('label', { class: 'side-check' }, thisPageBox, 'This page only');
+
   const controls = h(
     'div',
     { class: 'side-controls' },
     search,
-    h('div', { class: 'side-filters' }, sortSel, resolvedLabel)
+    h('div', { class: 'side-filters' }, sortSel, resolvedLabel, thisPageLabel)
   );
 
   const list = h('div', { class: 'side-list' });
