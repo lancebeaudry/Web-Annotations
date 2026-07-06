@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Avalanche Markup
  * Description: Click-to-comment visual feedback overlay for Avalanche client sites. Paste the site's project token under Settings → Avalanche Markup. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 1.8.0
+ * Version: 1.8.1
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  */
@@ -356,9 +356,38 @@ function avmk_sync_token( $old_token, $new_token ) {
  * list. These are the people emailed when a client leaves a comment.
  */
 function avmk_sync_notify( $value ) {
+	$emails = array_values( array_filter( array_map( 'trim', preg_split( '/\R/', (string) $value ) ) ) );
+
+	// Preferred path: the secure bridge (shared secret only — no service
+	// key on the server). This is how production sites sync.
+	$secret = defined( 'AVALANCHE_MARKUP_WP_AUTH_SECRET' ) ? AVALANCHE_MARKUP_WP_AUTH_SECRET : '';
+	$base   = defined( 'AVALANCHE_MARKUP_SUPABASE_URL' ) ? AVALANCHE_MARKUP_SUPABASE_URL : '';
+	if ( $secret && $base ) {
+		$res = wp_remote_post( untrailingslashit( $base ) . '/functions/v1/notify-sync', [
+			'headers' => [ 'Content-Type' => 'application/json', 'x-wp-auth-secret' => $secret ],
+			'body'    => wp_json_encode( [ 'token' => get_option( AVMK_OPTION, '' ), 'emails' => $emails ] ),
+			'timeout' => 15,
+		] );
+		if ( ! is_wp_error( $res ) && 200 === (int) wp_remote_retrieve_response_code( $res ) ) {
+			$n = count( $emails );
+			avmk_notice( 'success', $n
+				? sprintf( 'Notify list synced — %d %s will be emailed on new comments.', $n, $n === 1 ? 'person' : 'people' )
+				: 'Notify list cleared — no one will be emailed on new comments.' );
+			return;
+		}
+		// Bridge failed; fall through to the service-key path if available,
+		// otherwise surface the error.
+		if ( ! defined( 'AVALANCHE_MARKUP_SERVICE_KEY' ) ) {
+			$why = is_wp_error( $res ) ? $res->get_error_message() : ( 'HTTP ' . wp_remote_retrieve_response_code( $res ) . ' ' . wp_remote_retrieve_body( $res ) );
+			avmk_notice( 'error', 'Could not sync the notify list: ' . esc_html( $why ) );
+			return;
+		}
+	}
+
+	// Fallback path: direct writes with the service-role key (local dev).
 	$creds = avmk_creds();
 	if ( ! $creds ) {
-		avmk_notice( 'warning', 'Notify list saved locally, but not synced: add the Supabase constants to wp-config.php.' );
+		avmk_notice( 'warning', 'Notify list saved locally, but not synced: add AVALANCHE_MARKUP_WP_AUTH_SECRET (and AVALANCHE_MARKUP_SUPABASE_URL) to wp-config.php.' );
 		return;
 	}
 	$project_id = avmk_project_id( $creds );
