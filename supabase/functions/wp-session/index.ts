@@ -17,7 +17,6 @@
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const WP_AUTH_SECRET = Deno.env.get("WP_AUTH_SECRET") ?? "";
-const TEAM_DOMAIN = (Deno.env.get("TEAM_DOMAIN") ?? "avalanchegr.com").toLowerCase();
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -48,9 +47,11 @@ Deno.serve(async (req) => {
     return json(400, { error: "bad payload" });
   }
   if (!email || !email.includes("@")) return json(400, { error: "bad email" });
-  if (email.endsWith(`@${TEAM_DOMAIN}`)) {
-    return json(403, { error: "team accounts must use email sign-in" });
-  }
+
+  // Any logged-in editor/admin the plugin vouches for gets a session —
+  // team members included (they auto-sign-in on WordPress like everyone
+  // else). Trade-off: a leaked WP_AUTH_SECRET could mint a team session,
+  // so guard that secret and rotate it if a site is ever compromised.
 
   // Resolve the site's project from its token — a WP user is granted
   // access to THAT project only, not everything.
