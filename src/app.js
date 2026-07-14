@@ -93,9 +93,17 @@ export async function init(token) {
 // caller shows the email code form instead.
 async function tryWordPressSession(app) {
   try {
-    const res = await fetch(`${location.origin}/wp-json/avalanche-markup/v1/session`, {
+    // The plugin injects window.__avmkWp (nonce + endpoint) only for
+    // logged-in users. WordPress REST cookie auth needs the nonce, so
+    // without it the request reads as logged-out. No global => not logged
+    // in (or bridge not enabled) => skip straight to the code form.
+    const wp = window.__avmkWp;
+    if (!wp || !wp.nonce) return false;
+    const url = wp.rest || `${location.origin}/wp-json/avalanche-markup/v1/session`;
+    const res = await fetch(url, {
       credentials: 'same-origin',
       cache: 'no-store',
+      headers: { 'X-WP-Nonce': wp.nonce },
     });
     if (!res.ok) return false;
     const d = await res.json();

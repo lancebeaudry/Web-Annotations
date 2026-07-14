@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Avalanche Markup
  * Description: Click-to-comment visual feedback overlay for Avalanche client sites. Paste the site's project token under Settings → Avalanche Markup. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 1.8.1
+ * Version: 1.8.2
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  */
@@ -35,6 +35,23 @@ add_action( 'wp_head', function () {
 	if ( ! file_exists( $file ) ) {
 		return;
 	}
+
+	// For logged-in users, hand the overlay a REST nonce + endpoint so it
+	// can call the auto-sign-in bridge. WordPress cookie auth for REST
+	// requests requires a nonce, so without this the /session endpoint
+	// always reads as logged-out. Emitted only when logged in, so it never
+	// lands in a cached logged-out page (and logged-in users bypass the
+	// page cache, so the nonce is always fresh).
+	if ( is_user_logged_in() ) {
+		printf(
+			'<script>window.__avmkWp=%s;</script>' . "\n",
+			wp_json_encode( [
+				'nonce' => wp_create_nonce( 'wp_rest' ),
+				'rest'  => esc_url_raw( rest_url( 'avalanche-markup/v1/session' ) ),
+			] )
+		);
+	}
+
 	$src = plugins_url( 'markup.js', __FILE__ );
 	printf(
 		'<script defer src="%s?ver=%s" data-project="%s"></script>' . "\n",
