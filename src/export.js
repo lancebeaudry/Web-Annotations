@@ -37,9 +37,11 @@ function label(comment) {
 }
 
 function authorLine(app, comment) {
-  const name = comment.author_name || comment.author_email;
-  const isTeam = comment.author_email.toLowerCase().endsWith(`@${app.teamDomain}`);
-  return `${name} (${isTeam ? 'Avalanche' : 'client'}), ${(comment.created_at || '').slice(0, 10)}`;
+  const email = comment.author_email || '';
+  const isGuest = email.startsWith('guest:');
+  const name = comment.author_name || (isGuest ? 'Guest' : email);
+  const isTeam = !isGuest && email.toLowerCase().endsWith(`@${app.teamDomain}`);
+  return `${name} (${isTeam ? 'Avalanche' : isGuest ? 'guest' : 'client'}), ${(comment.created_at || '').slice(0, 10)}`;
 }
 
 function openRoots(app, scope) {

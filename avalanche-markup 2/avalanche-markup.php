@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Avalanche Markup
  * Description: Click-to-comment visual feedback overlay for Avalanche client sites. Paste the site's project token under Settings → Avalanche Markup. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 1.8.2
+ * Version: 1.9.0
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  */
@@ -13,6 +13,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 const AVMK_OPTION        = 'avalanche_markup_token';
 const AVMK_NOTIFY_OPTION = 'avalanche_markup_notify';
+// "Open feedback": anyone who opens the share link can comment after
+// typing just their name — no WordPress account, no email code.
+const AVMK_OPEN_OPTION   = 'avalanche_markup_open';
 
 // Self-hosted update feed. The plugin checks this manifest (committed in
 // the repo, served raw from GitHub) and offers a one-click update on the
@@ -52,12 +55,19 @@ add_action( 'wp_head', function () {
 		);
 	}
 
+	// data-open tells the overlay that guests may comment. It rides on the
+	// script tag (not window.__avmkWp) because that block is emitted only
+	// for logged-in users — this flag has to reach logged-out visitors, and
+	// the tag is site-level so it stays cache-safe.
+	$open = get_option( AVMK_OPEN_OPTION, '' ) ? ' data-open="1"' : '';
+
 	$src = plugins_url( 'markup.js', __FILE__ );
 	printf(
-		'<script defer src="%s?ver=%s" data-project="%s"></script>' . "\n",
+		'<script defer src="%s?ver=%s" data-project="%s"%s></script>' . "\n",
 		esc_url( $src ),
 		esc_attr( (string) filemtime( $file ) ),
-		esc_attr( $token )
+		esc_attr( $token ),
+		$open
 	);
 } );
 
@@ -230,7 +240,13 @@ function avmk_rest_session() {
 add_action( 'admin_init', function () {
 	register_setting( 'avalanche_markup', AVMK_OPTION, [ 'sanitize_callback' => 'sanitize_text_field' ] );
 	register_setting( 'avalanche_markup', AVMK_NOTIFY_OPTION, [ 'sanitize_callback' => 'avmk_sanitize_emails' ] );
+	register_setting( 'avalanche_markup', AVMK_OPEN_OPTION, [ 'sanitize_callback' => 'avmk_sanitize_bool' ] );
 } );
+
+// Checkbox -> '1' or '' (an unchecked box posts the empty hidden input).
+function avmk_sanitize_bool( $raw ) {
+	return $raw ? '1' : '';
+}
 
 // Normalize the notify-list textarea to one valid, lower-cased, de-duped
 // email per line.
@@ -299,6 +315,42 @@ add_action( 'add_option_' . AVMK_NOTIFY_OPTION, function ( $option, $value ) {
 add_action( 'update_option_' . AVMK_NOTIFY_OPTION, function ( $old, $new ) {
 	avmk_sync_notify( $new );
 }, 10, 2 );
+
+// Push the "open feedback" toggle to the project row — the overlay reads
+// data-open for UI, but RLS reads projects.open_access, so both must agree.
+add_action( 'add_option_' . AVMK_OPEN_OPTION, function ( $option, $value ) {
+	avmk_sync_open( $value );
+}, 10, 2 );
+add_action( 'update_option_' . AVMK_OPEN_OPTION, function ( $old, $new ) {
+	avmk_sync_open( $new );
+}, 10, 2 );
+
+/**
+ * Sync the open-feedback flag to Supabase via the shared-secret bridge
+ * (staging/production sites deliberately have no service-role key).
+ */
+function avmk_sync_open( $value ) {
+	$on     = (bool) $value;
+	$secret = defined( 'AVALANCHE_MARKUP_WP_AUTH_SECRET' ) ? AVALANCHE_MARKUP_WP_AUTH_SECRET : '';
+	$base   = defined( 'AVALANCHE_MARKUP_SUPABASE_URL' ) ? AVALANCHE_MARKUP_SUPABASE_URL : '';
+	if ( ! $secret || ! $base ) {
+		avmk_notice( 'warning', 'Open feedback saved locally, but not synced: add AVALANCHE_MARKUP_WP_AUTH_SECRET (and AVALANCHE_MARKUP_SUPABASE_URL) to wp-config.php.' );
+		return;
+	}
+	$res = wp_remote_post( untrailingslashit( $base ) . '/functions/v1/project-settings', [
+		'headers' => [ 'Content-Type' => 'application/json', 'x-wp-auth-secret' => $secret ],
+		'body'    => wp_json_encode( [ 'token' => get_option( AVMK_OPTION, '' ), 'open_access' => $on ] ),
+		'timeout' => 15,
+	] );
+	if ( ! is_wp_error( $res ) && 200 === (int) wp_remote_retrieve_response_code( $res ) ) {
+		avmk_notice( 'success', $on
+			? 'Open feedback is ON — anyone with the share link can comment after entering their name.'
+			: 'Open feedback is OFF — visitors must sign in again.' );
+		return;
+	}
+	$why = is_wp_error( $res ) ? $res->get_error_message() : ( 'HTTP ' . wp_remote_retrieve_response_code( $res ) . ' ' . wp_remote_retrieve_body( $res ) );
+	avmk_notice( 'error', 'Could not sync open feedback: ' . esc_html( $why ) );
+}
 
 /**
  * Rename (or create) this site's Supabase projects row so its token
@@ -478,6 +530,7 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function ( $li
 function avmk_settings_page() {
 	$token  = get_option( AVMK_OPTION, '' );
 	$notify = get_option( AVMK_NOTIFY_OPTION, '' );
+	$open   = get_option( AVMK_OPEN_OPTION, '' );
 	?>
 	<div class="wrap">
 		<h1>Avalanche Markup</h1>
@@ -493,10 +546,27 @@ function avmk_settings_page() {
 			<textarea class="large-text code" rows="4" name="<?php echo esc_attr( AVMK_NOTIFY_OPTION ); ?>" placeholder="you@avalanchegr.com&#10;teammate@avalanchegr.com"><?php echo esc_textarea( $notify ); ?></textarea>
 			<p class="description">@mentions inside a comment always notify the person tagged — this list is the extra "tell the team about any new feedback" alert.</p>
 
+			<h2 class="title">Open feedback</h2>
+			<?php // Unchecked checkboxes post nothing, so the hidden input carries the "off" value. ?>
+			<input type="hidden" name="<?php echo esc_attr( AVMK_OPEN_OPTION ); ?>" value="">
+			<label>
+				<input type="checkbox" name="<?php echo esc_attr( AVMK_OPEN_OPTION ); ?>" value="1" <?php checked( $open, '1' ); ?>>
+				Let anyone with the share link comment — they just enter their name (no login, no email code).
+			</label>
+			<p class="description">
+				Best for staging review. Guests can add, reply to and delete their own comments, and see the whole conversation; they can't resolve, export, or invite.
+				<strong>Heads up:</strong> the project token appears in this site's page source, so in practice anyone who can reach this site can comment — only turn this on for staging that's private or obscure, never a public production site.
+			</p>
+
 			<?php submit_button( 'Save settings' ); ?>
 		</form>
 		<?php if ( $token ) : ?>
-			<p>Share link for this site: <code><?php echo esc_html( home_url( '/?markup=' . $token ) ); ?></code></p>
+			<p>
+				Share link for this site: <code><?php echo esc_html( home_url( '/?markup=' . $token ) ); ?></code>
+				<?php if ( $open ) : ?>
+					<br><span class="description">Open feedback is <strong>on</strong> — send this link to anyone and they can start marking up right away.</span>
+				<?php endif; ?>
+			</p>
 		<?php endif; ?>
 	</div>
 	<?php

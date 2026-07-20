@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, TEAM_DOMAIN } from './config.js';
 import { fetchProject, fetchComments, subscribeRealtime, isMember } from './data.js';
 import { mountOverlay, toast, h } from './ui/overlay.js';
-import { renderAuthCard, removeAuthCard } from './ui/auth.js';
+import { renderAuthCard, renderGuestCard, removeAuthCard } from './ui/auth.js';
 import { renderPins } from './ui/pins.js';
 import { openCommentBox } from './ui/commentBox.js';
 import { closePopovers, refreshOpenThread } from './ui/popover.js';
@@ -29,7 +29,7 @@ function readShowResolved() {
   }
 }
 
-export async function init(token) {
+export async function init(token, options = {}) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     console.warn('[markup] Supabase config missing — rebuild with .env populated.');
     return;
@@ -44,6 +44,11 @@ export async function init(token) {
     project: null,
     session: null,
     isTeam: false,
+    // "Open feedback" is on for this site (plugin data-open): visitors can
+    // comment as a guest with just a name. RLS enforces the same flag
+    // server-side via projects.open_access.
+    openAccess: !!options.openAccess,
+    isGuest: false,
     started: false,
     commentMode: false,
     comments: new Map(),
@@ -81,10 +86,22 @@ export async function init(token) {
     start(app);
   } else if (!data.session) {
     // Already logged into WordPress? Sign them in automatically via the
-    // plugin bridge before falling back to the email code form.
+    // plugin bridge. Otherwise, on an open-feedback site, ask only for a
+    // display name; everywhere else fall back to the email code form.
     const bridged = await tryWordPressSession(app);
-    if (!bridged) renderAuthCard(app);
+    if (!bridged) {
+      if (app.openAccess) renderGuestCard(app);
+      else renderAuthCard(app);
+    }
   }
+}
+
+// A guest's stable identity. Anonymous sessions carry no email, so we use
+// a synthetic id pinned to their uid — it satisfies author_email's NOT
+// NULL, never matches the team-domain check, and is exactly what the
+// insert/update/delete policies compare against.
+export function authorEmail(app) {
+  return app.isGuest ? `guest:${app.session.user.id}` : app.session.user.email;
 }
 
 // If the visitor is logged into WordPress, the plugin's /session route
@@ -134,8 +151,10 @@ async function start(app) {
   app.started = true;
   removeAuthCard(app);
 
-  const email = app.session.user.email.toLowerCase();
-  app.isTeam = email.endsWith(`@${app.teamDomain}`);
+  // Anonymous (guest) sessions have NO email, so this must stay guarded.
+  app.isGuest = !!app.session.user.is_anonymous;
+  const email = (app.session.user.email || '').toLowerCase();
+  app.isTeam = !app.isGuest && email.endsWith(`@${app.teamDomain}`);
 
   // First authed read. On the code-verification path the just-attached
   // session can lag the first request by a tick (it reads as anon, so RLS
@@ -148,11 +167,14 @@ async function start(app) {
     return;
   }
 
-  // Access gate: team domain is always allowed; everyone else must be a
-  // member of THIS project. Export stays team-only regardless.
-  app.allowed = app.isTeam || (await isMember(app.supabase, app.project.id));
+  // Access gate: team domain is always allowed; guests are allowed on an
+  // open-feedback site; everyone else must be a member of THIS project.
+  // Export stays team-only regardless.
+  app.allowed = app.isTeam
+    || (app.isGuest && app.openAccess)
+    || (!app.isGuest && (await isMember(app.supabase, app.project.id)));
   if (!app.allowed) {
-    renderBlockedCard(app, email);
+    renderBlockedCard(app, email || 'this guest session');
     return;
   }
 

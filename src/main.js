@@ -9,6 +9,12 @@ import { init } from './app.js';
 const script = document.currentScript;
 const params = new URLSearchParams(location.search);
 
+// data-open="1" means the plugin's "open feedback" toggle is on: visitors
+// who aren't signed in can comment after entering just a display name.
+// Captured here because document.currentScript is only valid during this
+// synchronous pass.
+const openAccess = !!(script && script.dataset.open);
+
 let token = null;
 if (params.has('markup')) {
   token = params.get('markup') || (script && script.dataset.project) || '';
@@ -30,8 +36,8 @@ if (params.has('markup')) {
 if (token && !window.__avalancheMarkup) {
   window.__avalancheMarkup = true;
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => init(token));
+    document.addEventListener('DOMContentLoaded', () => init(token, { openAccess }));
   } else {
-    init(token);
+    init(token, { openAccess });
   }
 }

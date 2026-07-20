@@ -5,6 +5,7 @@ import { savedName } from './auth.js';
 import { closePopovers } from './popover.js';
 import { attachMentions } from './mentions.js';
 import { attachImages } from './attach.js';
+import { authorEmail } from '../app.js';
 
 // New-comment box, opened by clicking an element in comment mode.
 // Captures the technical context invisibly; the client only sees a
@@ -47,7 +48,7 @@ export function openCommentBox(app, el, clickEvent) {
       y_pct: Math.round(yPct * 100) / 100,
       viewport_w: window.innerWidth,
       comment_text: text,
-      author_email: app.session.user.email,
+      author_email: authorEmail(app),
       author_name: savedName() || null,
       mentions: mentions.getMentions(),
       attachments: images.getAttachments(),

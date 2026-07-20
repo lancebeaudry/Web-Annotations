@@ -2,6 +2,7 @@ import { h, toast } from './overlay.js';
 import { updateComment, deleteComment } from '../data.js';
 import { resolveElement, looksAddressed, deviceLabel } from '../capture.js';
 import { openThread, closePopovers } from './popover.js';
+import { authorEmail } from '../app.js';
 
 // Slide-out panel listing every comment in the project, grouped by
 // page (current page first), with jump-to-pin, resolve, and delete.
@@ -226,7 +227,7 @@ function item(app, comment, number, onThisPage) {
     actions.appendChild(resolveBtn);
   }
 
-  if (app.isTeam || comment.author_email === app.session.user.email) {
+  if (app.isTeam || comment.author_email === authorEmail(app)) {
     const deleteBtn = h('button', { class: 'mini-btn danger' }, 'Delete');
     deleteBtn.addEventListener('click', () => {
       const yes = h('button', { class: 'mini-btn danger' }, 'Yes, delete');

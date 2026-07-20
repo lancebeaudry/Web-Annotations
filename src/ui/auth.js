@@ -119,6 +119,65 @@ function renderCodeStep(app, body, email) {
   codeInput.focus();
 }
 
+// Guest entry for "open feedback" sites: no email, no code — just a
+// display name, then an anonymous Supabase session. The name is the only
+// attribution we get, so it's required (RLS enforces it server-side too).
+export function renderGuestCard(app) {
+  const { ui } = app;
+
+  const nameInput = h('input', { type: 'text', placeholder: 'Sarah', value: savedName(), required: 'true' });
+  const submit = h('button', { class: 'btn', type: 'submit' }, 'Start commenting');
+  const teamLink = h('button', { class: 'btn btn-ghost', type: 'button' }, 'Avalanche team? Sign in');
+
+  const form = h(
+    'form',
+    {},
+    h('p', { class: 'hint' }, 'Add your name so the team knows whose feedback is whose, then click anywhere on the page to comment.'),
+    h('div', { class: 'field' }, h('label', {}, 'Your name'), nameInput),
+    h('div', { class: 'btn-row' }, teamLink, submit)
+  );
+
+  const card = h(
+    'div',
+    { class: 'card auth-card' },
+    h('div', { class: 'card-head' }, `Feedback · ${document.location.hostname}`),
+    h('div', { class: 'card-body' }, form)
+  );
+
+  // Team members still need the email path to get Export/Resolve.
+  teamLink.addEventListener('click', () => {
+    removeAuthCard(app);
+    renderAuthCard(app);
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = nameInput.value.trim();
+    if (!name) {
+      toast(ui, 'Please enter your name first');
+      return;
+    }
+    try {
+      localStorage.setItem(NAME_KEY, name);
+    } catch {
+      /* storage blocked — the name still rides along on this session */
+    }
+    submit.disabled = true;
+    submit.textContent = 'Starting…';
+    const { error } = await app.supabase.auth.signInAnonymously();
+    if (error) {
+      submit.disabled = false;
+      submit.textContent = 'Start commenting';
+      toast(ui, `Could not start: ${error.message}`);
+      return;
+    }
+    // Success: onAuthStateChange in app.js picks up the session and starts.
+  });
+
+  ui.layer.appendChild(card);
+  app.authCard = card;
+}
+
 export function removeAuthCard(app) {
   if (app.authCard) {
     app.authCard.remove();

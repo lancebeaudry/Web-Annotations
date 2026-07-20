@@ -1,11 +1,11 @@
 {
   "name": "Avalanche Markup",
   "slug": "avalanche-markup",
-  "version": "1.8.2",
+  "version": "1.9.0",
   "download_url": "https://raw.githubusercontent.com/lancebeaudry/Web-Annotations/main/wordpress-plugin/avalanche-markup.zip",
   "homepage": "https://avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "1.8.2 \u2014 Fix WordPress auto-sign-in: pass a REST nonce so the bridge authenticates the logged-in user."
+  "changelog": "1.9.0 \u2014 Open feedback: let anyone with the share link comment after entering just their name (no login)."
 }

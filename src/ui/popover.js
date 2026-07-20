@@ -3,6 +3,7 @@ import { h, toast } from './overlay.js';
 import { savedName } from './auth.js';
 import { attachMentions, mentionLabel } from './mentions.js';
 import { attachImages } from './attach.js';
+import { authorEmail } from '../app.js';
 import { deviceLabel } from '../capture.js';
 
 function fmtDate(iso) {
@@ -10,9 +11,12 @@ function fmtDate(iso) {
 }
 
 function authorLabel(app, comment) {
-  const name = comment.author_name || comment.author_email;
-  const isTeam = comment.author_email.toLowerCase().endsWith(`@${app.teamDomain}`);
-  return `${name} (${isTeam ? 'Avalanche' : 'client'})`;
+  const email = comment.author_email || '';
+  // Guests carry a synthetic 'guest:<uid>' id and always have a name.
+  const isGuest = email.startsWith('guest:');
+  const name = comment.author_name || (isGuest ? 'Guest' : email);
+  const isTeam = !isGuest && email.toLowerCase().endsWith(`@${app.teamDomain}`);
+  return `${name} (${isTeam ? 'Avalanche' : isGuest ? 'guest' : 'client'})`;
 }
 
 function replies(app, rootId) {
@@ -65,7 +69,7 @@ export function openThread(app, rootId) {
       page_url: root.page_url,
       page_path: root.page_path,
       comment_text: text,
-      author_email: app.session.user.email,
+      author_email: authorEmail(app),
       author_name: savedName() || null,
       mentions: replyMentions.getMentions(),
       attachments: replyImages.getAttachments(),
@@ -93,7 +97,7 @@ export function openThread(app, rootId) {
 
   // Delete: author of the pin or any team member; two-step confirm,
   // removes the pin and all its replies.
-  const canDelete = app.isTeam || root.author_email === app.session.user.email;
+  const canDelete = app.isTeam || root.author_email === authorEmail(app);
   if (canDelete) {
     const deleteBtn = h('button', { class: 'btn btn-danger' }, 'Delete');
     deleteBtn.addEventListener('click', () => {

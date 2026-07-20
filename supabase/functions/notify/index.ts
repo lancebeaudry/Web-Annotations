@@ -108,7 +108,10 @@ Deno.serve(async (req) => {
     return json(200, { error: "mailer not configured", pending: recipients.size });
   }
 
-  const who = record.author_name ? `${record.author_name} (${author})` : author;
+  // Guests have no email (synthetic 'guest:<uid>'), so show just the name.
+  const who = author.startsWith("guest:")
+    ? (record.author_name || "A guest")
+    : (record.author_name ? `${record.author_name} (${author})` : author);
   const deepLink = `${record.page_url}?markup=${encodeURIComponent(project.token)}`;
   const kind = isReply ? "replied" : "left a comment";
   const snippet = record.comment_text.length > 300
