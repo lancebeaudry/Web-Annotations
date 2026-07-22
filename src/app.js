@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, TEAM_DOMAIN } from './config.js';
 import { fetchProject, fetchComments, subscribeRealtime, isMember } from './data.js';
 import { mountOverlay, toast, h } from './ui/overlay.js';
-import { renderAuthCard, renderGuestCard, removeAuthCard } from './ui/auth.js';
+import { renderAuthCard, renderGuestCard, removeAuthCard, savedName } from './ui/auth.js';
 import { renderPins } from './ui/pins.js';
 import { openCommentBox } from './ui/commentBox.js';
 import { closePopovers, refreshOpenThread } from './ui/popover.js';
@@ -80,8 +80,25 @@ export async function init(token, options = {}) {
     }
   });
 
+  // Set by the toolbar's "Sign in" button before it signs a guest out, so
+  // the reload lands on the email form instead of the guest name card.
+  let forceEmail = false;
+  try {
+    forceEmail = sessionStorage.getItem('markup_force_email') === '1';
+    if (forceEmail) sessionStorage.removeItem('markup_force_email');
+  } catch {
+    /* storage blocked — just show the normal card */
+  }
+
   const { data } = await supabase.auth.getSession();
   if (data.session && !app.started) {
+    // A saved guest session must never trap a WordPress editor/admin in
+    // guest mode (no Export/Resolve). If the bridge is available, silently
+    // upgrade them to their real identity.
+    if (data.session.user.is_anonymous && window.__avmkWp) {
+      const upgraded = await tryWordPressSession(app);
+      if (upgraded) return; // onAuthStateChange starts with the real session
+    }
     app.session = data.session;
     start(app);
   } else if (!data.session) {
@@ -90,10 +107,22 @@ export async function init(token, options = {}) {
     // display name; everywhere else fall back to the email code form.
     const bridged = await tryWordPressSession(app);
     if (!bridged) {
-      if (app.openAccess) renderGuestCard(app);
+      if (app.openAccess && !forceEmail) renderGuestCard(app);
       else renderAuthCard(app);
     }
   }
+}
+
+// Leave guest mode: drop the anonymous session and come back on the email
+// sign-in form, so a team member can pick up Export/Resolve.
+export async function signInAsTeam(app) {
+  try {
+    sessionStorage.setItem('markup_force_email', '1');
+  } catch {
+    /* storage blocked — they'll get the guest card and can use its link */
+  }
+  await app.supabase.auth.signOut();
+  location.reload();
 }
 
 // A guest's stable identity. Anonymous sessions carry no email, so we use
@@ -406,14 +435,37 @@ function renderToolbar(app) {
     ' browse'
   );
 
+  // Guests see who they're commenting as, so it's obvious the name is
+  // attached to their feedback (and that they're not signed in as staff).
+  const who = app.isGuest
+    ? h('span', { class: 'toolbar-who' }, `${savedName() || 'Guest'} · guest`)
+    : null;
+
   const toolbar = h('div', { class: 'toolbar' }, brand, app.modeBtn, app.browseBtn, app.sidebarBtn);
   // Device-preview toggle — not inside the framed copy (no nesting).
   app.device = app.device || 'desktop';
   if (!IN_FRAME) toolbar.appendChild(makeDeviceControl(app));
   toolbar.appendChild(hint);
+  if (who) toolbar.appendChild(who);
   // Flexible gap pushes the management buttons (Invite/Export/Exit) to
   // the far right of the bar.
   toolbar.appendChild(h('div', { class: 'toolbar-spacer' }));
+
+  // Escape hatch out of guest mode. Without this a guest session is a
+  // dead end — it persists in the browser, so a team member who entered
+  // by name could never reach Export/Resolve.
+  if (app.isGuest) {
+    const signInBtn = h(
+      'button',
+      {
+        class: 'fab fab-secondary',
+        title: 'Avalanche team: sign in with your email for Export and Resolve',
+        onclick: () => signInAsTeam(app),
+      },
+      'Sign in'
+    );
+    toolbar.appendChild(signInBtn);
+  }
 
   if (app.isTeam) {
     const inviteBtn = h(

@@ -76,6 +76,13 @@ export const CSS = `
   padding: 1px 5px;
 }
 .toolbar .spacer { margin-left: auto; }
+.toolbar-who {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7a85;
+  white-space: nowrap;
+  margin-left: 4px;
+}
 /* Narrow widths (e.g. inside the tablet/mobile preview frame): drop the
    non-essential brand + shortcut hint so the action buttons all fit.
    Placed after the base .toolbar-brand/.toolbar-hint rules so it wins. */
