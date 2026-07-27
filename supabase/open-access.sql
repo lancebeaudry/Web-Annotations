@@ -49,14 +49,21 @@ create policy "insert comments" on comments
         )
       )
     )
-    -- Guest branch: only on an open project, only as their own uid, and
-    -- only with a name — pinning author_email to auth.uid() is what stops
-    -- a guest posting under a team address, and the name check enforces
-    -- attribution at the database level rather than trusting the client.
+    -- Open-project branch. On a project with open_access, any authenticated
+    -- visitor may comment — but only pinned to their OWN identity, never
+    -- someone else's:
+    --   * a name-only guest as their synthetic 'guest:'||uid (name required,
+    --     since the name is their only attribution); or
+    --   * a real signed-in visitor (e.g. a client who once used an email
+    --     code, or anyone with a Supabase session) as their own JWT email.
+    -- Pinning author_email to either auth.uid() or the caller's own JWT email
+    -- is what stops anyone posting under a team or someone else's address.
     or (
       exists (select 1 from projects p where p.id = comments.project_id and p.open_access)
-      and author_email = 'guest:' || auth.uid()::text
-      and coalesce(author_name, '') <> ''
+      and (
+        (author_email = 'guest:' || auth.uid()::text and coalesce(author_name, '') <> '')
+        or author_email = auth.jwt()->>'email'
+      )
     )
   );
 

@@ -1,11 +1,11 @@
 {
   "name": "Avalanche Markup",
   "slug": "avalanche-markup",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "download_url": "https://raw.githubusercontent.com/lancebeaudry/Web-Annotations/main/wordpress-plugin/avalanche-markup.zip",
   "homepage": "https://avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "1.9.1 \u2014 Guests can switch to team sign-in (Export/Resolve); WP editors/admins auto-upgrade out of guest mode."
+  "changelog": "1.9.2 \u2014 Open feedback now also lets an already-signed-in visitor (e.g. a client who used an email code) comment as themselves, instead of dead-ending them at the 'not invited' wall."
 }

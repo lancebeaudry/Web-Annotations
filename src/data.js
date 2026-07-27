@@ -3,7 +3,7 @@
 export async function fetchProject(supabase, token) {
   const { data, error } = await supabase
     .from('projects')
-    .select('id, name, site_url')
+    .select('id, name, site_url, open_access')
     .eq('token', token)
     .maybeSingle();
   if (error) {

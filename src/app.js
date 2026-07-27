@@ -196,11 +196,20 @@ async function start(app) {
     return;
   }
 
-  // Access gate: team domain is always allowed; guests are allowed on an
-  // open-feedback site; everyone else must be a member of THIS project.
-  // Export stays team-only regardless.
+  // A logged-out visitor only learns a project is "open" from the static
+  // data-open flag the plugin prints on the script tag. Anyone WITH a
+  // session can instead read open_access straight off the project row (RLS
+  // lets any authenticated user see projects). Trusting the row means an
+  // already-signed-in visitor — e.g. a client who once used an email code —
+  // isn't dead-ended just because their site's plugin predates data-open.
+  app.openAccess = app.openAccess || !!app.project.open_access;
+
+  // Access gate: team is always allowed; on an open-feedback project ANY
+  // signed-in visitor may comment — a name-only guest, or someone on their
+  // own email — because the insert policy pins each to their own identity.
+  // Everyone else must be a member of THIS project. Export stays team-only.
   app.allowed = app.isTeam
-    || (app.isGuest && app.openAccess)
+    || app.openAccess
     || (!app.isGuest && (await isMember(app.supabase, app.project.id)));
   if (!app.allowed) {
     renderBlockedCard(app, email || 'this guest session');
