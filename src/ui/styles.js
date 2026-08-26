@@ -421,6 +421,10 @@ export const CSS = `
 }
 .mention-item:hover { background: #F9F9F9; }
 .context {
+  /* Hidden from the front end: the raw element selector is noise for
+     reviewers. Kept in the DOM (and these styles preserved) so it can be
+     switched back on by removing this one line. */
+  display: none;
   font-size: 11px;
   color: #6b7a85;
   background: #F9F9F9;
