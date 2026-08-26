@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, TEAM_DOMAIN } from './config.js';
-import { fetchProject, fetchComments, subscribeRealtime, isMember } from './data.js';
+import { fetchProject, fetchComments, subscribeRealtime, isMember, createProject } from './data.js';
 import { mountOverlay, toast, h } from './ui/overlay.js';
 import { renderAuthCard, renderGuestCard, removeAuthCard, savedName } from './ui/auth.js';
 import { renderPins } from './ui/pins.js';
@@ -176,6 +176,28 @@ async function fetchProjectSettled(app) {
   return project;
 }
 
+// Team-only: create the project row for a site being opened for the first
+// time. The display name is taken from the page title (trimmed to the part
+// before a " – Tagline" separator); open_access mirrors the plugin's
+// data-open flag captured at init. If the insert loses a race with another
+// team member's first visit (unique token), we simply re-read the row they
+// created.
+async function registerProject(app) {
+  const titled = (document.title || '').split(/[|–—-]/)[0].trim();
+  const name = (titled || app.token).slice(0, 120);
+  const created = await createProject(app.supabase, {
+    token: app.token,
+    name,
+    site_url: location.origin,
+    open_access: app.openAccess,
+  });
+  if (created) {
+    toast(app.ui, `Markup: registered “${created.name}”`);
+    return created;
+  }
+  return await fetchProjectSettled(app);
+}
+
 async function start(app) {
   app.started = true;
   removeAuthCard(app);
@@ -191,8 +213,16 @@ async function start(app) {
   // briefly before trusting an empty result; this also settles the
   // session for the invite check and comment reads that follow.
   app.project = await fetchProjectSettled(app);
+  if (!app.project && app.isTeam) {
+    // First time an Avalanche team member opens this site: self-register it
+    // so the link resolves for everyone from now on. New sites carry no
+    // service key, so this is what replaces manual backend registration.
+    app.project = await registerProject(app);
+  }
   if (!app.project) {
-    toast(app.ui, 'Markup: unknown project token');
+    toast(app.ui, app.isTeam
+      ? 'Markup: couldn’t register this site — try again'
+      : 'Markup: this site isn’t set up yet — ask your Avalanche contact');
     return;
   }
 

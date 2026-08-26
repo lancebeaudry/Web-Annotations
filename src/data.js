@@ -13,6 +13,24 @@ export async function fetchProject(supabase, token) {
   return data;
 }
 
+// Team-only: register a site the first time a team member opens it, so the
+// link works for everyone afterward. RLS ("team creates projects") only lets
+// @avalanchegr.com callers insert; the unique token index makes concurrent
+// first-visits safe (the loser gets an error and re-reads). Returns the new
+// row, or null if it couldn't be created (race, or not a team account).
+export async function createProject(supabase, { token, name, site_url, open_access }) {
+  const { data, error } = await supabase
+    .from('projects')
+    .insert({ token, name, site_url, open_access: !!open_access })
+    .select('id, name, site_url, open_access')
+    .maybeSingle();
+  if (error) {
+    console.warn('[markup] project create failed:', error.message);
+    return null;
+  }
+  return data;
+}
+
 // Is the signed-in user a member of this project? (Team-domain emails are
 // checked separately and don't need a membership row.)
 export async function isMember(supabase, projectId) {

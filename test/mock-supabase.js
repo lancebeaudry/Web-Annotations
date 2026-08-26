@@ -47,7 +47,7 @@ export function createClient() {
           ...row,
         };
         rows.push(full);
-        return { select: () => ({ single: () => ok(full) }) };
+        return { select: () => ({ single: () => ok(full), maybeSingle: () => ok(full) }) };
       },
       update(patch) {
         return {
