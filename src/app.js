@@ -220,9 +220,15 @@ async function start(app) {
     app.project = await registerProject(app);
   }
   if (!app.project) {
-    toast(app.ui, app.isTeam
-      ? 'Markup: couldn’t register this site — try again'
-      : 'Markup: this site isn’t set up yet — ask your Avalanche contact');
+    if (app.isTeam) {
+      toast(app.ui, 'Markup: couldn’t register this site — try again');
+    } else {
+      // Not a dead-end toast: on a brand-new open-feedback site a team
+      // member gets routed into the guest name card first and lands here
+      // as an anonymous guest who can't register. Give them a way to
+      // switch to team sign-in (which also clears the stuck guest session).
+      renderUnregisteredCard(app);
+    }
     return;
   }
 
@@ -541,6 +547,29 @@ function renderToolbar(app) {
 }
 
 // Signed in, but not on the invite list and not on the team domain.
+// The site has no project row yet and this visitor can't create one (guest
+// or non-team). A team member most often gets here on a brand-new open-
+// feedback site, funneled into the guest card before they could register
+// it — so offer team sign-in, which drops the guest session and reloads on
+// the email code form. Clients just need to wait for a team visit.
+function renderUnregisteredCard(app) {
+  const teamBtn = h('button', { class: 'btn' }, 'I’m on the Avalanche team — sign in');
+  const card = h(
+    'div',
+    { class: 'card auth-card' },
+    h('div', { class: 'card-head' }, 'Site not set up yet'),
+    h(
+      'div',
+      { class: 'card-body' },
+      h('p', {}, 'This site hasn’t been registered with Markup. An Avalanche team member just needs to open it once to set it up.'),
+      h('p', { class: 'hint' }, 'If you’re a client or reviewer, ask your Avalanche contact — nothing to do on your end.'),
+      h('div', { class: 'btn-row' }, teamBtn)
+    )
+  );
+  teamBtn.addEventListener('click', () => signInAsTeam(app));
+  app.ui.layer.appendChild(card);
+}
+
 // Show a friendly dead-end with a way to sign out and try another email.
 function renderBlockedCard(app, email) {
   const signOut = h('button', { class: 'btn btn-ghost' }, 'Use a different email');
