@@ -1,11 +1,11 @@
 {
   "name": "Avalanche Markup",
   "slug": "avalanche-markup",
-  "version": "1.9.5",
+  "version": "1.9.6",
   "download_url": "https://raw.githubusercontent.com/lancebeaudry/Web-Annotations/main/wordpress-plugin/avalanche-markup.zip",
   "homepage": "https://avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "1.9.5 \u2014 'Site not set up yet' is no longer a dead end: it now offers an 'I'm on the Avalanche team \u2014 sign in' button, so a team member funneled into guest mode on a brand-new open-feedback site can switch to team sign-in and register it."
+  "changelog": "1.9.6 — Overlay now survives sites that rebuild the page on load (single-file design/prototype exports, SPAs): if the app wipes the document, the feedback UI re-attaches itself instead of vanishing."
 }
