@@ -1,10 +1,13 @@
 // All Supabase reads/writes live here.
 
+// Resolve a token -> project. This goes through get_project_by_token()
+// rather than reading `projects` directly: the table is no longer listable
+// (that let anyone enumerate every client token), and the function is also
+// what records the "unlock" proving this visitor knew the token, which is
+// what grants read access to an open project's comments.
 export async function fetchProject(supabase, token) {
   const { data, error } = await supabase
-    .from('projects')
-    .select('id, name, site_url, open_access')
-    .eq('token', token)
+    .rpc('get_project_by_token', { p_token: token })
     .maybeSingle();
   if (error) {
     console.warn('[markup] project lookup failed:', error.message);

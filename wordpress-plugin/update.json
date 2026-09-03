@@ -1,11 +1,11 @@
 {
   "name": "Avalanche Markup",
   "slug": "avalanche-markup",
-  "version": "1.9.6",
+  "version": "1.9.7",
   "download_url": "https://raw.githubusercontent.com/lancebeaudry/Web-Annotations/main/wordpress-plugin/avalanche-markup.zip",
   "homepage": "https://avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "1.9.6 — Overlay now survives sites that rebuild the page on load (single-file design/prototype exports, SPAs): if the app wipes the document, the feedback UI re-attaches itself instead of vanishing."
+  "changelog": "1.9.7 — Security: project tokens are no longer listable and comment access is scoped to the project whose token you actually hold. IMPORTANT: update promptly — older versions can no longer look up their project."
 }
