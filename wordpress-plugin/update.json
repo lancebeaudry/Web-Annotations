@@ -1,11 +1,11 @@
 {
   "name": "Avalanche Markup",
   "slug": "avalanche-markup",
-  "version": "1.9.7",
-  "download_url": "https://raw.githubusercontent.com/lancebeaudry/Web-Annotations/main/wordpress-plugin/avalanche-markup.zip",
+  "version": "1.9.8",
+  "download_url": "https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/avalanche-markup-1.9.8.zip",
   "homepage": "https://avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "1.9.7 — Security: project tokens are no longer listable and comment access is scoped to the project whose token you actually hold. IMPORTANT: update promptly — older versions can no longer look up their project."
+  "changelog": "1.9.8 — Updates now come from Avalanche's own servers instead of GitHub. Install this on every site: older versions will stop seeing updates once the old feed is retired. No other changes."
 }
