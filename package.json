@@ -10,7 +10,11 @@
     "dev": "node build.mjs --watch",
     "new-site": "node admin/new-site.mjs",
     "release": "node admin/release.mjs",
-    "release:dry": "node admin/release.mjs --dry-run"
+    "release:dry": "node admin/release.mjs --dry-run",
+    "build:app": "node build-app.mjs",
+    "dev:app": "node build-app.mjs --watch",
+    "deploy:app": "node admin/deploy-app.mjs",
+    "deploy:bundle": "node admin/deploy-app.mjs --bundle"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0"

@@ -4,19 +4,16 @@ import { savedName } from './auth.js';
 import { attachMentions, mentionLabel } from './mentions.js';
 import { attachImages } from './attach.js';
 import { authorEmail } from '../app.js';
+import { roleLabel, authorName } from '../roles.js';
 import { deviceLabel } from '../capture.js';
 
 function fmtDate(iso) {
   return (iso || '').slice(0, 10);
 }
 
+// "Name (role)" — the role is stamped on the row by the database at insert.
 function authorLabel(app, comment) {
-  const email = comment.author_email || '';
-  // Guests carry a synthetic 'guest:<uid>' id and always have a name.
-  const isGuest = email.startsWith('guest:');
-  const name = comment.author_name || (isGuest ? 'Guest' : email);
-  const isTeam = !isGuest && email.toLowerCase().endsWith(`@${app.teamDomain}`);
-  return `${name} (${isTeam ? 'Avalanche' : isGuest ? 'guest' : 'client'})`;
+  return `${authorName(comment)} (${roleLabel(comment)})`;
 }
 
 function replies(app, rootId) {
@@ -95,9 +92,10 @@ export function openThread(app, rootId) {
 
   const footer = h('div', { class: 'btn-row' });
 
-  // Delete: author of the pin or any team member; two-step confirm,
-  // removes the pin and all its replies.
-  const canDelete = app.isTeam || root.author_email === authorEmail(app);
+  // Delete: the author, the project owner, or staff; two-step confirm,
+  // removes the pin and all its replies. (Deleting stays allowed on a
+  // frozen project so authors can still trim their own data.)
+  const canDelete = app.canManage || root.author_email === authorEmail(app);
   if (canDelete) {
     const deleteBtn = h('button', { class: 'btn btn-danger' }, 'Delete');
     deleteBtn.addEventListener('click', () => {
@@ -113,7 +111,7 @@ export function openThread(app, rootId) {
       keepBtn.addEventListener('click', () => openThread(app, rootId));
       reallyBtn.addEventListener('click', async () => {
         reallyBtn.disabled = true;
-        const ok = await deleteComment(app.supabase, rootId);
+        const ok = await deleteComment(app.supabase, rootId, root.attachments);
         if (!ok) {
           toast(app.ui, 'Delete failed');
           openThread(app, rootId);
@@ -129,7 +127,7 @@ export function openThread(app, rootId) {
     footer.appendChild(deleteBtn);
   }
 
-  if (app.isTeam) {
+  if (app.canManage && app.writable) {
     const resolveBtn = h(
       'button',
       { class: `btn ${root.status === 'open' ? 'btn-teal' : 'btn-ghost'}` },

@@ -20,6 +20,34 @@ const AVMK_NOTIFY_OPTION = 'avalanche_markup_notify';
 // typing just their name — no WordPress account, no email code.
 const AVMK_OPEN_OPTION   = 'avalanche_markup_open';
 
+// The hosted backend. One backend serves every site; override the constant
+// only for a self-managed deployment.
+const AVMK_DEFAULT_SUPABASE_URL = 'https://vaculezzigjtgbysnajf.supabase.co';
+function avmk_supabase_url() {
+	$base = defined( 'AVALANCHE_MARKUP_SUPABASE_URL' ) ? AVALANCHE_MARKUP_SUPABASE_URL : '';
+	return untrailingslashit( $base ?: AVMK_DEFAULT_SUPABASE_URL );
+}
+// This site's own bridge secret — per project, rotatable from the dashboard
+// or Markup → Invite → Site secret. It lives ONLY in wp-config.php. It is
+// what lets the plugin sync settings and sign editors in for THIS project
+// and nothing else (before 2.0 every site shared one global secret, and
+// some carried the service-role key; both are gone).
+function avmk_project_secret() {
+	return defined( 'AVALANCHE_MARKUP_PROJECT_SECRET' ) ? (string) AVALANCHE_MARKUP_PROJECT_SECRET : '';
+}
+function avmk_bridge_headers() {
+	return [ 'Content-Type' => 'application/json', 'x-avmk-project-secret' => avmk_project_secret() ];
+}
+
+// A fresh install gets a random token so share links aren't guessable. The
+// project itself is registered the first time the owner opens
+// ?markup=TOKEN while signed in (or from the dashboard).
+register_activation_hook( __FILE__, function () {
+	if ( ! get_option( AVMK_OPTION, '' ) ) {
+		add_option( AVMK_OPTION, strtolower( wp_generate_password( 20, false ) ) );
+	}
+} );
+
 // Update feed. The plugin polls this manifest and offers a one-click update
 // on the Plugins screen whenever its `version` is newer than what's
 // installed. It lives in Avalanche's public Storage bucket (see
@@ -187,9 +215,11 @@ add_action( 'load-update-core.php', function () {
 
 // WordPress -> Supabase auto-sign-in bridge. The overlay calls this from
 // the visitor's browser; if they're logged into WordPress, we ask the
-// Supabase `wp-session` Edge Function (proven by a shared secret kept in
-// wp-config) to mint a real session for their WP email and hand the
-// tokens back. Logged-out visitors fall through to the 6-digit code flow.
+// `wp-session` Edge Function (proven by this site's own project secret
+// from wp-config) to mint a real session for their WP email and hand the
+// tokens back. Only the project's owner or invited collaborators get a
+// session — never Avalanche staff. Logged-out visitors fall through to the
+// email-code flow.
 // Returns no per-user data unless the request carries the user's own auth
 // cookie, so cached responses can't leak one user's session to another.
 add_action( 'rest_api_init', function () {
@@ -216,16 +246,14 @@ function avmk_rest_session() {
 		return [ 'loggedIn' => true, 'bridge' => false ];
 	}
 
-	$secret = defined( 'AVALANCHE_MARKUP_WP_AUTH_SECRET' ) ? AVALANCHE_MARKUP_WP_AUTH_SECRET : '';
-	$base   = defined( 'AVALANCHE_MARKUP_SUPABASE_URL' ) ? AVALANCHE_MARKUP_SUPABASE_URL : '';
-	if ( ! $secret || ! $base ) {
-		// Logged in, but this site hasn't enabled the WP bridge.
+	if ( ! avmk_project_secret() ) {
+		// Logged in, but this site hasn't been given its Site secret yet.
 		return [ 'loggedIn' => true, 'bridge' => false ];
 	}
 
 	$user = wp_get_current_user();
-	$res  = wp_remote_post( untrailingslashit( $base ) . '/functions/v1/wp-session', [
-		'headers' => [ 'Content-Type' => 'application/json', 'x-wp-auth-secret' => $secret ],
+	$res  = wp_remote_post( avmk_supabase_url() . '/functions/v1/wp-session', [
+		'headers' => avmk_bridge_headers(),
 		'body'    => wp_json_encode( [
 			'email'       => $user->user_email,
 			'name'        => $user->display_name,
@@ -272,50 +300,10 @@ function avmk_sanitize_emails( $raw ) {
 	return implode( "\n", array_keys( $out ) );
 }
 
-// Shared Supabase credentials from wp-config.php constants, or null if
-// the site hasn't been wired up. The service-role key must never live in
-// this file, the options table, or version control.
-function avmk_creds() {
-	$base = defined( 'AVALANCHE_MARKUP_SUPABASE_URL' ) ? AVALANCHE_MARKUP_SUPABASE_URL : '';
-	$key  = defined( 'AVALANCHE_MARKUP_SERVICE_KEY' ) ? AVALANCHE_MARKUP_SERVICE_KEY : '';
-	if ( ! $base || ! $key ) {
-		return null;
-	}
-	return [
-		'base'    => untrailingslashit( $base ),
-		'headers' => [
-			'apikey'        => $key,
-			'Authorization' => 'Bearer ' . $key,
-			'Content-Type'  => 'application/json',
-		],
-	];
-}
-
-// This site's Supabase project id (matched by site_url = home_url()), or
-// '' if it isn't registered yet.
-function avmk_project_id( $creds ) {
-	$res = wp_remote_get(
-		$creds['base'] . '/rest/v1/projects?select=id&site_url=eq.' . rawurlencode( untrailingslashit( home_url() ) ),
-		[ 'headers' => $creds['headers'], 'timeout' => 15 ]
-	);
-	if ( is_wp_error( $res ) ) {
-		return '';
-	}
-	$rows = json_decode( wp_remote_retrieve_body( $res ), true );
-	return ( is_array( $rows ) && ! empty( $rows[0]['id'] ) ) ? $rows[0]['id'] : '';
-}
-
-// Keep the Supabase `projects` row in sync with the token field. The
-// token lives in two places — this WP option (what the page sends) and
-// the projects table (what the tool recognizes). If they drift, visits
-// get "unknown project token". These hooks fire whenever the token is
-// saved here and push the new value to Supabase so the two never split.
-add_action( 'add_option_' . AVMK_OPTION, function ( $option, $value ) {
-	avmk_sync_token( '', $value );
-}, 10, 2 );
-add_action( 'update_option_' . AVMK_OPTION, function ( $old, $new ) {
-	avmk_sync_token( $old, $new );
-}, 10, 2 );
+// The token is only what the page sends. Registration happens when the
+// owner first opens ?markup=TOKEN signed in (the overlay creates the project,
+// owned by them) or from the dashboard — so there is nothing to sync here,
+// and no backend key is needed on this server.
 
 // Push the team notify-list to Supabase so the notifier Edge Function can
 // read it. Same two-places problem as the token: this list is edited in
@@ -337,20 +325,18 @@ add_action( 'update_option_' . AVMK_OPEN_OPTION, function ( $old, $new ) {
 }, 10, 2 );
 
 /**
- * Sync the open-feedback flag to Supabase via the shared-secret bridge
- * (staging/production sites deliberately have no service-role key).
+ * Sync the open-feedback flag (and site name) to the project via this
+ * site's bridge secret.
  */
 function avmk_sync_open( $value ) {
-	$on     = (bool) $value;
-	$secret = defined( 'AVALANCHE_MARKUP_WP_AUTH_SECRET' ) ? AVALANCHE_MARKUP_WP_AUTH_SECRET : '';
-	$base   = defined( 'AVALANCHE_MARKUP_SUPABASE_URL' ) ? AVALANCHE_MARKUP_SUPABASE_URL : '';
-	if ( ! $secret || ! $base ) {
-		avmk_notice( 'warning', 'Open feedback saved locally, but not synced: add AVALANCHE_MARKUP_WP_AUTH_SECRET (and AVALANCHE_MARKUP_SUPABASE_URL) to wp-config.php.' );
+	$on = (bool) $value;
+	if ( ! avmk_project_secret() ) {
+		avmk_notice( 'warning', 'Open feedback saved locally, but not synced: add AVALANCHE_MARKUP_PROJECT_SECRET to wp-config.php (find it under Markup → Invite → Site secret, or in the dashboard).' );
 		return;
 	}
-	$res = wp_remote_post( untrailingslashit( $base ) . '/functions/v1/project-settings', [
-		'headers' => [ 'Content-Type' => 'application/json', 'x-wp-auth-secret' => $secret ],
-		'body'    => wp_json_encode( [ 'token' => get_option( AVMK_OPTION, '' ), 'open_access' => $on ] ),
+	$res = wp_remote_post( avmk_supabase_url() . '/functions/v1/project-settings', [
+		'headers' => avmk_bridge_headers(),
+		'body'    => wp_json_encode( [ 'token' => get_option( AVMK_OPTION, '' ), 'open_access' => $on, 'name' => get_bloginfo( 'name' ) ] ),
 		'timeout' => 15,
 	] );
 	if ( ! is_wp_error( $res ) && 200 === (int) wp_remote_retrieve_response_code( $res ) ) {
@@ -364,154 +350,29 @@ function avmk_sync_open( $value ) {
 }
 
 /**
- * Rename (or create) this site's Supabase projects row so its token
- * matches what's saved here. The row is matched by site_url = home_url(),
- * so the rename keeps any existing comments attached. Credentials come
- * from wp-config.php constants — the service-role key must never live in
- * this file, the options table, or version control.
- */
-function avmk_sync_token( $old_token, $new_token ) {
-	$creds     = avmk_creds();
-	$new_token = trim( (string) $new_token );
-
-	if ( ! $creds ) {
-		avmk_notice( 'warning', 'Token saved locally, but not synced to Supabase: add AVALANCHE_MARKUP_SUPABASE_URL and AVALANCHE_MARKUP_SERVICE_KEY to wp-config.php.' );
-		return;
-	}
-	if ( '' === $new_token ) {
-		return; // Cleared field — nothing to point at.
-	}
-
-	$base    = $creds['base'];
-	$site    = untrailingslashit( home_url() );
-	$headers = $creds['headers'];
-
-	// Find the row for this site (independent of the token, which may
-	// be the value we're about to overwrite).
-	$project_id = avmk_project_id( $creds );
-
-	if ( $project_id ) {
-		$res = wp_remote_request(
-			$base . '/rest/v1/projects?id=eq.' . rawurlencode( $project_id ),
-			[
-				'method'  => 'PATCH',
-				'headers' => $headers + [ 'Prefer' => 'return=minimal' ],
-				'body'    => wp_json_encode( [ 'token' => $new_token ] ),
-				'timeout' => 15,
-			]
-		);
-		$action = 'updated';
-	} else {
-		$res = wp_remote_post(
-			$base . '/rest/v1/projects',
-			[
-				'headers' => $headers + [ 'Prefer' => 'return=minimal' ],
-				'body'    => wp_json_encode( [
-					'token'    => $new_token,
-					'name'     => get_bloginfo( 'name' ),
-					'site_url' => $site,
-				] ),
-				'timeout' => 15,
-			]
-		);
-		$action = 'created';
-	}
-
-	if ( is_wp_error( $res ) ) {
-		avmk_notice( 'error', 'Token sync to Supabase failed: ' . $res->get_error_message() );
-		return;
-	}
-	$code = wp_remote_retrieve_response_code( $res );
-	if ( $code >= 200 && $code < 300 ) {
-		avmk_notice( 'success', sprintf( 'Token synced to Supabase (project %s). %s/?markup=%s is live.', $action, esc_html( $site ), esc_html( $new_token ) ) );
-	} elseif ( 409 === $code ) {
-		avmk_notice( 'error', sprintf( 'Token "%s" is already used by another site in Supabase — pick a unique value.', esc_html( $new_token ) ) );
-	} else {
-		avmk_notice( 'error', 'Supabase rejected the token sync (HTTP ' . $code . '): ' . esc_html( wp_remote_retrieve_body( $res ) ) );
-	}
-}
-
-/**
- * Replace this project's notify_recipients in Supabase with the saved
- * list. These are the people emailed when a client leaves a comment.
+ * Replace this project's notify_recipients with the saved list, via this
+ * site's bridge secret. These are the people emailed on new comments.
  */
 function avmk_sync_notify( $value ) {
 	$emails = array_values( array_filter( array_map( 'trim', preg_split( '/\R/', (string) $value ) ) ) );
-
-	// Preferred path: the secure bridge (shared secret only — no service
-	// key on the server). This is how production sites sync.
-	$secret = defined( 'AVALANCHE_MARKUP_WP_AUTH_SECRET' ) ? AVALANCHE_MARKUP_WP_AUTH_SECRET : '';
-	$base   = defined( 'AVALANCHE_MARKUP_SUPABASE_URL' ) ? AVALANCHE_MARKUP_SUPABASE_URL : '';
-	if ( $secret && $base ) {
-		$res = wp_remote_post( untrailingslashit( $base ) . '/functions/v1/notify-sync', [
-			'headers' => [ 'Content-Type' => 'application/json', 'x-wp-auth-secret' => $secret ],
-			'body'    => wp_json_encode( [ 'token' => get_option( AVMK_OPTION, '' ), 'emails' => $emails ] ),
-			'timeout' => 15,
-		] );
-		if ( ! is_wp_error( $res ) && 200 === (int) wp_remote_retrieve_response_code( $res ) ) {
-			$n = count( $emails );
-			avmk_notice( 'success', $n
-				? sprintf( 'Notify list synced — %d %s will be emailed on new comments.', $n, $n === 1 ? 'person' : 'people' )
-				: 'Notify list cleared — no one will be emailed on new comments.' );
-			return;
-		}
-		// Bridge failed; fall through to the service-key path if available,
-		// otherwise surface the error.
-		if ( ! defined( 'AVALANCHE_MARKUP_SERVICE_KEY' ) ) {
-			$why = is_wp_error( $res ) ? $res->get_error_message() : ( 'HTTP ' . wp_remote_retrieve_response_code( $res ) . ' ' . wp_remote_retrieve_body( $res ) );
-			avmk_notice( 'error', 'Could not sync the notify list: ' . esc_html( $why ) );
-			return;
-		}
-	}
-
-	// Fallback path: direct writes with the service-role key (local dev).
-	$creds = avmk_creds();
-	if ( ! $creds ) {
-		avmk_notice( 'warning', 'Notify list saved locally, but not synced: add AVALANCHE_MARKUP_WP_AUTH_SECRET (and AVALANCHE_MARKUP_SUPABASE_URL) to wp-config.php.' );
+	if ( ! avmk_project_secret() ) {
+		avmk_notice( 'warning', 'Notify list saved locally, but not synced: add AVALANCHE_MARKUP_PROJECT_SECRET to wp-config.php (Markup → Invite → Site secret, or the dashboard).' );
 		return;
 	}
-	$project_id = avmk_project_id( $creds );
-	if ( ! $project_id ) {
-		avmk_notice( 'warning', 'Notify list saved, but this site has no Supabase project yet — save the token first, then re-save the list.' );
-		return;
-	}
-
-	$emails = array_filter( array_map( 'trim', preg_split( '/\R/', (string) $value ) ) );
-	$base   = $creds['base'];
-	$where  = '/rest/v1/notify_recipients?project_id=eq.' . rawurlencode( $project_id );
-
-	// Replace wholesale: clear this project's rows, then insert the set.
-	$del = wp_remote_request( $base . $where, [
-		'method'  => 'DELETE',
-		'headers' => $creds['headers'] + [ 'Prefer' => 'return=minimal' ],
+	$res = wp_remote_post( avmk_supabase_url() . '/functions/v1/notify-sync', [
+		'headers' => avmk_bridge_headers(),
+		'body'    => wp_json_encode( [ 'token' => get_option( AVMK_OPTION, '' ), 'emails' => $emails ] ),
 		'timeout' => 15,
 	] );
-	if ( is_wp_error( $del ) ) {
-		avmk_notice( 'error', 'Could not update the notify list in Supabase: ' . $del->get_error_message() );
+	if ( ! is_wp_error( $res ) && 200 === (int) wp_remote_retrieve_response_code( $res ) ) {
+		$n = count( $emails );
+		avmk_notice( 'success', $n
+			? sprintf( 'Notify list synced — %d %s will be emailed on new comments.', $n, $n === 1 ? 'person' : 'people' )
+			: 'Notify list cleared — no one will be emailed on new comments.' );
 		return;
 	}
-
-	if ( ! $emails ) {
-		avmk_notice( 'success', 'Notify list cleared — no one will be emailed on new comments.' );
-		return;
-	}
-
-	$rows = array_map( fn( $e ) => [ 'project_id' => $project_id, 'email' => strtolower( $e ) ], $emails );
-	$ins  = wp_remote_post( $base . '/rest/v1/notify_recipients', [
-		'headers' => $creds['headers'] + [ 'Prefer' => 'return=minimal' ],
-		'body'    => wp_json_encode( $rows ),
-		'timeout' => 15,
-	] );
-	if ( is_wp_error( $ins ) ) {
-		avmk_notice( 'error', 'Could not save the notify list: ' . $ins->get_error_message() );
-		return;
-	}
-	$code = wp_remote_retrieve_response_code( $ins );
-	if ( $code >= 200 && $code < 300 ) {
-		avmk_notice( 'success', sprintf( 'Notify list synced — %d %s will be emailed on new client comments.', count( $emails ), count( $emails ) === 1 ? 'person' : 'people' ) );
-	} else {
-		avmk_notice( 'error', 'Supabase rejected the notify list (HTTP ' . $code . '): ' . esc_html( wp_remote_retrieve_body( $ins ) ) );
-	}
+	$why = is_wp_error( $res ) ? $res->get_error_message() : ( 'HTTP ' . wp_remote_retrieve_response_code( $res ) . ' ' . wp_remote_retrieve_body( $res ) );
+	avmk_notice( 'error', 'Could not sync the notify list: ' . esc_html( $why ) );
 }
 
 // Stash a one-shot notice to show after the post-save redirect.
@@ -544,17 +405,25 @@ function avmk_settings_page() {
 	$open   = get_option( AVMK_OPEN_OPTION, '' );
 	?>
 	<div class="wrap">
-		<h1>Avalanche Markup</h1>
-		<p>Paste this site's project token. Feedback mode then activates only for visits with <code>?markup=TOKEN</code> in the URL — regular visitors never see anything.</p>
+			<h1>Avalanche Markup</h1>
+			<p>Feedback mode activates only for visits with <code>?markup=TOKEN</code> in the URL — regular visitors never see anything. The first time you open that link while signed in, the site is registered to your account.</p>
+			<p class="description">
+				Bridge secret:
+				<?php if ( avmk_project_secret() ) : ?>
+					<strong style="color:#1a7f37">configured</strong> — settings sync and editor auto-sign-in are on.
+				<?php else : ?>
+					<strong style="color:#b32d2e">not configured</strong> — add <code>define( 'AVALANCHE_MARKUP_PROJECT_SECRET', '…' );</code> to <code>wp-config.php</code>. Get the value from Markup → Invite → Site secret on this site, or from the dashboard.
+				<?php endif; ?>
+			</p>
 		<form method="post" action="options.php">
 			<?php settings_fields( 'avalanche_markup' ); ?>
 
 			<h2 class="title">Project token</h2>
-			<input type="text" class="regular-text code" name="<?php echo esc_attr( AVMK_OPTION ); ?>" value="<?php echo esc_attr( $token ); ?>" placeholder="e.g. client-name-1a2b3c4d">
+			<input type="text" class="regular-text code" name="<?php echo esc_attr( AVMK_OPTION ); ?>" value="<?php echo esc_attr( $token ); ?>" placeholder="e.g. acme-site">
 
 			<h2 class="title">Email notifications</h2>
 			<p>Who should be emailed when a client leaves a new comment on this site? One email address per line. Leave blank to turn notifications off.</p>
-			<textarea class="large-text code" rows="4" name="<?php echo esc_attr( AVMK_NOTIFY_OPTION ); ?>" placeholder="you@avalanchegr.com&#10;teammate@avalanchegr.com"><?php echo esc_textarea( $notify ); ?></textarea>
+			<textarea class="large-text code" rows="4" name="<?php echo esc_attr( AVMK_NOTIFY_OPTION ); ?>" placeholder="you@example.com&#10;teammate@example.com"><?php echo esc_textarea( $notify ); ?></textarea>
 			<p class="description">@mentions inside a comment always notify the person tagged — this list is the extra "tell the team about any new feedback" alert.</p>
 
 			<h2 class="title">Open feedback</h2>

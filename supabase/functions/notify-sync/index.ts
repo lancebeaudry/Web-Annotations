@@ -1,35 +1,20 @@
 // Avalanche Markup — notify-list sync bridge.
 //
-// Lets the WordPress plugin's "Email notifications" field sync to Supabase
-// WITHOUT a service-role key on the WP server. The plugin proves itself
-// with the shared WP_AUTH_SECRET (same one the auto-sign-in bridge uses);
-// this function then replaces the project's notify_recipients using the
-// service role it holds internally.
+// Lets the WordPress plugin's "Email notifications" field sync to the
+// backend WITHOUT any key on the WP server beyond the site's own bridge
+// secret (x-avmk-project-secret; see _shared/bridge.ts). Replaces the
+// project's notify_recipients wholesale.
 //
-// POST { token, emails: string[] }  header: x-wp-auth-secret
-// SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are injected automatically.
+// POST { token, emails: string[] }
+// Deploy: supabase functions deploy notify-sync --no-verify-jwt
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const WP_AUTH_SECRET = Deno.env.get("WP_AUTH_SECRET") ?? "";
+import { db, json } from "../_shared/db.ts";
+import { resolveProjectBySecret } from "../_shared/bridge.ts";
 
-const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-  });
-
-const svc = {
-  apikey: SERVICE_KEY,
-  Authorization: `Bearer ${SERVICE_KEY}`,
-  "Content-Type": "application/json",
-};
+const noStore = { "Cache-Control": "no-store" };
 
 Deno.serve(async (req) => {
-  if (req.method !== "POST") return json(405, { error: "POST only" });
-  if (!WP_AUTH_SECRET || req.headers.get("x-wp-auth-secret") !== WP_AUTH_SECRET) {
-    return json(401, { error: "bad secret" });
-  }
+  if (req.method !== "POST") return json(405, { error: "POST only" }, noStore);
 
   let token = "", emails: string[] = [];
   try {
@@ -37,38 +22,24 @@ Deno.serve(async (req) => {
     token = (b.token || "").toString().trim();
     emails = Array.isArray(b.emails) ? b.emails : [];
   } catch {
-    return json(400, { error: "bad payload" });
+    return json(400, { error: "bad payload" }, noStore);
   }
-  if (!token) return json(400, { error: "missing token" });
+  if (!token) return json(400, { error: "missing token" }, noStore);
 
-  // Resolve the project from its token.
-  const projects = await fetch(
-    `${SUPABASE_URL}/rest/v1/projects?token=eq.${encodeURIComponent(token)}&select=id`,
-    { headers: svc },
-  ).then((r) => r.json()).catch(() => []);
-  const projectId = projects?.[0]?.id;
-  if (!projectId) return json(400, { error: "unknown project token" });
+  const project = await resolveProjectBySecret(req, token);
+  if (!project) return json(401, { error: "bad secret or unknown token" }, noStore);
 
-  // Normalize + de-dupe the address list.
   const list = [...new Set(
-    emails.map((e) => (e || "").toString().toLowerCase().trim())
-      .filter((e) => e.includes("@")),
+    emails.map((e) => (e || "").toString().toLowerCase().trim()).filter((e) => e.includes("@")),
   )];
 
-  // Replace this project's recipients wholesale.
-  await fetch(
-    `${SUPABASE_URL}/rest/v1/notify_recipients?project_id=eq.${projectId}`,
-    { method: "DELETE", headers: { ...svc, Prefer: "return=minimal" } },
-  );
+  await db(`notify_recipients?project_id=eq.${project.id}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
   if (list.length) {
-    const rows = list.map((email) => ({ project_id: projectId, email }));
-    const ins = await fetch(`${SUPABASE_URL}/rest/v1/notify_recipients`, {
+    await db(`notify_recipients`, {
       method: "POST",
-      headers: { ...svc, Prefer: "return=minimal" },
-      body: JSON.stringify(rows),
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify(list.map((email) => ({ project_id: project.id, email }))),
     });
-    if (!ins.ok) return json(502, { error: "insert failed", detail: await ins.text() });
   }
-
-  return json(200, { synced: list.length });
+  return json(200, { synced: list.length }, noStore);
 });

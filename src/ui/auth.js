@@ -1,4 +1,6 @@
 import { h, toast } from './overlay.js';
+import { brandMark, poweredBy } from './brand.js';
+import { DASHBOARD_URL } from '../config.js';
 
 const NAME_KEY = 'markup_author_name';
 
@@ -8,6 +10,11 @@ export function savedName() {
   } catch {
     return '';
   }
+}
+
+// Card header: "Feedback · host" with the Avalanche mark.
+function cardHead(text) {
+  return h('div', { class: 'card-head' }, h('span', {}, text), brandMark(14));
 }
 
 // Email sign-in. We send a one-time code AND a magic link (the email
@@ -28,16 +35,17 @@ export function renderAuthCard(app) {
     h('p', { class: 'hint' }, 'Sign in once and you can click anywhere on the page to leave feedback.'),
     h('div', { class: 'field' }, h('label', {}, 'Your name'), nameInput),
     h('div', { class: 'field' }, h('label', {}, 'Email'), emailInput),
-    h('div', { class: 'btn-row' }, submit)
+    h('div', { class: 'btn-row' }, submit),
+    h(
+      'p',
+      { class: 'hint' },
+      'New here? ',
+      h('a', { href: DASHBOARD_URL, target: '_blank', rel: 'noopener' }, 'Create a free account')
+    )
   );
 
   const body = h('div', { class: 'card-body' }, form);
-  const card = h(
-    'div',
-    { class: 'card auth-card' },
-    h('div', { class: 'card-head' }, `Feedback · ${document.location.hostname}`),
-    body
-  );
+  const card = h('div', { class: 'card auth-card' }, cardHead(`Feedback · ${document.location.hostname}`), body, poweredBy('card'));
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -67,7 +75,8 @@ export function renderAuthCard(app) {
   app.authCard = card;
 }
 
-// Second step: enter the 6-digit code from the email.
+// Second step: enter the code from the email (6 digits; older mail
+// templates sent 8, so the field accepts either).
 function renderCodeStep(app, body, email) {
   const { ui } = app;
 
@@ -76,7 +85,7 @@ function renderCodeStep(app, body, email) {
     inputmode: 'numeric',
     autocomplete: 'one-time-code',
     maxlength: '8',
-    placeholder: '12345678',
+    placeholder: '123456',
   });
   const verify = h('button', { class: 'btn', type: 'submit' }, 'Verify & start');
   const back = h('button', { class: 'btn btn-ghost', type: 'button' }, 'Use a different email');
@@ -97,7 +106,7 @@ function renderCodeStep(app, body, email) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const token = codeInput.value.trim();
-    if (token.length < 4) return; // codes are 8 digits; floor guards empty/typo submits
+    if (token.length < 4) return;
     verify.disabled = true;
     verify.textContent = 'Verifying…';
     // New users come through as a 'signup' OTP, existing users as 'email';
@@ -127,25 +136,26 @@ export function renderGuestCard(app) {
 
   const nameInput = h('input', { type: 'text', placeholder: 'Sarah', value: savedName(), required: 'true' });
   const submit = h('button', { class: 'btn', type: 'submit' }, 'Start commenting');
-  const teamLink = h('button', { class: 'btn btn-ghost', type: 'button' }, 'Avalanche team? Sign in');
+  const accountLink = h('button', { class: 'btn btn-ghost', type: 'button' }, 'Have an account? Sign in');
 
   const form = h(
     'form',
     {},
     h('p', { class: 'hint' }, 'Add your name so the team knows whose feedback is whose, then click anywhere on the page to comment.'),
     h('div', { class: 'field' }, h('label', {}, 'Your name'), nameInput),
-    h('div', { class: 'btn-row' }, teamLink, submit)
+    h('div', { class: 'btn-row' }, accountLink, submit)
   );
 
   const card = h(
     'div',
     { class: 'card auth-card' },
-    h('div', { class: 'card-head' }, `Feedback · ${document.location.hostname}`),
-    h('div', { class: 'card-body' }, form)
+    cardHead(`Feedback · ${document.location.hostname}`),
+    h('div', { class: 'card-body' }, form),
+    poweredBy('card')
   );
 
-  // Team members still need the email path to get Export/Resolve.
-  teamLink.addEventListener('click', () => {
+  // Owners, collaborators and staff need the email path to get their role.
+  accountLink.addEventListener('click', () => {
     removeAuthCard(app);
     renderAuthCard(app);
   });

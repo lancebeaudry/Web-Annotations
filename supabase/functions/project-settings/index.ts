@@ -1,58 +1,42 @@
 // Avalanche Markup — project settings sync bridge.
 //
-// Lets the WordPress plugin push per-project flags (currently the
-// "open feedback" toggle) to Supabase WITHOUT a service-role key on the
-// WP server. The plugin proves itself with the shared WP_AUTH_SECRET —
-// the same pattern as wp-session and notify-sync — and this function
-// applies the update with the service role it holds internally.
+// Lets the WordPress plugin push per-project settings (the "open feedback"
+// toggle, and the site name) using only the site's own bridge secret
+// (x-avmk-project-secret; see _shared/bridge.ts).
 //
-// POST { token, open_access }  header: x-wp-auth-secret
-// SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are injected automatically.
+// POST { token, open_access?, name? }
+// Deploy: supabase functions deploy project-settings --no-verify-jwt
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const WP_AUTH_SECRET = Deno.env.get("WP_AUTH_SECRET") ?? "";
+import { db, json } from "../_shared/db.ts";
+import { resolveProjectBySecret } from "../_shared/bridge.ts";
 
-const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-  });
-
-const svc = {
-  apikey: SERVICE_KEY,
-  Authorization: `Bearer ${SERVICE_KEY}`,
-  "Content-Type": "application/json",
-};
+const noStore = { "Cache-Control": "no-store" };
 
 Deno.serve(async (req) => {
-  if (req.method !== "POST") return json(405, { error: "POST only" });
-  if (!WP_AUTH_SECRET || req.headers.get("x-wp-auth-secret") !== WP_AUTH_SECRET) {
-    return json(401, { error: "bad secret" });
-  }
+  if (req.method !== "POST") return json(405, { error: "POST only" }, noStore);
 
-  let token = "", openAccess = false;
+  let token = "", body: any = {};
   try {
-    const b = await req.json();
-    token = (b.token || "").toString().trim();
-    openAccess = b.open_access === true || b.open_access === "1";
+    body = await req.json();
+    token = (body.token || "").toString().trim();
   } catch {
-    return json(400, { error: "bad payload" });
+    return json(400, { error: "bad payload" }, noStore);
   }
-  if (!token) return json(400, { error: "missing token" });
+  if (!token) return json(400, { error: "missing token" }, noStore);
 
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/projects?token=eq.${encodeURIComponent(token)}`,
-    {
-      method: "PATCH",
-      headers: { ...svc, Prefer: "return=representation" },
-      body: JSON.stringify({ open_access: openAccess }),
-    },
-  );
-  if (!res.ok) return json(502, { error: "update failed", detail: await res.text() });
+  const project = await resolveProjectBySecret(req, token);
+  if (!project) return json(401, { error: "bad secret or unknown token" }, noStore);
 
-  const rows = await res.json().catch(() => []);
-  if (!rows?.length) return json(400, { error: "unknown project token" });
+  const patch: Record<string, unknown> = {};
+  if ("open_access" in body) patch.open_access = body.open_access === true || body.open_access === "1";
+  const name = (body.name ?? "").toString().trim().slice(0, 120);
+  if (name) patch.name = name;
+  if (!Object.keys(patch).length) return json(400, { error: "nothing to update" }, noStore);
 
-  return json(200, { open_access: openAccess });
+  await db(`projects?id=eq.${project.id}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify(patch),
+  });
+  return json(200, patch, noStore);
 });

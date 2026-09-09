@@ -205,7 +205,7 @@ function item(app, comment, number, onThisPage) {
   const actions = h('div', { class: 'side-actions' });
   actions.addEventListener('click', (e) => e.stopPropagation());
 
-  if (app.isTeam) {
+  if (app.canManage && app.writable) {
     const resolveBtn = h(
       'button',
       { class: 'mini-btn teal' },
@@ -227,7 +227,7 @@ function item(app, comment, number, onThisPage) {
     actions.appendChild(resolveBtn);
   }
 
-  if (app.isTeam || comment.author_email === authorEmail(app)) {
+  if (app.canManage || comment.author_email === authorEmail(app)) {
     const deleteBtn = h('button', { class: 'mini-btn danger' }, 'Delete');
     deleteBtn.addEventListener('click', () => {
       const yes = h('button', { class: 'mini-btn danger' }, 'Yes, delete');
@@ -236,7 +236,7 @@ function item(app, comment, number, onThisPage) {
       no.addEventListener('click', () => app.refresh());
       yes.addEventListener('click', async () => {
         yes.disabled = true;
-        const ok = await deleteComment(app.supabase, comment.id);
+        const ok = await deleteComment(app.supabase, comment.id, comment.attachments);
         if (!ok) {
           toast(app.ui, 'Delete failed');
           app.refresh();

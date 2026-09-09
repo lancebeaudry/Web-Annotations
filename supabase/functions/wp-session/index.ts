@@ -3,38 +3,25 @@
 // Called server-side by the WP plugin's /session REST route ONLY for a
 // user who is already logged into WordPress. Given that user's email, it
 // mints a real Supabase session (access + refresh token) so the overlay
-// can run with full RLS/realtime exactly as if they'd used email sign-in.
+// runs with full RLS/realtime exactly as if they'd used email sign-in.
 //
-// Trust model: the caller proves it's our plugin with a shared secret
-// (WP_AUTH_SECRET). The plugin only ever sends the *currently logged-in*
-// WP user's email. Team-domain emails are refused outright — a compromised
-// client WP server must never be able to mint a team session (those carry
-// export/delete powers). Worst case is a client-level session.
+// Trust model (2.0): the caller proves it speaks for ONE site with that
+// project's own bridge secret (x-avmk-project-secret; see _shared/bridge.ts).
+// A session is minted only for the project's OWNER or an invited
+// COLLABORATOR — never for an operator (staff sign in with the email code),
+// and never for an arbitrary WP editor. A leaked secret is therefore scoped
+// to its project and its already-invited people, and can be rotated.
 //
-// Secrets: WP_AUTH_SECRET (shared with the plugin), TEAM_DOMAIN (optional).
-// SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are injected automatically.
+// POST { email, name, token, redirect_to }  header: x-avmk-project-secret
+// Deploy: supabase functions deploy wp-session --no-verify-jwt
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const WP_AUTH_SECRET = Deno.env.get("WP_AUTH_SECRET") ?? "";
+import { SUPABASE_URL, svcHeaders, db, json } from "../_shared/db.ts";
+import { resolveProjectBySecret } from "../_shared/bridge.ts";
 
-const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-  });
-
-const svc = {
-  apikey: SERVICE_KEY,
-  Authorization: `Bearer ${SERVICE_KEY}`,
-  "Content-Type": "application/json",
-};
+const noStore = { "Cache-Control": "no-store" };
 
 Deno.serve(async (req) => {
-  if (req.method !== "POST") return json(405, { error: "POST only" });
-  if (!WP_AUTH_SECRET || req.headers.get("x-wp-auth-secret") !== WP_AUTH_SECRET) {
-    return json(401, { error: "bad secret" });
-  }
+  if (req.method !== "POST") return json(405, { error: "POST only" }, noStore);
 
   let email = "", name = "", token = "", redirectTo = SUPABASE_URL;
   try {
@@ -44,36 +31,26 @@ Deno.serve(async (req) => {
     token = (b.token || "").toString().trim();
     if (b.redirect_to) redirectTo = b.redirect_to;
   } catch {
-    return json(400, { error: "bad payload" });
+    return json(400, { error: "bad payload" }, noStore);
   }
-  if (!email || !email.includes("@")) return json(400, { error: "bad email" });
+  if (!email || !email.includes("@")) return json(400, { error: "bad email" }, noStore);
 
-  // Any logged-in editor/admin the plugin vouches for gets a session —
-  // team members included (they auto-sign-in on WordPress like everyone
-  // else). Trade-off: a leaked WP_AUTH_SECRET could mint a team session,
-  // so guard that secret and rotate it if a site is ever compromised.
+  const project = await resolveProjectBySecret(req, token);
+  if (!project) return json(401, { error: "bad secret or unknown token" }, noStore);
 
-  // Resolve the site's project from its token — a WP user is granted
-  // access to THAT project only, not everything.
-  const projects = await fetch(
-    `${SUPABASE_URL}/rest/v1/projects?token=eq.${encodeURIComponent(token)}&select=id`,
-    { headers: svc },
-  ).then((r) => r.json()).catch(() => []);
-  const projectId = projects?.[0]?.id;
-  if (!projectId) return json(400, { error: "unknown project token" });
+  // Who is this email to this project? (SECURITY DEFINER SQL; service role.)
+  const access = await db<string>(`rpc/bridge_user_access`, {
+    method: "POST",
+    body: JSON.stringify({ p_project: project.id, p_email: email }),
+  });
+  if (access === "operator") return json(403, { error: "operators sign in with their email code" }, noStore);
+  if (access !== "owner" && access !== "collaborator") return json(403, { error: "not a collaborator on this project" }, noStore);
 
   // Ensure the auth user exists (idempotent — ignore "already registered").
   await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
     method: "POST",
-    headers: svc,
+    headers: svcHeaders(),
     body: JSON.stringify({ email, email_confirm: true, user_metadata: { name } }),
-  }).catch(() => {});
-
-  // Grant membership to this project (and only this project).
-  await fetch(`${SUPABASE_URL}/rest/v1/project_members`, {
-    method: "POST",
-    headers: { ...svc, Prefer: "resolution=merge-duplicates" },
-    body: JSON.stringify({ project_id: projectId, email, note: "WordPress user" }),
   }).catch(() => {});
 
   // Mint a real session: generate a magic link, then follow the verify
@@ -81,12 +58,12 @@ Deno.serve(async (req) => {
   // result hash (the same exchange a browser would do on click).
   const gen = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
     method: "POST",
-    headers: svc,
+    headers: svcHeaders(),
     body: JSON.stringify({ type: "magiclink", email, redirect_to: redirectTo }),
   });
-  if (!gen.ok) return json(502, { error: "generate_link failed", detail: await gen.text() });
+  if (!gen.ok) return json(502, { error: "generate_link failed", detail: await gen.text() }, noStore);
   const actionLink = (await gen.json()).action_link;
-  if (!actionLink) return json(502, { error: "no action link" });
+  if (!actionLink) return json(502, { error: "no action link" }, noStore);
 
   const verify = await fetch(actionLink, { redirect: "manual" });
   const loc = verify.headers.get("location") || "";
@@ -95,8 +72,8 @@ Deno.serve(async (req) => {
   const access_token = p.get("access_token");
   const refresh_token = p.get("refresh_token");
   if (!access_token || !refresh_token) {
-    return json(502, { error: "could not mint session", location: loc.slice(0, 200) });
+    return json(502, { error: "could not mint session", location: loc.slice(0, 200) }, noStore);
   }
 
-  return json(200, { access_token, refresh_token, email });
+  return json(200, { access_token, refresh_token, email, role: access }, noStore);
 });

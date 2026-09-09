@@ -1,10 +1,10 @@
 // All Supabase reads/writes live here.
 
 // Resolve a token -> project. This goes through get_project_by_token()
-// rather than reading `projects` directly: the table is no longer listable
-// (that let anyone enumerate every client token), and the function is also
-// what records the "unlock" proving this visitor knew the token, which is
-// what grants read access to an open project's comments.
+// rather than reading `projects` directly: the table is not listable (that
+// would let anyone enumerate every customer's token), and the function is
+// also what records the "unlock" proving this visitor knew the token, which
+// is what grants read access to an open project's comments.
 export async function fetchProject(supabase, token) {
   const { data, error } = await supabase
     .rpc('get_project_by_token', { p_token: token })
@@ -16,37 +16,54 @@ export async function fetchProject(supabase, token) {
   return data;
 }
 
-// Team-only: register a site the first time a team member opens it, so the
-// link works for everyone afterward. RLS ("team creates projects") only lets
-// @avalanchegr.com callers insert; the unique token index makes concurrent
-// first-visits safe (the loser gets an error and re-reads). Returns the new
-// row, or null if it couldn't be created (race, or not a team account).
+// Register a site the first time a signed-in account opens it. The DB
+// forces owner_id = the caller and enforces their plan's project limit
+// (raises PROJECT_LIMIT_REACHED). The unique token index makes concurrent
+// first-visits safe (the loser gets an error and re-reads). Returns
+// { data, error } so the caller can tell "limit reached" from "race".
 export async function createProject(supabase, { token, name, site_url, open_access }) {
   const { data, error } = await supabase
     .from('projects')
     .insert({ token, name, site_url, open_access: !!open_access })
     .select('id, name, site_url, open_access')
     .maybeSingle();
+  if (error) console.warn('[markup] project create failed:', error.message);
+  return { data, error };
+}
+
+// The viewer's role on this project and whether it accepts writes, resolved
+// server-side in one call: operator | owner | collaborator | guest | none.
+export async function fetchAccess(supabase, projectId) {
+  const { data, error } = await supabase.rpc('my_project_role', { p_project: projectId });
+  if (error || !data) {
+    if (error) console.warn('[markup] access check failed:', error.message);
+    return { role: 'none', writable: false };
+  }
+  return { role: data.role || 'none', writable: !!data.writable };
+}
+
+// The viewer's account: plan, limits, operator flag.
+export async function fetchAccount(supabase) {
+  const { data, error } = await supabase.rpc('my_account');
   if (error) {
-    console.warn('[markup] project create failed:', error.message);
+    console.warn('[markup] account lookup failed:', error.message);
     return null;
   }
   return data;
 }
 
-// Is the signed-in user a member of this project? (Team-domain emails are
-// checked separately and don't need a membership row.)
-export async function isMember(supabase, projectId) {
-  const { data, error } = await supabase.rpc('is_member', { p_project: projectId });
-  if (error) {
-    console.warn('[markup] membership check failed:', error.message);
-    return false;
-  }
-  return !!data;
+// Per-project bridge secret (owner/operator only).
+export async function getBridgeSecret(supabase, projectId) {
+  const { data, error } = await supabase.rpc('get_bridge_secret', { p_project: projectId });
+  return error ? { error: error.message } : { secret: data };
+}
+export async function rotateBridgeSecret(supabase, projectId) {
+  const { data, error } = await supabase.rpc('rotate_bridge_secret', { p_project: projectId });
+  return error ? { error: error.message } : { secret: data };
 }
 
-// Invite management — now per project (team-only; enforced by the
-// SECURITY DEFINER functions, so a non-team caller just gets an error).
+// Invite management — owner/operator only (enforced by the SECURITY
+// DEFINER functions, so a non-owner caller just gets an error).
 export async function inviteEmail(supabase, projectId, email, note) {
   const { error } = await supabase.rpc('invite_email', { p_project: projectId, p_email: email, p_note: note || null });
   return error ? error.message : null;
@@ -67,8 +84,8 @@ export async function revokeInvite(supabase, projectId, email) {
 }
 
 // People who can be @mentioned on this project: everyone who has
-// participated here plus the team's notify list (project-scoped on the
-// server so it never leaks other clients' emails). Returns [{email, name}].
+// participated here plus the notify list and the owner (project-scoped on
+// the server so it never leaks other customers' emails). [{email, name}]
 export async function listMentionable(supabase, projectId) {
   const { data, error } = await supabase.rpc('list_mentionable', { p_project: projectId });
   if (error) {
@@ -91,7 +108,8 @@ export async function fetchComments(supabase, projectId) {
   return data || [];
 }
 
-// Upload one image to the comment-media bucket, namespaced by project.
+// Upload one image to the comment-media bucket, namespaced by project. The
+// storage policy requires that prefix and checks the project's quota.
 // Returns { url, name, type } to store on the comment, or null on failure.
 export async function uploadAttachment(supabase, projectId, file) {
   const ext = ((file.name || '').split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
@@ -134,12 +152,21 @@ export async function updateComment(supabase, id, patch) {
   return data;
 }
 
-// Deleting a top-level comment cascades to its replies (FK on delete cascade).
-export async function deleteComment(supabase, id) {
+// Deleting a top-level comment cascades to its replies (FK on delete
+// cascade). Its own image attachments are removed best-effort here; the DB
+// also tombstones them so the hourly sweeper catches anything missed.
+export async function deleteComment(supabase, id, attachments = []) {
   const { error } = await supabase.from('comments').delete().eq('id', id);
   if (error) {
     console.warn('[markup] comment delete failed:', error.message);
     return false;
+  }
+  const paths = (attachments || [])
+    .map((a) => ((a && a.url) || '').split('/comment-media/')[1])
+    .filter(Boolean)
+    .map((p) => decodeURIComponent(p));
+  if (paths.length) {
+    supabase.storage.from('comment-media').remove(paths).catch(() => {});
   }
   return true;
 }

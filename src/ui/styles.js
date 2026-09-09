@@ -54,12 +54,22 @@ export const CSS = `
   color: #00263D;
   margin-right: 6px;
   white-space: nowrap;
+  text-decoration: none;
+  padding: 4px 6px;
+  border-radius: 6px;
 }
-.toolbar-brand .dot {
-  width: 13px; height: 13px;
-  border-radius: 50% 50% 50% 3px;
-  background: #1B6493;
-  flex: none;
+.toolbar-brand svg { width: 16px; height: 16px; color: #1B6493; flex: none; }
+.toolbar-brand:hover { background: #eef2f4; color: #1B6493; }
+.toolbar-brand:focus-visible { outline: 2px solid #1B6493; outline-offset: 2px; }
+.readonly-strip {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8a5a00;
+  background: #fff4dc;
+  border: 1px solid #f1dfb0;
+  border-radius: 6px;
+  padding: 4px 8px;
+  white-space: nowrap;
 }
 .toolbar-hint {
   font-size: 12px;
@@ -75,7 +85,6 @@ export const CSS = `
   border-radius: 4px;
   padding: 1px 5px;
 }
-.toolbar .spacer { margin-left: auto; }
 .toolbar-who {
   font-size: 12px;
   font-weight: 600;
@@ -84,11 +93,13 @@ export const CSS = `
   margin-left: 4px;
 }
 /* Narrow widths (e.g. inside the tablet/mobile preview frame): drop the
-   non-essential brand + shortcut hint so the action buttons all fit.
-   Placed after the base .toolbar-brand/.toolbar-hint rules so it wins. */
+   shortcut hint and the brand TEXT so the action buttons all fit — the
+   brand mark itself stays visible and clickable. */
 @media (max-width: 860px) {
   .toolbar { gap: 6px; padding: 0 10px; }
-  .toolbar-brand, .toolbar-hint { display: none; }
+  .toolbar-hint { display: none; }
+  .toolbar-brand .brand-text { display: none; }
+  .toolbar-brand { margin-right: 0; padding: 4px; }
 }
 /* Phones: Comment/Browse become icon-only so the row fits. */
 @media (max-width: 560px) {
@@ -258,6 +269,23 @@ export const CSS = `
   padding: 2px 4px;
 }
 .card-body { padding: 14px; background: #fff; }
+.card-body a { color: #1B6493; font-weight: 600; }
+.card-head svg { color: #9BE3FF; width: 14px; height: 14px; flex: none; }
+/* Credit line on the auth/guest/blocked/unregistered cards. */
+.powered-by {
+  padding: 8px 14px;
+  font-size: 11px;
+  color: #6b7a85;
+  border-top: 1px solid #eef2f4;
+  background: #F9F9F9;
+}
+.powered-by a { color: #1B6493; font-weight: 600; text-decoration: none; }
+.powered-by a:hover { text-decoration: underline; }
+/* Site secret in the Invite panel. */
+.secret-box { margin-top: 12px; padding-top: 10px; border-top: 1px solid #eef2f4; }
+.secret-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.secret-value { font-size: 11px; background: #F9F9F9; padding: 4px 6px; border-radius: 4px; word-break: break-all; flex: 1 1 100%; }
+.invite-foot { margin-top: 10px; }
 
 .btn {
   background: #1B6493;

@@ -1,7 +1,8 @@
-// Team-only export: open comments grouped by page, as Markdown ready
+// Owner/staff export: open comments grouped by page, as Markdown ready
 // to paste into Claude Code, or raw JSON for scripting.
 
 import { deviceLabel } from './capture.js';
+import { roleLabel, authorName } from './roles.js';
 
 function rgbToHex(value) {
   const m = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/.exec(value || '');
@@ -37,11 +38,7 @@ function label(comment) {
 }
 
 function authorLine(app, comment) {
-  const email = comment.author_email || '';
-  const isGuest = email.startsWith('guest:');
-  const name = comment.author_name || (isGuest ? 'Guest' : email);
-  const isTeam = !isGuest && email.toLowerCase().endsWith(`@${app.teamDomain}`);
-  return `${name} (${isTeam ? 'Avalanche' : isGuest ? 'guest' : 'client'}), ${(comment.created_at || '').slice(0, 10)}`;
+  return `${authorName(comment)} (${roleLabel(comment)}), ${(comment.created_at || '').slice(0, 10)}`;
 }
 
 function openRoots(app, scope) {
@@ -68,7 +65,11 @@ export function buildMarkdown(app, scope) {
     byPage.get(c.page_path).push(c);
   }
 
-  const blocks = [];
+  const blocks = [
+    `# Feedback — ${siteHost}`,
+    '_Exported from Avalanche Markup — https://avalanchegr.com_',
+    '',
+  ];
   for (const [path, comments] of byPage) {
     const lines = [`## Feedback: ${path}  (${siteHost}${path === '/' ? '' : path})`, ''];
     comments.forEach((c, i) => {

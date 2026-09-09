@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, TEAM_DOMAIN } from './config.js';
-import { fetchProject, fetchComments, subscribeRealtime, isMember, createProject } from './data.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, DASHBOARD_URL } from './config.js';
+import { fetchProject, fetchComments, subscribeRealtime, fetchAccess, createProject } from './data.js';
 import { mountOverlay, toast, h } from './ui/overlay.js';
 import { renderAuthCard, renderGuestCard, removeAuthCard, savedName } from './ui/auth.js';
 import { renderPins } from './ui/pins.js';
@@ -10,6 +10,7 @@ import { toggleSidebar, closeSidebar, refreshSidebar, openRootCount, resumeJumpA
 import { toggleInviteMenu } from './ui/invite.js';
 import { prefetchMentionables } from './ui/mentions.js';
 import { buildMarkdown, buildJson, copyToClipboard } from './export.js';
+import { brandLink, poweredBy } from './ui/brand.js';
 
 // True when the overlay is running inside the device-preview iframe (a
 // same-origin copy of the page). In that context we hide the device
@@ -40,10 +41,14 @@ export async function init(token, options = {}) {
   const app = {
     token,
     supabase,
-    teamDomain: TEAM_DOMAIN.toLowerCase(),
     project: null,
     session: null,
-    isTeam: false,
+    // Resolved server-side by my_project_role(): operator | owner |
+    // collaborator | guest | none, plus whether the project accepts writes
+    // (an owner over their plan limit has newer projects frozen read-only).
+    role: 'none',
+    writable: false,
+    canManage: false,
     // "Open feedback" is on for this site (plugin data-open): visitors can
     // comment as a guest with just a name. RLS enforces the same flag
     // server-side via projects.open_access.
@@ -114,7 +119,8 @@ export async function init(token, options = {}) {
 }
 
 // Leave guest mode: drop the anonymous session and come back on the email
-// sign-in form, so a team member can pick up Export/Resolve.
+// sign-in form, so an account holder (owner, collaborator or staff) gets
+// their real role — Invite/Export/Resolve for owners and staff.
 export async function signInAsTeam(app) {
   try {
     sessionStorage.setItem('markup_force_email', '1');
@@ -176,16 +182,16 @@ async function fetchProjectSettled(app) {
   return project;
 }
 
-// Team-only: create the project row for a site being opened for the first
-// time. The display name is taken from the page title (trimmed to the part
-// before a " – Tagline" separator); open_access mirrors the plugin's
-// data-open flag captured at init. If the insert loses a race with another
-// team member's first visit (unique token), we simply re-read the row they
-// created.
+// Create the project row for a site being opened for the first time, OWNED
+// by the signed-in account (the DB forces owner = caller and enforces the
+// plan limit). The display name is taken from the page title (trimmed to
+// the part before a " – Tagline" separator); open_access mirrors the
+// plugin's data-open flag. If the insert loses a race with someone else's
+// first visit (unique token), re-read the row they created.
 async function registerProject(app) {
   const titled = (document.title || '').split(/[|–—-]/)[0].trim();
   const name = (titled || app.token).slice(0, 120);
-  const created = await createProject(app.supabase, {
+  const { data: created, error } = await createProject(app.supabase, {
     token: app.token,
     name,
     site_url: location.origin,
@@ -194,6 +200,10 @@ async function registerProject(app) {
   if (created) {
     toast(app.ui, `Markup: registered “${created.name}”`);
     return created;
+  }
+  if (error && /PROJECT_LIMIT/.test(error.message || '')) {
+    app._limitReached = true;
+    return null;
   }
   return await fetchProjectSettled(app);
 }
@@ -205,48 +215,31 @@ async function start(app) {
   // Anonymous (guest) sessions have NO email, so this must stay guarded.
   app.isGuest = !!app.session.user.is_anonymous;
   const email = (app.session.user.email || '').toLowerCase();
-  app.isTeam = !app.isGuest && email.endsWith(`@${app.teamDomain}`);
 
   // First authed read. On the code-verification path the just-attached
-  // session can lag the first request by a tick (it reads as anon, so RLS
-  // returns nothing — which looked like "unknown project token"). Retry
-  // briefly before trusting an empty result; this also settles the
-  // session for the invite check and comment reads that follow.
+  // session can lag the first request by a tick; retry briefly before
+  // trusting an empty result.
   app.project = await fetchProjectSettled(app);
-  if (!app.project && app.isTeam) {
-    // First time an Avalanche team member opens this site: self-register it
-    // so the link resolves for everyone from now on. New sites carry no
-    // service key, so this is what replaces manual backend registration.
+  if (!app.project && !app.isGuest) {
+    // First visit to an unregistered site by a signed-in account: register
+    // it, owned by them. The database enforces their plan's project limit.
     app.project = await registerProject(app);
   }
   if (!app.project) {
-    if (app.isTeam) {
-      toast(app.ui, 'Markup: couldn’t register this site — try again');
-    } else {
-      // Not a dead-end toast: on a brand-new open-feedback site a team
-      // member gets routed into the guest name card first and lands here
-      // as an anonymous guest who can't register. Give them a way to
-      // switch to team sign-in (which also clears the stuck guest session).
-      renderUnregisteredCard(app);
-    }
+    if (app._limitReached) renderLimitCard(app);
+    else if (!app.isGuest) toast(app.ui, 'Markup: couldn’t register this site — try again');
+    else renderUnregisteredCard(app); // a guest can't register; offer sign-in
     return;
   }
 
-  // A logged-out visitor only learns a project is "open" from the static
-  // data-open flag the plugin prints on the script tag. Anyone WITH a
-  // session can instead read open_access straight off the project row (RLS
-  // lets any authenticated user see projects). Trusting the row means an
-  // already-signed-in visitor — e.g. a client who once used an email code —
-  // isn't dead-ended just because their site's plugin predates data-open.
-  app.openAccess = app.openAccess || !!app.project.open_access;
-
-  // Access gate: team is always allowed; on an open-feedback project ANY
-  // signed-in visitor may comment — a name-only guest, or someone on their
-  // own email — because the insert policy pins each to their own identity.
-  // Everyone else must be a member of THIS project. Export stays team-only.
-  app.allowed = app.isTeam
-    || app.openAccess
-    || (!app.isGuest && (await isMember(app.supabase, app.project.id)));
+  // Role + write access, decided server-side in one call. Open-feedback is
+  // folded in there too (a guest or unlocked visitor on an open project
+  // comes back as role 'guest'), so there is no client-side gate to drift.
+  const access = await fetchAccess(app.supabase, app.project.id);
+  app.role = access.role;
+  app.writable = access.writable;
+  app.canManage = app.role === 'operator' || app.role === 'owner';
+  app.allowed = app.role !== 'none';
   if (!app.allowed) {
     renderBlockedCard(app, email || 'this guest session');
     return;
@@ -287,7 +280,7 @@ async function start(app) {
     const tag = t && t.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
     const k = e.key.toLowerCase();
-    if (k === 'c') setCommentMode(app, true);
+    if (k === 'c' && app.writable) setCommentMode(app, true);
     else if (k === 'b') setCommentMode(app, false);
   });
 
@@ -465,12 +458,7 @@ function renderToolbar(app) {
     n ? `Comments (${n})` : 'Comments'
   );
 
-  const brand = h(
-    'div',
-    { class: 'toolbar-brand' },
-    h('span', { class: 'dot' }),
-    'Avalanche Markup'
-  );
+  const brand = brandLink('toolbar');
   const hint = h(
     'span',
     { class: 'toolbar-hint' },
@@ -486,7 +474,18 @@ function renderToolbar(app) {
     ? h('span', { class: 'toolbar-who' }, `${savedName() || 'Guest'} · guest`)
     : null;
 
-  const toolbar = h('div', { class: 'toolbar' }, brand, app.modeBtn, app.browseBtn, app.sidebarBtn);
+  // A frozen project (owner over their plan limit) is read-only: no Comment
+  // button, and a strip that says why.
+  const toolbar = app.writable
+    ? h('div', { class: 'toolbar' }, brand, app.modeBtn, app.browseBtn, app.sidebarBtn)
+    : h(
+        'div',
+        { class: 'toolbar' },
+        brand,
+        app.browseBtn,
+        app.sidebarBtn,
+        h('span', { class: 'readonly-strip' }, 'Read-only — the owner’s plan no longer covers this project')
+      );
   // Device-preview toggle — not inside the framed copy (no nesting).
   app.device = app.device || 'desktop';
   if (!IN_FRAME) toolbar.appendChild(makeDeviceControl(app));
@@ -504,7 +503,7 @@ function renderToolbar(app) {
       'button',
       {
         class: 'fab fab-secondary',
-        title: 'Avalanche team: sign in with your email for Export and Resolve',
+        title: 'Have an account? Sign in with your email to get your full role',
         onclick: () => signInAsTeam(app),
       },
       'Sign in'
@@ -512,7 +511,7 @@ function renderToolbar(app) {
     toolbar.appendChild(signInBtn);
   }
 
-  if (app.isTeam) {
+  if (app.canManage) {
     const inviteBtn = h(
       'button',
       { class: 'fab fab-secondary', onclick: () => toggleInviteMenu(app) },
@@ -546,14 +545,22 @@ function renderToolbar(app) {
   document.body.style.paddingBottom = '52px';
 }
 
-// Signed in, but not on the invite list and not on the team domain.
-// The site has no project row yet and this visitor can't create one (guest
-// or non-team). A team member most often gets here on a brand-new open-
-// feedback site, funneled into the guest card before they could register
-// it — so offer team sign-in, which drops the guest session and reloads on
-// the email code form. Clients just need to wait for a team visit.
+// The site has no project row yet and this visitor can't create one (a
+// guest). Most often an owner landed on their brand-new open-feedback site
+// and got routed into the guest name card first — so offer sign-in (which
+// drops the guest session) and a path to create an account.
 function renderUnregisteredCard(app) {
-  const teamBtn = h('button', { class: 'btn' }, 'I’m on the Avalanche team — sign in');
+  const signInBtn = h('button', { class: 'btn' }, 'I own this site — sign in');
+  const create = h(
+    'a',
+    {
+      class: 'btn btn-ghost',
+      href: `${DASHBOARD_URL}#/projects/new?site=${encodeURIComponent(location.origin)}&token=${encodeURIComponent(app.token)}`,
+      target: '_blank',
+      rel: 'noopener',
+    },
+    'Create a free account'
+  );
   const card = h(
     'div',
     { class: 'card auth-card' },
@@ -561,12 +568,37 @@ function renderUnregisteredCard(app) {
     h(
       'div',
       { class: 'card-body' },
-      h('p', {}, 'This site hasn’t been registered with Markup. An Avalanche team member just needs to open it once to set it up.'),
-      h('p', { class: 'hint' }, 'If you’re a client or reviewer, ask your Avalanche contact — nothing to do on your end.'),
-      h('div', { class: 'btn-row' }, teamBtn)
-    )
+      h('p', {}, 'This site hasn’t been registered with Markup. The site owner needs to open it once while signed in.'),
+      h('p', { class: 'hint' }, 'If you’re a reviewer, ask whoever sent you this link — nothing to do on your end.'),
+      h('div', { class: 'btn-row' }, create, signInBtn)
+    ),
+    poweredBy('card')
   );
-  teamBtn.addEventListener('click', () => signInAsTeam(app));
+  signInBtn.addEventListener('click', () => signInAsTeam(app));
+  app.ui.layer.appendChild(card);
+}
+
+// Signed in and tried to register this site, but the account's plan is at
+// its project limit. Upgrade lives in the dashboard.
+function renderLimitCard(app) {
+  const upgrade = h(
+    'a',
+    { class: 'btn', href: `${DASHBOARD_URL}#/account`, target: '_blank', rel: 'noopener' },
+    'Upgrade in the dashboard'
+  );
+  const card = h(
+    'div',
+    { class: 'card auth-card' },
+    h('div', { class: 'card-head' }, 'Project limit reached'),
+    h(
+      'div',
+      { class: 'card-body' },
+      h('p', {}, 'Your plan’s project limit is used up, so this site couldn’t be registered.'),
+      h('p', { class: 'hint' }, 'The free plan includes one project. Upgrade to add more sites — then reload this page.'),
+      h('div', { class: 'btn-row' }, upgrade)
+    ),
+    poweredBy('card')
+  );
   app.ui.layer.appendChild(card);
 }
 
@@ -580,10 +612,12 @@ function renderBlockedCard(app, email) {
     h(
       'div',
       { class: 'card-body' },
-      h('p', {}, `You're signed in as ${email}, but this address hasn't been invited yet.`),
-      h('p', { class: 'hint' }, 'Ask your Avalanche contact to add your email, then reload this page.'),
+      h('p', {}, `You're signed in as ${email}, but this address hasn't been invited to this project yet.`),
+      h('p', { class: 'hint' }, 'Ask the project owner to add your email, then reload this page.'),
+      h('p', { class: 'hint' }, h('a', { href: DASHBOARD_URL, target: '_blank', rel: 'noopener' }, 'Have an account? Open the dashboard')),
       h('div', { class: 'btn-row' }, signOut)
-    )
+    ),
+    poweredBy('card')
   );
   signOut.addEventListener('click', async () => {
     await app.supabase.auth.signOut();
