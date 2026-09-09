@@ -39,6 +39,9 @@ const options = {
     __SUPABASE_URL__: JSON.stringify(mock ? 'mock://local' : env.SUPABASE_URL || ''),
     __SUPABASE_ANON_KEY__: JSON.stringify(mock ? 'mock-key' : env.SUPABASE_ANON_KEY || ''),
     __TEAM_DOMAIN__: JSON.stringify(env.AVALANCHE_EMAIL_DOMAIN || 'avalanchegr.com'),
+    // Set by admin/release.mjs. The literal version string in the bundle is
+    // what the release script verifies, so a stale build can never ship.
+    __MARKUP_VERSION__: JSON.stringify(process.env.MARKUP_VERSION || 'dev'),
   },
   logLevel: 'info',
 };

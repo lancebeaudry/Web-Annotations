@@ -66,7 +66,7 @@ new `dist/markup.js` *first*:
 ```bash
 npm run build              # bakes the new overlay into dist/markup.js
 git add -A && git commit -m "Mentions + notifications" && git push
-npm run release            # stamps AVMK_REF to that commit, redeploys
+npm run release -- <version> --changelog "..."   # see README → Release
                            # the plugin locally, refreshes the zip
 git add -A && git commit -m "Bump plugin ref" && git push
 ```

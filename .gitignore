@@ -1,5 +1,5 @@
 node_modules/
-# dist is generated, but the real bundle is committed so the CDN can serve it
+# dist/ is generated; dist/markup.js is committed as the shipped artifact
 dist/*
 !dist/markup.js
 .env

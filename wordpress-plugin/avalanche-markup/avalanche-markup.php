@@ -5,6 +5,9 @@
  * Version: 1.9.7
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
+ * Update URI: https://avalanchegr.com/markup
+ * License: Proprietary
+ * License URI: https://avalanchegr.com/markup/license
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -17,11 +20,13 @@ const AVMK_NOTIFY_OPTION = 'avalanche_markup_notify';
 // typing just their name — no WordPress account, no email code.
 const AVMK_OPEN_OPTION   = 'avalanche_markup_open';
 
-// Self-hosted update feed. The plugin checks this manifest (committed in
-// the repo, served raw from GitHub) and offers a one-click update on the
-// Plugins screen whenever its `version` is newer than what's installed —
-// so pushing a plugin change makes the update available on every site.
-const AVMK_UPDATE_MANIFEST = 'https://raw.githubusercontent.com/lancebeaudry/Web-Annotations/main/wordpress-plugin/update.json';
+// Update feed. The plugin polls this manifest and offers a one-click update
+// on the Plugins screen whenever its `version` is newer than what's
+// installed. It lives in Avalanche's public Storage bucket (see
+// supabase/distribution.sql and admin/release.mjs) — NOT on GitHub, so it
+// keeps working with the repository private. Sites still don't auto-update;
+// an admin clicks Update.
+const AVMK_UPDATE_MANIFEST = 'https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/update.json';
 
 // The overlay bundle (markup.js) is shipped INSIDE the plugin and served
 // from the site itself — no third-party CDN. This removes the jsDelivr
@@ -122,7 +127,7 @@ function avmk_update_manifest() {
 	if ( ! is_wp_error( $res ) && 200 === (int) wp_remote_retrieve_response_code( $res ) ) {
 		$data = json_decode( wp_remote_retrieve_body( $res ) );
 	}
-	set_transient( 'avmk_update_manifest', $data ?: 0, HOUR_IN_SECONDS );
+	set_transient( 'avmk_update_manifest', $data ?: 0, $data ? HOUR_IN_SECONDS : 5 * MINUTE_IN_SECONDS );
 	return $data;
 }
 
@@ -171,6 +176,12 @@ add_filter( 'plugins_api', function ( $result, $action, $args ) {
 // Drop our manifest cache right after WordPress runs an update check, so
 // a manual "Check again" reflects a fresh push without a stale 1h wait.
 add_action( 'upgrader_process_complete', function () {
+	delete_transient( 'avmk_update_manifest' );
+} );
+
+// And whenever someone opens Dashboard → Updates ("Check again"), so the
+// manifest is refetched on demand instead of waiting out the cache.
+add_action( 'load-update-core.php', function () {
 	delete_transient( 'avmk_update_manifest' );
 } );
 

@@ -1,4 +1,9 @@
 import { init } from './app.js';
+import { MARKUP_VERSION } from './config.js';
+
+// Exposed for support ("which build is this site on?") and used by the
+// release script as proof that the built bundle is the one being shipped.
+window.__avalancheMarkupVersion = MARKUP_VERSION;
 
 // Activation gate: real visitors short-circuit here. The script runs
 // when the URL carries ?markup=TOKEN (data-project on the script tag
