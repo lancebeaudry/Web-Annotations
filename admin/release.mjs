@@ -22,6 +22,10 @@
 //                   the manifest goes LAST because it is the switch
 //   9. push
 //
+// Every external command is invoked directly (execFileSync with an argv
+// array) — no shell — so there is no quoting to get wrong and it runs in
+// restricted environments that don't expose /bin/sh.
+//
 // Distribution lives in Supabase Storage (see supabase/distribution.sql):
 //   markup.js                        60s cache, overwritten each release
 //   markup-<v>.js                    immutable
@@ -29,9 +33,9 @@
 //   plugin/avalanche-markup-<v>.zip  immutable — the download_url
 //   plugin/avalanche-markup.zip      60s cache — versionless alias
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync, copyFileSync, statSync, rmSync, mkdtempSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, copyFileSync, rmSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -46,7 +50,7 @@ const BUCKET = 'markup';
 
 // ---------------------------------------------------------------- args
 const argv = process.argv.slice(2);
-const version = argv.find((a) => !a.startsWith('--'));
+const version = argv.find((a, i) => !a.startsWith('--') && argv[i - 1] !== '--changelog' && argv[i - 1] !== '--marker');
 const flag = (name) => argv.includes(name);
 const opt = (name) => {
   const i = argv.indexOf(name);
@@ -63,7 +67,11 @@ const die = (msg) => {
 };
 const ok = (msg) => console.log(`✔ ${msg}`);
 const step = (msg) => console.log(`\n── ${msg}`);
-const sh = (cmd, opts = {}) => execSync(cmd, { cwd: ROOT, stdio: 'pipe', encoding: 'utf8', ...opts }).trim();
+// Direct invocation, no shell. Returns trimmed stdout ('' when inherited).
+const run = (file, args = [], opts = {}) => {
+  const out = execFileSync(file, args, { cwd: ROOT, stdio: 'pipe', encoding: 'utf8', ...opts });
+  return typeof out === 'string' ? out.trim() : '';
+};
 
 if (!version) die('usage: node admin/release.mjs <version> --changelog "…" [--marker "…"] [--dry-run] [--no-push]');
 if (!/^\d+\.\d+\.\d+$/.test(version)) die(`"${version}" is not a plain semver x.y.z`);
@@ -94,8 +102,8 @@ const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 
 // ---------------------------------------------------------------- 1. preflight
 step(`Preflight for v${version}${dryRun ? ' (dry run)' : ''}`);
-if (sh('git status --porcelain')) die('working tree is not clean — commit or stash first');
-if (sh('git rev-parse --abbrev-ref HEAD') !== 'main') die('not on main');
+if (run('git', ['status', '--porcelain'])) die('working tree is not clean — commit or stash first');
+if (run('git', ['rev-parse', '--abbrev-ref', 'HEAD']) !== 'main') die('not on main');
 const phpNow = readFileSync(PLUGIN_PHP, 'utf8').match(/^\s*\*\s*Version:\s*([\d.]+)/m)?.[1];
 const manifestNow = JSON.parse(readFileSync(MANIFEST, 'utf8'));
 if (!phpNow) die('could not read Version: from the plugin header');
@@ -103,7 +111,7 @@ if (!semverGt(version, phpNow)) die(`version ${version} is not greater than plug
 if (!semverGt(version, manifestNow.version)) die(`version ${version} is not greater than update.json ${manifestNow.version}`);
 if (!SUPABASE_URL || !SERVICE_KEY) die('.env needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
 for (const tool of ['zip', 'unzip']) {
-  try { sh(`command -v ${tool}`); } catch { die(`${tool} not on PATH`); }
+  try { run('which', [tool]); } catch { die(`${tool} not on PATH`); }
 }
 const zipKey = `plugin/avalanche-markup-${version}.zip`;
 {
@@ -114,8 +122,9 @@ ok(`clean tree on main; ${phpNow} → ${version}; package not yet published`);
 
 // ---------------------------------------------------------------- 2. build
 step('Build');
-sh('node build.mjs', { env: { ...process.env, MARKUP_VERSION: version }, stdio: 'inherit' });
-sh('node build.mjs --mock', { env: { ...process.env, MARKUP_VERSION: version }, stdio: 'inherit' });
+const buildEnv = { ...process.env, MARKUP_VERSION: version };
+run('node', ['build.mjs'], { env: buildEnv, stdio: 'inherit' });
+run('node', ['build.mjs', '--mock'], { env: buildEnv, stdio: 'inherit' });
 
 // ---------------------------------------------------------------- 3. verify bundle
 step('Verify bundle');
@@ -132,7 +141,7 @@ ok(`bundle ${(js.length / 1024).toFixed(1)} KB, version literal + URL present${m
 // ---------------------------------------------------------------- 4. stage into plugin
 step('Stage bundle into plugin');
 copyFileSync(DIST_JS, PLUGIN_JS);
-if (readFileSync(PLUGIN_JS).equals(readFileSync(DIST_JS)) === false) die('plugin markup.js differs from dist after copy');
+if (!readFileSync(PLUGIN_JS).equals(readFileSync(DIST_JS))) die('plugin markup.js differs from dist after copy');
 ok('wordpress-plugin/avalanche-markup/markup.js == dist/markup.js');
 
 // ---------------------------------------------------------------- 5. bump
@@ -152,12 +161,13 @@ ok(`plugin header + update.json → ${version}; download_url → ${manifest.down
 // ---------------------------------------------------------------- 6. package
 step('Package');
 rmSync(ZIP, { force: true });
-sh(`zip -rq avalanche-markup.zip avalanche-markup -x '*.DS_Store'`, { cwd: PLUGIN_DIR });
-const listing = sh(`unzip -Z1 avalanche-markup.zip`, { cwd: PLUGIN_DIR }).split('\n').filter((l) => !l.endsWith('/')).sort();
+// zip applies the -x pattern itself; no shell involved.
+run('zip', ['-rq', 'avalanche-markup.zip', 'avalanche-markup', '-x', '*.DS_Store'], { cwd: PLUGIN_DIR });
+const listing = run('unzip', ['-Z1', 'avalanche-markup.zip'], { cwd: PLUGIN_DIR }).split('\n').filter((l) => !l.endsWith('/')).sort();
 const expected = ['avalanche-markup/avalanche-markup.php', 'avalanche-markup/markup.js'];
 if (JSON.stringify(listing) !== JSON.stringify(expected)) die(`zip listing unexpected:\n  ${listing.join('\n  ')}`);
 const tmp = mkdtempSync(join(tmpdir(), 'avmk-'));
-sh(`unzip -q avalanche-markup.zip -d "${tmp}"`, { cwd: PLUGIN_DIR });
+run('unzip', ['-q', 'avalanche-markup.zip', '-d', tmp], { cwd: PLUGIN_DIR });
 if (!readFileSync(join(tmp, 'avalanche-markup', 'markup.js')).equals(readFileSync(DIST_JS))) die('bundle inside the zip differs from dist');
 if (!readFileSync(join(tmp, 'avalanche-markup', 'avalanche-markup.php'), 'utf8').includes(`Version: ${version}`)) die('PHP inside the zip has the wrong version');
 rmSync(tmp, { recursive: true, force: true });
@@ -166,17 +176,17 @@ ok(`zip ${(zipBuf.length / 1024).toFixed(1)} KB — listing correct, bundle + ve
 
 if (dryRun) {
   step('Dry run complete — tree left modified, nothing committed or uploaded');
-  console.log(sh('git status --short'));
+  console.log(run('git', ['status', '--short']));
   console.log('\nRestore with:  git checkout . && git clean -f wordpress-plugin/*.zip');
   process.exit(0);
 }
 
 // ---------------------------------------------------------------- 7. commit + tag
 step('Commit + tag');
-sh('git add -A dist/markup.js wordpress-plugin');
-sh(`git commit -q -m "Release v${version}" -m "${changelog.replace(/"/g, '\\"')}"`);
-sh(`git tag -a v${version} -m "v${version}"`);
-ok(`committed ${sh('git rev-parse --short HEAD')} and tagged v${version}`);
+run('git', ['add', '-A', 'dist/markup.js', 'wordpress-plugin']);
+run('git', ['commit', '-q', '-m', `Release v${version}`, '-m', changelog]);
+run('git', ['tag', '-a', `v${version}`, '-m', `v${version}`]);
+ok(`committed ${run('git', ['rev-parse', '--short', 'HEAD'])} and tagged v${version}`);
 
 // ---------------------------------------------------------------- 8. upload
 async function upload(key, buf, contentType, cacheControl) {
@@ -229,7 +239,7 @@ if (noPush) {
   step('--no-push: skipping git push (remember to push --follow-tags)');
 } else {
   step('Push');
-  sh('git push origin main --follow-tags', { stdio: 'inherit' });
+  run('git', ['push', 'origin', 'main', '--follow-tags'], { stdio: 'inherit' });
   ok('pushed main + tags');
 }
 
