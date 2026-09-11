@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Avalanche Markup
  * Description: Click-to-comment visual feedback overlay for Avalanche client sites. Paste the site's project token under Settings → Avalanche Markup. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 1.9.8
+ * Version: 2.0.0
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  * Update URI: https://avalanchegr.com/markup
