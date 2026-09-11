@@ -89,3 +89,20 @@ them to `notify_recipients` (requires the wp-config Supabase constants).
    everyone on that site's notify list gets a "new comment" email.
 4. A comment from an `@avalanchegr.com` address should **not** trigger
    the team-notify email (mentions still fire).
+
+---
+
+## 2.0 update — provider is now Resend (Gmail kept only as a transition)
+
+The send path lives in `supabase/functions/_shared/email.ts`. `MAIL_PROVIDER` picks the provider (`resend` by default when `RESEND_API_KEY` is set; `gmail` keeps the old SMTP path). Notifications carry an `Idempotency-Key` per comment+recipient and a branded footer.
+
+Cut-over, in order:
+
+1. Resend → Domains → add `mail.avalanchegr.com`; add the DNS records it gives you (MX + SPF on `send.mail…`, DKIM on `resend._domainkey.mail…`, DMARC `_dmarc.mail…` with `p=none`); click Verify.
+2. Resend → API Keys → sending-only key restricted to that domain.
+3. `supabase secrets set RESEND_API_KEY=re_… MAIL_FROM='Avalanche Markup <notify@mail.avalanchegr.com>' MAIL_PROVIDER=resend` then `supabase functions deploy notify --no-verify-jwt --use-api`.
+4. Send a test (leave a comment @mentioning yourself); in Gmail "Show original" confirm SPF/DKIM/DMARC PASS for `mail.avalanchegr.com`.
+5. Supabase → Authentication → SMTP: host `smtp.resend.com`, port 465, user `resend`, password = the API key, sender `auth@mail.avalanchegr.com` — this moves the sign-in codes off Gmail too.
+6. `supabase secrets unset GMAIL_USER GMAIL_APP_PASSWORD TEAM_DOMAIN`, revoke the Google app password, and delete the Gmail branch in `email.ts`.
+
+The trigger secret: `private.app_settings.notify_secret` is authoritative (the trigger and the hourly `media-sweep` cron send it); the `NOTIFY_SECRET` function secret must equal it.

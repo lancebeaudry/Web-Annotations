@@ -8,7 +8,6 @@
     "build": "node build.mjs",
     "build:mock": "node build.mjs --mock",
     "dev": "node build.mjs --watch",
-    "new-site": "node admin/new-site.mjs",
     "release": "node admin/release.mjs",
     "release:dry": "node admin/release.mjs --dry-run",
     "build:app": "node build-app.mjs",

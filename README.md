@@ -1,143 +1,94 @@
 # Avalanche Markup
 
-Click-to-comment visual feedback for Avalanche Creative client sites. Clients click anywhere on their live site and type plain-English feedback; the tool invisibly captures the CSS selector, current text, and computed styles. The Avalanche team exports everything as a Markdown task list ready to paste into Claude Code.
+Click-to-comment visual feedback for websites, by Avalanche Creative. A reviewer opens a page with a special link, clicks anywhere, and leaves a pinned, threaded comment — with screenshots, @mentions, device previews, and email notifications.
 
-- One-line embed, completely invisible to normal visitors — only activates with `?markup=TOKEN` in the URL.
-- Shadow-DOM overlay, so the tool's styles and the client site's styles never collide.
-- Supabase backend (Postgres + magic-link auth + realtime). No custom server.
+**Proprietary — all rights reserved.** See `LICENSE`. This repository is the internal source; it is not for distribution and cannot go on wordpress.org (which requires GPL).
 
-## Setup (Stage 1 — one time)
+## How it fits together
 
-1. **Create a Supabase project** at [database.new](https://database.new) (any name, e.g. `avalanche-markup`).
-2. **Run the schema**: in the dashboard, open *SQL Editor*, paste the contents of [`supabase/schema.sql`](supabase/schema.sql), and run it. This creates the tables, RLS policies, realtime publication, and a seed project with token `test-token`.
-3. **Configure auth**:
-   - *Authentication → Sign In / Up*: make sure the **Email** provider is enabled (magic links are the default).
-   - *Authentication → URL Configuration → Redirect URLs*: add `http://localhost:8123/**` for local testing, plus `https://CLIENTSITE.com/**` for each client site you embed on.
-4. **Fill in `.env`**: copy `.env.example` to `.env` and paste your project's URL and anon/publishable key from *Settings → API Keys*.
-5. **Build**:
-   ```sh
-   npm install
-   npm run build        # writes dist/markup.js
-   ```
+| Piece | Where | Notes |
+|---|---|---|
+| Overlay | `src/` → `dist/markup.js` | The feedback UI. One self-contained bundle (esbuild, IIFE). Runs on WordPress and any other site. |
+| WordPress plugin | `wordpress-plugin/avalanche-markup/` | Injects the bundle (shipped *inside* the plugin), settings page, editor auto-sign-in bridge, self-updater. |
+| Hosted bundle | Supabase Storage bucket `markup` → `…/storage/v1/object/public/markup/markup.js` | For non-WordPress sites: one `<script>` tag. Also holds the plugin zip + `plugin/update.json` the updater polls. |
+| Backend | Supabase (`supabase/`) | Postgres + RLS, Auth (email code + anonymous guests), Storage (`comment-media`), Edge Functions. |
+| Customer dashboard | `dashboard/` → GitHub Pages (`lancebeaudry/avalanche-markup-app`) | Sign up, projects, install instructions, collaborators, notifications, site secret, plan/billing. Static, hash-routed. supabase.co refuses to serve HTML, hence Pages. |
+| Release tooling | `admin/release.mjs`, `admin/deploy-app.mjs`, `build.mjs`, `build-app.mjs` | See *Releasing*. |
 
-## Local testing
+## Access model (2.0)
 
-```sh
-npm run dev
+- **Operator** — Avalanche staff. A row in `operators` (not an email-domain rule). Sees and can moderate every project. Disclosed in the privacy policy. Manage with `add_operator(email)` / `remove_operator(email)` (operator-only RPCs).
+- **Owner** — the account that created a project (`projects.owner_id`). Full control of that project: invite, export, resolve, settings, site secret, delete.
+- **Collaborator** — an email the owner invited (`project_members`). Comment, reply, edit/delete own.
+- **Guest** — on a project with *open feedback*, anyone with the link who types a name (anonymous session). Comment, reply, edit/delete own.
+
+Plans: **free = 1 project**, **Pro = 10 projects ($99/yr)**. Limits are enforced by the database (a `BEFORE INSERT` trigger on `projects`, error `PROJECT_LIMIT_REACHED`). If a plan lapses, the owner's *oldest* projects stay live up to the free limit and newer ones become read-only — nothing is deleted. `subscriptions.plan` is written **only** by the Stripe webhook.
+
+Every permission lives in RLS + `SECURITY DEFINER` helpers (`is_operator`, `is_project_owner`, `can_read_project`, `project_is_writable`, `my_project_role`, …). The anon key is public by design, so nothing may rely on client-side checks.
+
+## Setup (one time)
+
+1. `.env` from `.env.example` — public values (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DASHBOARD_URL`, …) plus server-only `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_ACCESS_TOKEN` (never shipped).
+2. Database, in this order (each is idempotent): `schema.sql` → `notifications.sql` → `project-scoping.sql` → `attachments.sql` → `open-access.sql` → `team-create-projects.sql` → `lock-down-reads.sql` → `distribution.sql` → `tenancy.sql` → `dashboard.sql`. Apply via the SQL editor or the Management API. Do not run the older files *after* `tenancy.sql` — they would reintroduce the pre-2.0 policies.
+3. Auth: anonymous sign-ins on; email OTP 6 digits; rate limits (anonymous 20/h/IP, email 100/h); URL allowlist includes `DASHBOARD_URL/**`.
+4. Edge functions (all `--no-verify-jwt`): `notify`, `notify-sync`, `project-settings`, `wp-session`, `media-sweep`, `billing-checkout`, `billing-portal`, `stripe-webhook`. Deploy with `supabase functions deploy <name> --project-ref <ref> --no-verify-jwt --use-api` (`--use-api` avoids the Docker/TTY hang).
+5. Secrets: `NOTIFY_SECRET` (must equal `private.app_settings.notify_secret`), mail (`RESEND_API_KEY`, `MAIL_FROM`, `MAIL_PROVIDER`; transitional `GMAIL_USER`/`GMAIL_APP_PASSWORD`), `LEGACY_WP_AUTH_SECRET` (old global bridge secret, until every plugin is on 2.0), `DASHBOARD_URL`, Stripe (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`).
+
+## Local development
+
+```bash
+npm run dev          # overlay: rebuild on change + serve http://localhost:8123/test/index.html?markup=test-token (real backend)
+npm run build:mock   # overlay against test/mock-supabase.js, no backend: test/mock.html?markup=test-token&mockRole=owner
+npm run dev:app      # dashboard on http://localhost:8124
 ```
 
-Then open <http://localhost:8123/test/index.html?markup=test-token>. You should be prompted for your email; click the magic link, land back on the page, and the Comment button appears bottom-right. Open the same URL **without** `?markup=...` and confirm nothing renders.
+Mock roles: `?mockRole=operator|owner|collaborator|guest|none`, `?mockLimit=1` to hit the plan limit, an unseeded `?markup=` token to exercise auto-register. Note the overlay retries a token lookup 4×200 ms before registering — in a background browser tab, timers throttle, so allow several seconds.
 
-To verify realtime, open the page in two browsers (or a normal + private window with two different emails) and confirm a comment placed in one appears live in the other.
+Always verify a rebuild actually landed before shipping (function names minify; grep a string literal from your change in `dist/markup.js`). The release script does this for you.
 
-## Embedding on a client site
+## Releasing
 
-One command registers the site (creates the project row **and** allowlists the
-sign-in redirect via the Supabase Management API):
-
-```sh
-npm run new-site -- "Client Name" https://clientsite.com
+```bash
+npm run release -- 2.1.0 --changelog "What changed" --marker "some string from the change"
 ```
 
-It prints the embed line and the share link. Requires two admin secrets in
-`.env` (see `.env.example`): the **service role key** (Settings → API Keys)
-and a **personal access token** (account menu → Access Tokens). Both stay on
-this machine — never in `markup.js`, never in a theme.
+`admin/release.mjs` refuses a dirty tree or a non-increasing version, builds with `MARKUP_VERSION` baked in, verifies the bundle carries that literal (plus the Supabase URL and your markers), stages it into the plugin, bumps the plugin header and `update.json`, builds and verifies the zip, **commits and tags first**, then uploads to the bucket in dependency order — the versioned zip and bundle (immutable), `markup.js` and the alias zip (60 s cache), and `plugin/update.json` **last** (it is the switch) — verifying each object's bytes, then pushes. Dry run: `npm run release:dry -- 2.1.0`.
 
-Then get the embed onto the site. **The WordPress plugin is the default
-way** — no theme edits, installs through wp-admin with no code deploy,
-and it's identical across every site: zip `wordpress-plugin/avalanche-markup/`,
-upload via *Plugins → Add New → Upload Plugin*, activate, and paste the
-token under *Settings → Avalanche Markup*.
+Dashboard: `npm run build:app && npm run deploy:app` (pushes `dist/app` to the Pages repo; live in about a minute). `npm run deploy:bundle` uploads the overlay bundle only.
 
-For non-WordPress sites only, add one line to the `<head>`:
+Both scripts spawn `git`/`zip`; in environments that block child processes, run the same steps by hand (they are listed at the top of each script).
+
+**Sites do not auto-update.** WordPress polls `plugin/update.json` hourly (or on *Updates → Check again*), shows "update available", and an admin clicks Update. Non-WordPress embeds follow `markup.js` automatically within a minute.
+
+## Installing on a site
+
+**WordPress:** upload `avalanche-markup.zip`, set the token under *Settings → Avalanche Markup*, and add the project's **site secret** to `wp-config.php`:
+
+```php
+define( 'AVALANCHE_MARKUP_PROJECT_SECRET', '…' ); // Markup → Invite → Site secret, or the dashboard
+```
+
+The secret is per project and rotatable; it lets the plugin sync the notify list / open-feedback flag and sign editors in (owner or invited collaborators only — never operators). No service key ever goes on a customer server.
+
+**Any other site:**
 
 ```html
-<script defer src="https://cdn.jsdelivr.net/gh/lancebeaudry/Web-Annotations@main/dist/markup.js" data-project="PROJECT_TOKEN"></script>
+<script defer src="https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/markup.js" data-project="TOKEN" data-open="1"></script>
 ```
 
-(The bundle guards against double-inclusion, so a stray theme embed plus
-the plugin won't double-mount.)
+A project is registered the first time its owner opens `?markup=TOKEN` while signed in, or from the dashboard. Guests can't register a site; they get a card pointing at the dashboard.
 
-…and send the client: `https://clientsite.com/?markup=PROJECT_TOKEN`
+## Email
 
-`dist/markup.js` is committed and served to every site from jsDelivr
-(free CDN in front of this GitHub repo). The plugin pins to a **specific
-commit** (`AVMK_REF`), not `@main` — commit-pinned jsDelivr URLs are
-served instantly and immutably, which sidesteps `@main`'s resolution lag
-and all the cache-purge / browser-cache / per-query-string staleness that
-a moving ref suffers from.
+Notifications (`notify`) and sign-in codes go through the provider in `supabase/functions/_shared/email.ts`. Target: **Resend** on `mail.avalanchegr.com` (never the company mailbox). Until the domain is verified, `MAIL_PROVIDER=gmail` keeps the old Gmail SMTP path. Cut-over: verify the domain in Resend → set `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_PROVIDER=resend` → redeploy `notify` → switch Auth SMTP to Resend's relay → delete the Gmail branch and secrets. Details in `supabase/NOTIFICATIONS_SETUP.md`.
 
-To ship a tool update:
+## Billing
 
-```sh
-npm run build
-# commit + push dist/markup.js via GitHub Desktop, then:
-npm run release
-```
+Stripe Checkout (`billing-checkout`), Customer Portal (`billing-portal`), and the webhook (`stripe-webhook`, the only writer of `subscriptions`). Functions answer `503 billing not configured` until the `STRIPE_*` secrets exist. Owner checklist: product "Avalanche Markup Pro" with a yearly price → `STRIPE_PRICE_ID`; webhook endpoint `…/functions/v1/stripe-webhook` with `checkout.session.completed`, `customer.subscription.created/updated/deleted`, `invoice.paid`, `invoice.payment_failed` → `STRIPE_WEBHOOK_SECRET`; portal enabled; smart retries with "cancel after final retry".
 
-`npm run release` ([admin/release.mjs](admin/release.mjs)) stamps the new
-commit into the plugin's `AVMK_REF`, redeploys the plugin to every local
-site, refreshes `~/Desktop/avalanche-markup.zip`, and verifies the pinned
-build is live. Commit the plugin ref bump afterward. Live (WP Engine)
-sites pick up the new build on their next plugin upload from the zip.
+## Operating
 
-<details>
-<summary>Manual fallback (no admin secrets)</summary>
-
-1. SQL Editor: `insert into projects (token, name, site_url) values ('SOME-LONG-RANDOM-TOKEN', 'Client Name', 'https://clientsite.com');`
-2. Authentication → URL Configuration → Redirect URLs: add `https://clientsite.com/**`
-</details>
-
-## Who can use it (invite list)
-
-Access is gated to two groups:
-
-- **Avalanche team** — any `@avalanchegr.com` email. Always allowed, full
-  powers (comment, resolve, delete any, **export**). Nothing to set up.
-- **Invited people** — specific outside emails you add. They can comment,
-  reply, and delete their own comments, but **cannot export**.
-
-Anyone else who signs in hits an "Access needed" screen. The gate is
-enforced in the database (RLS), not just hidden in the UI.
-
-**Inviting from the tool (the normal way):** any team member, while
-signed in on a site, clicks **Invite** in the bottom bar, enters a
-client's email, and they're in. This is backed by team-gated database
-functions (`invite_email` / `list_invites` / `revoke_invite`,
-SECURITY DEFINER, restricted to `@avalanchegr.com` callers) — no
-service key on the client. The Invite button only appears for team.
-
-**From the command line** (admin fallback, needs `SUPABASE_SERVICE_ROLE_KEY`):
-
-```sh
-npm run invite -- add someone@example.com "optional note"
-npm run invite -- list
-npm run invite -- remove someone@example.com
-```
-
-## Using it
-
-- **Clients**: open the link, sign in via the emailed magic link, hit **Comment**, click any element, type what should change. Click numbered pins to read threads and reply.
-- **Avalanche team** (any `@avalanchegr.com` email): same, plus a **resolve/reopen** toggle on each thread and an **Export** button — Markdown (per page or whole project, ready for Claude Code) or raw JSON.
-
-## Project layout
-
-```
-build.mjs              esbuild bundler; injects .env values at build time
-supabase/schema.sql    tables + RLS + realtime + seed row
-src/main.js            activation gate (?markup=TOKEN)
-src/app.js             boot, auth flow, comment mode, toolbar, realtime
-src/capture.js         selector builder, landmark finder, style capture
-src/data.js            Supabase queries + realtime subscription
-src/export.js          Markdown / JSON export for Claude Code
-src/ui/                shadow-DOM overlay, auth card, pins, popovers, styles
-test/index.html        fake client page for local testing
-```
-
-## Known v1 tradeoffs
-
-1. **Selector stability across deploys** — if the site changes between comment and fix, a selector may break. `selector_fallback` (tag + text + landmark) is captured now and used for pin re-resolution; deeper recovery only if it bites.
-2. **RLS is permissive** — any authed user can read any project's comments. Fine while tokens stay private per client. Upgrade to a `project_members` table when cross-client isolation matters.
-3. **Anon key is public** — by design; RLS is the boundary. Never put the service-role key anywhere near the snippet.
-4. **SPA sites** — `page_path` is read at load. If a client site is an SPA, hook history/pushState to re-render pins on route change (not needed for typical WordPress builds).
+- Persona check after any RLS change (via the Management API): set `request.jwt.claims` + `set local role authenticated`, count projects/comments as operator (real uid), a collaborator, a stranger, and an anonymous guest.
+- Attachments: uploads are scoped to a writable project prefix and the plan quota; deleted comments tombstone their images; `media-sweep` runs hourly (pg_cron) and refuses to sweep when it can't read comments.
+- Bridges log `legacy-secret-used <token>` while a site is still on the old global secret; when that goes quiet, unset `LEGACY_WP_AUTH_SECRET`/`WP_AUTH_SECRET` and rotate the service-role key (it lived on customer servers before 2.0).
+- Repo privacy: the plugin updater and hosted bundle no longer depend on GitHub, so this repository can be private. The dashboard's Pages repo must stay public (compiled files only, no secrets).
