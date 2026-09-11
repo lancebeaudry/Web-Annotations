@@ -37,9 +37,10 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, copyFileSync, rmSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(new URL('..', import.meta.url).pathname);
+const ROOT = fileURLToPath(new URL('..', import.meta.url)); // fileURLToPath: the folder name has a space (%20)
 const PLUGIN_DIR = join(ROOT, 'wordpress-plugin');
 const PLUGIN_PHP = join(PLUGIN_DIR, 'avalanche-markup', 'avalanche-markup.php');
 const PLUGIN_JS = join(PLUGIN_DIR, 'avalanche-markup', 'markup.js');

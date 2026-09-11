@@ -15,7 +15,7 @@
 //         deleted, invoice.paid, invoice.payment_failed
 
 import { db, json } from "../_shared/db.ts";
-import { stripe, cryptoProvider, STRIPE_WEBHOOK_SECRET } from "../_shared/stripe.ts";
+import { getStripe, cryptoProvider, STRIPE_WEBHOOK_SECRET } from "../_shared/stripe.ts";
 
 const GRACE_DAYS = 14;
 
@@ -30,7 +30,7 @@ async function resolveUserId(sub: any): Promise<string | null> {
     const rows = await db<any[]>(`subscriptions?stripe_customer_id=eq.${customerId}&select=user_id&limit=1`);
     if (rows[0]?.user_id) return rows[0].user_id;
     try {
-      const c: any = await stripe.customers.retrieve(customerId);
+      const c: any = await getStripe().customers.retrieve(customerId);
       if (c?.metadata?.user_id) return c.metadata.user_id;
     } catch (_) { /* fall through */ }
   }
@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
   const body = await req.text();
   let event: any;
   try {
-    event = await stripe.webhooks.constructEventAsync(body, sig, STRIPE_WEBHOOK_SECRET, undefined, cryptoProvider);
+    event = await getStripe().webhooks.constructEventAsync(body, sig, STRIPE_WEBHOOK_SECRET, undefined, cryptoProvider);
   } catch (e) {
     return json(400, { error: `signature: ${(e as Error).message}` });
   }
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
 
   try {
     // Always re-fetch the truth.
-    const sub: any = await stripe.subscriptions.retrieve(subscriptionId);
+    const sub: any = await getStripe().subscriptions.retrieve(subscriptionId);
     const userId = await resolveUserId(sub);
     if (!userId) {
       console.warn(`webhook ${event.id}: could not resolve user for subscription ${subscriptionId}`);

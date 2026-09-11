@@ -1,16 +1,30 @@
 #!/usr/bin/env node
-// Upload the built dashboard (dist/app/*) to the public `markup` bucket under
-// app/, and optionally the overlay bundle (--bundle). Service-role key from
-// .env; every object is verified after upload.
+// Publish the built dashboard (dist/app/*) to GitHub Pages, and optionally
+// the overlay bundle (--bundle) to the public `markup` bucket.
 //
-//   node admin/deploy-app.mjs            # dashboard
-//   node admin/deploy-app.mjs --bundle   # also dist/markup.js -> markup.js
+//   node build-app.mjs && node admin/deploy-app.mjs            # dashboard
+//   node admin/deploy-app.mjs --bundle                         # also dist/markup.js
+//
+// Why Pages: supabase.co refuses to serve text/html anywhere (Storage AND
+// edge functions rewrite it to text/plain with a sandbox CSP), so the
+// dashboard lives in a separate, public, compiled-only repository:
+//   https://github.com/lancebeaudry/avalanche-markup-app  ->  DASHBOARD_URL
+// It contains no source and no secrets. A custom domain later is a CNAME
+// file + DNS.
+//
+// Uses git directly (execFileSync, no shell). The working clone lives in
+// .deploy/pages (gitignored).
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { readFileSync, readdirSync, existsSync, mkdirSync, cpSync, writeFileSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { join, resolve, extname } from 'node:path';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(new URL('..', import.meta.url).pathname);
+const ROOT = fileURLToPath(new URL('..', import.meta.url)); // the folder name has a space
+const PAGES_REPO = 'https://github.com/lancebeaudry/avalanche-markup-app.git';
+const CLONE = join(ROOT, '.deploy', 'pages');
+
 function loadEnv() {
   const env = {};
   const p = join(ROOT, '.env');
@@ -22,37 +36,47 @@ function loadEnv() {
   return env;
 }
 const env = loadEnv();
-const URL_ = env.SUPABASE_URL, KEY = env.SUPABASE_SERVICE_ROLE_KEY;
-if (!URL_ || !KEY) { console.error('.env needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY'); process.exit(1); }
-const PUB = `${URL_}/storage/v1/object/public/markup`;
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.txt': 'text/plain' };
+const git = (args, cwd = CLONE) => execFileSync('git', args, { cwd, stdio: 'pipe', encoding: 'utf8' }).trim();
 const sha = (b) => createHash('sha256').update(b).digest('hex');
 
-async function put(key, buf, type, cache = 'public, max-age=60') {
-  const r = await fetch(`${URL_}/storage/v1/object/markup/${key}`, {
-    method: 'POST',
-    headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': type, 'Cache-Control': cache, 'x-upsert': 'true' },
-    body: buf,
-  });
-  if (!r.ok) throw new Error(`upload ${key}: ${r.status} ${await r.text()}`);
-  const v = await fetch(`${PUB}/${key}?v=${Date.now()}`);
-  const body = Buffer.from(await v.arrayBuffer());
-  const ct = v.headers.get('content-type') || '';
-  const cd = v.headers.get('content-disposition') || '';
-  if (v.status !== 200) throw new Error(`verify ${key}: ${v.status}`);
-  if (!ct.startsWith(type.split(';')[0])) throw new Error(`verify ${key}: content-type ${ct}`);
-  if (sha(body) !== sha(buf)) throw new Error(`verify ${key}: bytes differ`);
-  if (/attachment/i.test(cd)) throw new Error(`verify ${key}: served as a download (${cd})`);
-  console.log(`✔ ${key}  (${ct})`);
+const dist = join(ROOT, 'dist', 'app');
+if (!existsSync(dist)) { console.error('dist/app missing — run `node build-app.mjs` first'); process.exit(1); }
+
+// ---- dashboard -> GitHub Pages
+mkdirSync(join(ROOT, '.deploy'), { recursive: true });
+if (!existsSync(join(CLONE, '.git'))) {
+  execFileSync('git', ['clone', '-q', PAGES_REPO, CLONE], { stdio: 'pipe' });
+} else {
+  git(['fetch', '-q', 'origin']);
+  git(['reset', '-q', '--hard', 'origin/main']);
+}
+for (const f of readdirSync(CLONE)) if (f !== '.git') rmSync(join(CLONE, f), { recursive: true, force: true });
+cpSync(dist, CLONE, { recursive: true });
+writeFileSync(join(CLONE, '.nojekyll'), '');
+writeFileSync(join(CLONE, 'README.md'),
+  '# Avalanche Markup — dashboard\n\nCompiled customer dashboard for [Avalanche Markup](https://avalanchegr.com), published via GitHub Pages. Source is private. Contains no secrets (the Supabase anon key is public by design; access is enforced by row-level security).\n');
+git(['add', '-A']);
+const version = readFileSync(join(dist, 'index.html'), 'utf8').match(/data-version="([^"]+)"/)?.[1] || 'unknown';
+if (git(['status', '--porcelain'])) {
+  git(['commit', '-q', '-m', `Deploy dashboard ${version}`]);
+  git(['push', '-q', 'origin', 'main']);
+  console.log(`✔ dashboard ${version} pushed to Pages (live in ~1 min): ${env.DASHBOARD_URL || 'https://lancebeaudry.github.io/avalanche-markup-app/'}`);
+} else {
+  console.log('✔ dashboard unchanged — nothing to publish');
 }
 
-const dir = join(ROOT, 'dist', 'app');
-if (!existsSync(dir)) { console.error('dist/app missing — run `node build-app.mjs` first'); process.exit(1); }
-for (const f of readdirSync(dir)) {
-  const type = TYPES[extname(f)] || 'application/octet-stream';
-  await put(`app/${f}`, readFileSync(join(dir, f)), type);
-}
+// ---- overlay bundle -> bucket (optional)
 if (process.argv.includes('--bundle')) {
-  await put('markup.js', readFileSync(join(ROOT, 'dist', 'markup.js')), 'application/javascript');
+  const URL_ = env.SUPABASE_URL, KEY = env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!URL_ || !KEY) { console.error('.env needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY for --bundle'); process.exit(1); }
+  const buf = readFileSync(join(ROOT, 'dist', 'markup.js'));
+  const r = await fetch(`${URL_}/storage/v1/object/markup/markup.js`, {
+    method: 'POST',
+    headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/javascript', 'Cache-Control': 'public, max-age=60', 'x-upsert': 'true' },
+    body: buf,
+  });
+  if (!r.ok) throw new Error(`upload markup.js: ${r.status} ${await r.text()}`);
+  const v = await fetch(`${URL_}/storage/v1/object/public/markup/markup.js?v=${Date.now()}`);
+  if (sha(Buffer.from(await v.arrayBuffer())) !== sha(buf)) throw new Error('verify markup.js: bytes differ');
+  console.log('✔ markup.js uploaded to the bucket and verified');
 }
-console.log(`\nDashboard: ${PUB}/app/index.html`);

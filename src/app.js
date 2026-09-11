@@ -66,6 +66,10 @@ export async function init(token, options = {}) {
     // the user unticks "Show resolved". Read by both the sidebar and pins.
     sidebarFilters: { q: '', sort: 'latest', showResolved: readShowResolved() },
   };
+  // Mock builds only: expose the app for the test harness (never in a real
+  // build — it would hand the page's other scripts the session token).
+  if (SUPABASE_URL.startsWith('mock://')) window.__avalancheMarkupApp = app;
+
   app.refresh = () => {
     renderPins(app);
     refreshSidebar(app);
@@ -81,7 +85,7 @@ export async function init(token, options = {}) {
   supabase.auth.onAuthStateChange((_event, session) => {
     if (session && !app.started) {
       app.session = session;
-      start(app);
+      start(app).catch((e) => startFailed(app, e));
     }
   });
 
@@ -105,7 +109,7 @@ export async function init(token, options = {}) {
       if (upgraded) return; // onAuthStateChange starts with the real session
     }
     app.session = data.session;
-    start(app);
+    start(app).catch((e) => startFailed(app, e));
   } else if (!data.session) {
     // Already logged into WordPress? Sign them in automatically via the
     // plugin bridge. Otherwise, on an open-feedback site, ask only for a
@@ -116,6 +120,13 @@ export async function init(token, options = {}) {
       else renderAuthCard(app);
     }
   }
+}
+
+// An exception inside start() used to leave a blank overlay with no message
+// at all. Surface it: a visible toast for the visitor, the stack for support.
+function startFailed(app, e) {
+  console.error('[markup] start failed:', e);
+  toast(app.ui, `Markup: something went wrong — ${(e && e.message) || e}`);
 }
 
 // Leave guest mode: drop the anonymous session and come back on the email

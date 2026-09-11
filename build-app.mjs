@@ -23,7 +23,7 @@ function loadEnv() {
 }
 const env = loadEnv();
 const SUPABASE_URL = env.SUPABASE_URL || '';
-const DASHBOARD_URL = env.DASHBOARD_URL || `${SUPABASE_URL}/storage/v1/object/public/markup/app/index.html`;
+const DASHBOARD_URL = env.DASHBOARD_URL || 'https://lancebeaudry.github.io/avalanche-markup-app/';
 const BUNDLE_URL = env.MARKUP_BUNDLE_URL || `${SUPABASE_URL}/storage/v1/object/public/markup/markup.js`;
 let sha = 'dev';
 try { sha = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim(); } catch { /* not in git / no spawn */ }

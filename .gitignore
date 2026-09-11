@@ -4,3 +4,4 @@ dist/*
 !dist/markup.js
 .env
 .DS_Store
+.deploy/

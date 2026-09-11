@@ -5,7 +5,7 @@
 import { db, json } from "../_shared/db.ts";
 import { corsHeaders, preflight } from "../_shared/cors.ts";
 import { requireUser } from "../_shared/auth.ts";
-import { stripe, DASHBOARD_URL, stripeConfigured } from "../_shared/stripe.ts";
+import { getStripe, DASHBOARD_URL, stripeConfigured } from "../_shared/stripe.ts";
 
 Deno.serve(async (req) => {
   const pf = preflight(req);
@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
   const customerId = rows[0]?.stripe_customer_id;
   if (!customerId) return json(404, { error: "no_customer" }, cors);
 
-  const session = await stripe.billingPortal.sessions.create({
+  const session = await getStripe().billingPortal.sessions.create({
     customer: customerId,
     return_url: `${DASHBOARD_URL}#/account`,
   });

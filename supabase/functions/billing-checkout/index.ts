@@ -10,7 +10,7 @@
 import { db, json } from "../_shared/db.ts";
 import { corsHeaders, preflight } from "../_shared/cors.ts";
 import { requireUser } from "../_shared/auth.ts";
-import { stripe, STRIPE_PRICE_ID, DASHBOARD_URL, stripeConfigured } from "../_shared/stripe.ts";
+import { getStripe, STRIPE_PRICE_ID, DASHBOARD_URL, stripeConfigured } from "../_shared/stripe.ts";
 
 Deno.serve(async (req) => {
   const pf = preflight(req);
@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
 
   let customerId: string | undefined = sub?.stripe_customer_id ?? undefined;
   if (!customerId) {
-    const customer = await stripe.customers.create({ email: caller.email, metadata: { user_id: caller.id } });
+    const customer = await getStripe().customers.create({ email: caller.email, metadata: { user_id: caller.id } });
     // merge-duplicates: if two tabs raced, keep whichever landed first.
     await db(`subscriptions?on_conflict=user_id`, {
       method: "POST",
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     customerId = again[0]?.stripe_customer_id ?? customer.id;
   }
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
