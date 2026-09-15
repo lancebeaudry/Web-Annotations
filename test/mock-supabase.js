@@ -15,6 +15,17 @@ export function createClient() {
   const params = new URLSearchParams(location.search);
   const role = params.get('mockRole') || 'operator';
   const atLimit = params.get('mockLimit') === '1';
+  const seed = params.get('mockSeed') === '1';        // realistic comments for screenshots
+  const noAuth = params.get('mockAuth') === 'none';   // no session -> the sign-in / guest card
+  const pagePath = location.pathname.length > 1 ? location.pathname.replace(/\/+$/, '') : location.pathname;
+  const ago = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+  const seeded = seed ? [
+    { id: 'seed-1', project_id: 'mock-project-1', parent_id: null, page_url: location.origin + pagePath, page_path: pagePath, selector: '#hero h1', element_tag: 'h1', current_text: "Outdoor spaces you'll actually use.", comment_text: "Can we make this punchier? Something like “Backyards you'll actually use.” It's the first thing people read.", author_email: 'sarah@acmelandscaping.example', author_name: 'Sarah Chen', author_role: 'owner', status: 'open', created_at: ago(30), mentions: [], attachments: [], x_pct: 18, y_pct: 55, viewport_w: 1440 },
+    { id: 'seed-1r', project_id: 'mock-project-1', parent_id: 'seed-1', page_url: location.origin + pagePath, page_path: pagePath, comment_text: "Love it — I'll draft three options and drop them here tomorrow.", author_email: 'mike@acmelandscaping.example', author_name: 'Mike Torres', author_role: 'collaborator', status: 'open', created_at: ago(26), mentions: [], attachments: [] },
+    { id: 'seed-2', project_id: 'mock-project-1', parent_id: null, page_url: location.origin + pagePath, page_path: pagePath, selector: '#cta', element_tag: 'a', current_text: 'Schedule a consultation', comment_text: "Button should say “Get a free estimate” so it matches the nav. Also a touch bigger on mobile.", author_email: 'mike@acmelandscaping.example', author_name: 'Mike Torres', author_role: 'collaborator', status: 'open', created_at: ago(20), mentions: [], attachments: [], x_pct: 50, y_pct: 50, viewport_w: 1440 },
+    { id: 'seed-3', project_id: 'mock-project-1', parent_id: null, page_url: location.origin + pagePath, page_path: pagePath, selector: '.grid .card:nth-child(3) h3', element_tag: 'h3', current_text: 'Lawn & maintenance', comment_text: "Change to “Lawn care & maintenance” — that's how customers search for it.", author_email: 'sarah@acmelandscaping.example', author_name: 'Sarah Chen', author_role: 'owner', status: 'resolved', created_at: ago(70), mentions: [], attachments: [], x_pct: 60, y_pct: 50, viewport_w: 1440 },
+    { id: 'seed-4', project_id: 'mock-project-1', parent_id: null, page_url: location.origin + pagePath, page_path: pagePath, selector: '.stats .stat:nth-child(1) b', element_tag: 'b', current_text: '1,400+', comment_text: "Is 1,400+ still right? Pretty sure we passed 1,500 this spring — @mike can you confirm?", author_email: 'sarah@acmelandscaping.example', author_name: 'Sarah Chen', author_role: 'owner', status: 'open', created_at: ago(5), mentions: ['mike@acmelandscaping.example'], attachments: [], x_pct: 50, y_pct: 50, viewport_w: 390 },
+  ] : [];
 
   const USERS = {
     operator: { id: 'mock-operator', email: 'mock-team@avalanchegr.com' },
@@ -30,7 +41,7 @@ export function createClient() {
     projects: [
       { id: 'mock-project-1', token: 'test-token', name: 'Mock Project', site_url: 'http://localhost:8123', owner_id: 'mock-owner', open_access: role === 'guest' },
     ],
-    comments: [],
+    comments: seeded,
     project_members: [{ project_id: 'mock-project-1', email: 'guest@client.com', note: 'demo client' }],
     operators: ['mock-operator'],
     secrets: { 'mock-project-1': 'mock-secret-0123456789abcdef' },
@@ -105,7 +116,7 @@ export function createClient() {
   return {
     auth: {
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
-      getSession: () => Promise.resolve({ data: { session } }),
+      getSession: () => Promise.resolve({ data: { session: noAuth ? null : session } }),
       signInWithOtp: () => ok({}),
       signInAnonymously: () => ok({ session }),
       verifyOtp: () => ok({ session }),

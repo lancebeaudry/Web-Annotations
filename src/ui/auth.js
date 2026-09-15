@@ -1,6 +1,6 @@
 import { h, toast } from './overlay.js';
 import { brandMark, poweredBy } from './brand.js';
-import { DASHBOARD_URL } from '../config.js';
+import { DASHBOARD_URL, SUPABASE_URL } from '../config.js';
 
 const NAME_KEY = 'markup_author_name';
 
@@ -13,6 +13,14 @@ export function savedName() {
 }
 
 // Card header: "Feedback · host" with the Avalanche mark.
+// Mock builds may override the shown host (?mockHost=) for screenshots.
+function shownHost() {
+  if (SUPABASE_URL.startsWith('mock://')) {
+    const h = new URLSearchParams(location.search).get('mockHost');
+    if (h) return h;
+  }
+  return document.location.hostname;
+}
 function cardHead(text) {
   return h('div', { class: 'card-head' }, h('span', {}, text), brandMark(14));
 }
@@ -45,7 +53,7 @@ export function renderAuthCard(app) {
   );
 
   const body = h('div', { class: 'card-body' }, form);
-  const card = h('div', { class: 'card auth-card' }, cardHead(`Feedback · ${document.location.hostname}`), body, poweredBy('card'));
+  const card = h('div', { class: 'card auth-card' }, cardHead(`Feedback · ${shownHost()}`), body, poweredBy('card'));
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -149,7 +157,7 @@ export function renderGuestCard(app) {
   const card = h(
     'div',
     { class: 'card auth-card' },
-    cardHead(`Feedback · ${document.location.hostname}`),
+    cardHead(`Feedback · ${shownHost()}`),
     h('div', { class: 'card-body' }, form),
     poweredBy('card')
   );

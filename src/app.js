@@ -5,7 +5,7 @@ import { mountOverlay, toast, h } from './ui/overlay.js';
 import { renderAuthCard, renderGuestCard, removeAuthCard, savedName } from './ui/auth.js';
 import { renderPins } from './ui/pins.js';
 import { openCommentBox } from './ui/commentBox.js';
-import { closePopovers, refreshOpenThread } from './ui/popover.js';
+import { closePopovers, refreshOpenThread, openThread } from './ui/popover.js';
 import { toggleSidebar, closeSidebar, refreshSidebar, openRootCount, resumeJumpAfterNav } from './ui/sidebar.js';
 import { toggleInviteMenu } from './ui/invite.js';
 import { prefetchMentionables } from './ui/mentions.js';
@@ -296,6 +296,23 @@ async function start(app) {
   });
 
   toast(app.ui, `Feedback mode ready — ${app.project.name}`);
+
+  // Mock builds only: harness hooks so screenshots/automation can reach UI
+  // states that otherwise need clicks (?mockOpen=1, ?mockSidebar=1,
+  // ?mockDevice=mobile|tablet).
+  if (SUPABASE_URL.startsWith('mock://')) {
+    const q = new URLSearchParams(location.search);
+    const open = q.get('mockOpen');
+    if (open) {
+      const roots = [...app.comments.values()]
+        .filter((c) => !c.parent_id && c.page_path === app.pagePath)
+        .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+      const target = open === '1' ? roots[0] : roots.find((c) => c.id === open);
+      if (target) openThread(app, target.id);
+    }
+    if (q.get('mockSidebar') === '1') toggleSidebar(app);
+    if (q.get('mockDevice') && !IN_FRAME) setDevice(app, q.get('mockDevice'));
+  }
 
   // If we got here from a cross-page comment click, reopen the sidebar
   // and jump to that comment. (Top page only — not the preview frame.)

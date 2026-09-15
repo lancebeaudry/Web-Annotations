@@ -4,6 +4,7 @@
 //
 //   node build-app.mjs && node admin/deploy-app.mjs            # dashboard
 //   node admin/deploy-app.mjs --bundle                         # also dist/markup.js
+// Also publishes landing/ to <DASHBOARD_URL>landing/ (marketing page).
 //
 // Why Pages: supabase.co refuses to serve text/html anywhere (Storage AND
 // edge functions rewrite it to text/plain with a sandbox CSP), so the
@@ -52,6 +53,8 @@ if (!existsSync(join(CLONE, '.git'))) {
 }
 for (const f of readdirSync(CLONE)) if (f !== '.git') rmSync(join(CLONE, f), { recursive: true, force: true });
 cpSync(dist, CLONE, { recursive: true });
+// The marketing page rides along at /landing/ (the clone is wiped each deploy).
+cpSync(join(ROOT, 'landing'), join(CLONE, 'landing'), { recursive: true });
 writeFileSync(join(CLONE, '.nojekyll'), '');
 writeFileSync(join(CLONE, 'README.md'),
   '# Avalanche Markup — dashboard\n\nCompiled customer dashboard for [Avalanche Markup](https://avalanchegr.com), published via GitHub Pages. Source is private. Contains no secrets (the Supabase anon key is public by design; access is enforced by row-level security).\n');
