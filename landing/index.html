@@ -8,157 +8,149 @@
   <meta property="og:title" content="Avalanche Markup — Stop describing the bug. Point at it.">
   <meta property="og:description" content="Click-to-comment website feedback with the context developers need. Free for one site.">
   <meta property="og:image" content="img/hero-overlay.jpg">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%2300263D'/%3E%3Cpath d='M3 19 L9.5 7 L13 13 L15.5 9.5 L21 19 Z' fill='%239BE3FF'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" href="img/mark-128.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { --midnight:#00263D; --sky:#1B6493; --ice:#9BE3FF; --haze:#F9F9F9; --teal:#13A89E; --ink:#1f2a33; --muted:#5f6f7a; --line:#e3eaee; }
+    :root { --midnight:#00263D; --blue:#196695; --blue-dark:#144f74; --sky:#57C2E3; --haze:#F6F9FB; --ink:#1f2a33; --muted:#5b6b76; --line:#e1e8ed; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--ink); background: #fff; line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-    a { color: var(--sky); }
+    body { font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--ink); background: #fff; line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    a { color: var(--blue); }
     img { max-width: 100%; height: auto; display: block; }
     .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
-    .btn { display: inline-flex; align-items: center; gap: 8px; background: var(--sky); color: #fff; font-weight: 700; padding: 14px 22px; border-radius: 10px; text-decoration: none; border: 2px solid var(--sky); transition: .15s; white-space: nowrap; }
-    .btn:hover { background: #14517a; border-color: #14517a; }
-    .btn.ghost { background: transparent; color: var(--midnight); border-color: #c9d6de; }
-    .btn.ghost:hover { border-color: var(--sky); color: var(--sky); background: #fff; }
-    .btn.light { background: #fff; color: var(--midnight); border-color: #fff; }
-    .btn.light:hover { background: var(--ice); border-color: var(--ice); }
-    .kicker { display: inline-block; font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--sky); margin-bottom: 14px; }
-    h1, h2, h3 { color: var(--midnight); letter-spacing: -.02em; line-height: 1.12; }
-    h2 { font-size: 36px; margin-bottom: 12px; }
-    @media (max-width: 560px) { h2 { font-size: 30px; } }
+    h1, h2, h3 { font-family: Poppins, "Open Sans", sans-serif; color: var(--midnight); letter-spacing: -.01em; line-height: 1.15; font-weight: 600; }
+    h2 { font-size: 34px; margin-bottom: 14px; }
+    @media (max-width: 560px) { h2 { font-size: 28px; } }
     .lead { font-size: 18px; color: var(--muted); max-width: 640px; }
-    .shot { border-radius: 14px; box-shadow: 0 24px 60px rgba(0,38,61,.22), 0 2px 6px rgba(0,38,61,.08); border: 1px solid rgba(0,38,61,.08); background: #fff; }
+    .btn { display: inline-flex; align-items: center; font-family: Poppins, sans-serif; background: var(--blue); color: #fff; font-weight: 600; font-size: 15px; padding: 13px 22px; border-radius: 6px; text-decoration: none; border: 2px solid var(--blue); transition: .15s; white-space: nowrap; }
+    .btn:hover { background: var(--blue-dark); border-color: var(--blue-dark); }
+    .btn.ghost { background: transparent; color: var(--blue); }
+    .btn.ghost:hover { background: #eaf4fa; }
+    .btn.light { background: #fff; color: var(--midnight); border-color: #fff; }
+    .btn.light:hover { background: #e6f6fc; border-color: #e6f6fc; }
+    .accent { color: var(--blue); }
 
-    /* browser-window frame around screenshots */
-    .frame { border-radius: 14px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,38,61,.22), 0 2px 6px rgba(0,38,61,.08); border: 1px solid rgba(0,38,61,.1); background: #fff; }
-    .frame .bar { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; background: #eef2f5; border-bottom: 1px solid #dfe6eb; }
-    .frame .bar i { width: 10px; height: 10px; border-radius: 50%; background: #d3dbe1; }
-    .frame .bar i:nth-child(1) { background: #ff5f57; } .frame .bar i:nth-child(2) { background: #febc2e; } .frame .bar i:nth-child(3) { background: #28c840; }
-    .frame .bar span { margin-left: 10px; flex: 1; max-width: 420px; height: 20px; border-radius: 6px; background: #fff; border: 1px solid #dfe6eb; font: 11px/20px ui-monospace, SFMono-Regular, Menlo, monospace; color: #6b7c88; padding: 0 10px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    /* screenshots */
+    .frame { border-radius: 10px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,38,61,.20), 0 2px 6px rgba(0,38,61,.08); border: 1px solid rgba(0,38,61,.1); background: #fff; }
+    .frame .bar { display: flex; align-items: center; height: 34px; padding: 0 12px; background: #eef2f5; border-bottom: 1px solid #dfe6eb; }
+    .frame .bar span { flex: 1; max-width: 460px; height: 20px; border-radius: 4px; background: #fff; border: 1px solid #dfe6eb; font: 11px/20px ui-monospace, SFMono-Regular, Menlo, monospace; color: #6b7c88; padding: 0 10px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     .frame img { display: block; width: 100%; }
+    .shot { border-radius: 10px; box-shadow: 0 24px 60px rgba(0,38,61,.20), 0 2px 6px rgba(0,38,61,.08); border: 1px solid rgba(0,38,61,.08); background: #fff; }
 
     /* nav */
-    .nav { position: sticky; top: 0; z-index: 10; background: rgba(255,255,255,.92); backdrop-filter: saturate(180%) blur(10px); border-bottom: 1px solid var(--line); }
-    .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
-    .brand { display: flex; align-items: center; gap: 9px; font-weight: 800; color: var(--midnight); text-decoration: none; font-size: 17px; white-space: nowrap; }
-    .brand svg { width: 22px; height: 22px; color: var(--sky); }
+    .nav { position: sticky; top: 0; z-index: 10; background: rgba(255,255,255,.94); backdrop-filter: saturate(180%) blur(10px); border-bottom: 1px solid var(--line); }
+    .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+    .logo img { height: 30px; width: auto; }
     .nav nav { display: flex; align-items: center; }
-    .nav nav a { color: var(--ink); text-decoration: none; font-weight: 600; font-size: 14px; margin-left: 22px; }
-    .nav nav a.btn { padding: 9px 16px; color: #fff; margin-left: 16px; }
-    @media (max-width: 720px) { .nav nav a:not(.btn) { display: none; } }
+    .nav nav a { font-family: Poppins, sans-serif; color: var(--midnight); text-decoration: none; font-weight: 500; font-size: 14px; margin-left: 26px; }
+    .nav nav a:hover { color: var(--blue); }
+    .nav nav a.btn { padding: 9px 16px; color: #fff; margin-left: 18px; }
+    @media (max-width: 760px) { .nav nav a:not(.btn) { display: none; } .logo img { height: 26px; } }
 
     /* hero */
-    .hero { background: radial-gradient(900px 420px at 15% -10%, rgba(155,227,255,.35), transparent 60%), linear-gradient(180deg, #fff, var(--haze)); padding: 84px 0 56px; }
-    @media (max-width: 720px) { .hero { padding-top: 56px; } }
-    .hero h1 { font-size: clamp(38px, 6vw, 64px); max-width: 820px; margin-bottom: 18px; }
-    .hero .lead { font-size: 20px; max-width: 700px; margin-bottom: 28px; }
+    .hero { background: linear-gradient(180deg, #fff 0%, var(--haze) 100%); padding: 80px 0 64px; }
+    @media (max-width: 720px) { .hero { padding-top: 48px; } }
+    .eyebrow { font-family: Poppins, sans-serif; font-weight: 600; font-size: 15px; color: var(--blue); margin-bottom: 14px; }
+    .hero h1 { font-size: clamp(38px, 5.6vw, 60px); max-width: 860px; margin-bottom: 20px; font-weight: 700; }
+    .hero .lead { font-size: 19px; max-width: 700px; margin-bottom: 28px; }
     .ctas { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-    .fine { font-size: 13px; color: var(--muted); margin-top: 14px; }
+    .fine { font-size: 14px; color: var(--muted); margin-top: 14px; }
+    .works { margin-top: 30px; font-size: 14px; color: var(--muted); }
+    .works b { color: var(--midnight); font-weight: 600; }
     .hero-shot { margin-top: 44px; }
-    .logos { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: var(--muted); align-items: center; }
-    .logos b { color: var(--midnight); font-weight: 700; }
 
     /* pains */
-    .pains { padding: 88px 0 40px; }
+    .pains { padding: 88px 0 48px; }
     .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 30px; }
     @media (max-width: 860px) { .three { grid-template-columns: 1fr; } }
-    .pain { background: var(--haze); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
-    .pain q { display: block; font-size: 17px; font-weight: 700; color: var(--midnight); margin-bottom: 8px; quotes: "“" "”"; }
+    .pain { background: var(--haze); border: 1px solid var(--line); border-radius: 10px; padding: 24px; }
+    .pain q { display: block; font-family: Poppins, sans-serif; font-size: 17px; font-weight: 600; color: var(--midnight); margin-bottom: 8px; quotes: "“" "”"; }
     .pain p { color: var(--muted); font-size: 15px; }
-    .answer { margin-top: 30px; font-size: 20px; color: var(--midnight); font-weight: 600; max-width: 820px; }
+    .answer { margin-top: 30px; font-size: 19px; color: var(--midnight); max-width: 820px; }
 
     /* generic two-column */
-    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
     .two > * { min-width: 0; }
     @media (max-width: 860px) { .two { grid-template-columns: 1fr; } .two .swap { order: -1; } }
     .ticks { list-style: none; margin-top: 18px; }
-    .ticks li { padding-left: 28px; position: relative; margin-bottom: 10px; color: var(--ink); }
-    .ticks li::before { content: '✓'; position: absolute; left: 0; color: var(--teal); font-weight: 800; }
+    .ticks li { padding-left: 30px; position: relative; margin-bottom: 10px; }
+    .ticks li::before, .plan li::before { content: ''; position: absolute; left: 0; top: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--blue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 10.5l3.2 3.2L15 7'/%3E%3C/svg%3E") center/13px no-repeat; }
 
     /* steps */
-    .steps { padding: 70px 0 30px; }
-    .step { display: grid; grid-template-columns: 1fr 1.25fr; gap: 44px; align-items: center; padding: 44px 0; border-top: 1px solid var(--line); }
+    .steps { padding: 72px 0 32px; }
+    .step { display: grid; grid-template-columns: 1fr 1.25fr; gap: 48px; align-items: center; padding: 48px 0; border-top: 1px solid var(--line); }
     .step > * { min-width: 0; }
-    .step:nth-child(even) { grid-template-columns: 1.25fr 1fr; }
-    .step:nth-child(even) .txt { order: 2; }
-    @media (max-width: 860px) { .step, .step:nth-child(even) { grid-template-columns: 1fr; } .step:nth-child(even) .txt { order: 0; } }
-    .num { display: inline-flex; width: 34px; height: 34px; border-radius: 50%; background: var(--midnight); color: var(--ice); font-weight: 800; align-items: center; justify-content: center; margin-bottom: 14px; }
+    .step:nth-of-type(even) { grid-template-columns: 1.25fr 1fr; }
+    .step:nth-of-type(even) .txt { order: 2; }
+    @media (max-width: 860px) { .step, .step:nth-of-type(even) { grid-template-columns: 1fr; } .step:nth-of-type(even) .txt { order: 0; } }
+    .num { font-family: Poppins, sans-serif; font-size: 48px; font-weight: 700; line-height: 1; color: var(--sky); margin-bottom: 10px; }
     .step h3 { font-size: 26px; margin-bottom: 10px; }
     .step p { color: var(--muted); font-size: 16px; }
-    code, .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; background: #eef2f4; padding: 2px 6px; border-radius: 5px; color: var(--midnight); }
-    pre.code { padding: 12px 14px; overflow-x: auto; margin-top: 12px; white-space: pre; max-width: 100%; }
+    code, .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; background: #eef2f4; padding: 2px 6px; border-radius: 4px; color: var(--midnight); }
+    pre.code { padding: 12px 14px; overflow-x: auto; margin-top: 14px; white-space: pre; max-width: 100%; }
 
     /* export sample */
     .export { background: var(--haze); padding: 80px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-    .md { background: var(--midnight); color: #dbe9f2; border-radius: 14px; padding: 22px 24px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 1.6; overflow-x: auto; white-space: pre; box-shadow: 0 24px 60px rgba(0,38,61,.25); }
-    .md .h { color: var(--ice); font-weight: 700; } .md .k { color: #8fc5e6; } .md .s { color: #ffd479; } .md .m { color: #8a9aa6; font-style: italic; }
-    .md-label { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--teal); margin-bottom: 10px; }
-    .tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
-    .tools span { font-size: 13px; font-weight: 600; color: var(--midnight); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; }
+    .md-label { font-family: Poppins, sans-serif; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 10px; }
+    .md { background: var(--midnight); color: #dbe9f2; border-radius: 10px; padding: 22px 24px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 1.6; overflow-x: auto; white-space: pre; box-shadow: 0 24px 60px rgba(0,38,61,.25); }
+    .md .h { color: var(--sky); font-weight: 700; } .md .k { color: #8fc5e6; } .md .s { color: #ffd479; } .md .m { color: #8a9aa6; }
+    .export p.tools { margin-top: 16px; font-size: 15px; color: var(--muted); }
 
     /* features */
-    .features { background: var(--midnight); color: #fff; padding: 80px 0; }
+    .features { background: var(--midnight); color: #fff; padding: 84px 0; }
     .features h2, .features h3 { color: #fff; }
     .features .lead { color: #b9d3e2; }
-    .fgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
+    .fgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 40px; }
     @media (max-width: 860px) { .fgrid { grid-template-columns: 1fr 1fr; } } @media (max-width: 560px) { .fgrid { grid-template-columns: 1fr; } }
-    .f { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 20px; }
-    .f .ic { width: 34px; height: 34px; border-radius: 9px; background: rgba(155,227,255,.18); color: var(--ice); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; font-weight: 800; }
-    .f h3 { font-size: 16px; margin-bottom: 6px; }
-    .f p { color: #b9d3e2; font-size: 14px; }
+    .f { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 22px; }
+    .f h3 { font-size: 17px; margin-bottom: 8px; }
+    .f p { color: #b9d3e2; font-size: 14.5px; }
 
-    /* devices */
+    /* devices, dashboard, audience */
     .devices { padding: 88px 0; }
-    .devices img { border-radius: 14px; }
-
-    /* dashboard */
-    .dash { padding: 80px 0; background: var(--haze); border-top: 1px solid var(--line); }
-
-    /* audience */
-    .who { padding: 80px 0 40px; }
+    .dash { padding: 84px 0; background: var(--haze); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .who { padding: 84px 0 40px; }
     .who .three { margin-top: 26px; }
-    .who .pain q { quotes: none; }
     .who .pain h3 { font-size: 18px; margin-bottom: 8px; }
 
     /* pricing */
     .pricing { padding: 80px 0; }
     .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 34px; max-width: 820px; }
     @media (max-width: 720px) { .plans { grid-template-columns: 1fr; } }
-    .plan { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 28px; }
-    .plan.pro { border-color: var(--sky); box-shadow: 0 16px 40px rgba(27,100,147,.15); position: relative; }
-    .plan.pro::after { content: 'Most popular'; position: absolute; top: -12px; right: 20px; background: var(--teal); color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; }
-    .plan .name { font-weight: 800; color: var(--midnight); font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
-    .price { font-size: 44px; font-weight: 800; color: var(--midnight); margin: 8px 0 2px; }
-    .price small { font-size: 15px; color: var(--muted); font-weight: 600; }
-    .plan ul { list-style: none; margin: 18px 0 22px; }
-    .plan li { padding: 6px 0 6px 26px; position: relative; font-size: 15px; }
-    .plan li::before { content: '✓'; position: absolute; left: 0; color: var(--teal); font-weight: 800; }
-    .note { font-size: 13px; color: var(--muted); margin-top: 16px; }
+    .plan { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 30px; }
+    .plan.pro { border: 2px solid var(--blue); box-shadow: 0 16px 40px rgba(25,102,149,.14); }
+    .plan .name { font-family: Poppins, sans-serif; font-weight: 600; color: var(--midnight); font-size: 18px; }
+    .price { font-family: Poppins, sans-serif; font-size: 44px; font-weight: 700; color: var(--midnight); margin: 6px 0 2px; line-height: 1.1; }
+    .price small { font-family: "Open Sans", sans-serif; font-size: 15px; color: var(--muted); font-weight: 400; }
+    .plan ul { list-style: none; margin: 18px 0 24px; }
+    .plan li { padding: 6px 0 6px 30px; position: relative; font-size: 15px; }
+    .plan li::before { top: 9px; }
+    .note { font-size: 14px; color: var(--muted); margin-top: 16px; }
 
     /* faq */
     .faq { padding: 80px 0; background: var(--haze); border-top: 1px solid var(--line); }
-    .qa { border-top: 1px solid var(--line); padding: 20px 0; }
+    .qa { border-top: 1px solid var(--line); padding: 22px 0; }
     .qa h3 { font-size: 17px; margin-bottom: 6px; }
     .qa p { color: var(--muted); font-size: 15px; max-width: 760px; }
 
     /* cta + footer */
-    .final { background: linear-gradient(135deg, var(--midnight), #0d3d5c); color: #fff; padding: 88px 0; text-align: center; }
-    .final h2 { color: #fff; font-size: 40px; }
+    .final { background: var(--midnight); color: #fff; padding: 88px 0; text-align: center; }
+    .final h2 { color: #fff; font-size: 38px; }
     .final p { color: #b9d3e2; margin: 12px auto 26px; max-width: 560px; }
-    footer { padding: 28px 0; font-size: 13px; color: var(--muted); }
-    footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    footer { padding: 36px 0; font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); }
+    footer .wrap { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+    footer .logo img { height: 26px; }
     footer a { color: var(--muted); }
+    footer .links a { margin-left: 18px; }
   </style>
 </head>
 <body>
 
 <header class="nav">
   <div class="wrap">
-    <a class="brand" href="#top" aria-label="Avalanche Markup">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 20 L9 6 L13 13 L15.5 9.5 L22 20 Z" fill="currentColor"/><path d="M9 6 L11 9.5 L7.5 9.5 Z" fill="#9BE3FF"/></svg>
-      Avalanche Markup
-    </a>
+    <a class="logo" href="#top" aria-label="Avalanche Creative"><img src="img/avalanche-logo.png" alt="Avalanche Creative" width="768" height="102"></a>
     <nav>
       <a href="#how">How it works</a>
       <a href="#features">Features</a>
@@ -171,17 +163,17 @@
 
 <section class="hero" id="top">
   <div class="wrap">
-    <span class="kicker">Website feedback, pinned to the page</span>
-    <h1>Stop describing the bug.<br>Point at it.</h1>
-    <p class="lead">Avalanche Markup lets clients and teammates click anywhere on a live site and leave a comment <em>right there</em> — with the exact element, the page, the device size and a screenshot attached automatically. No accounts for reviewers. One line to install.</p>
+    <p class="eyebrow">Avalanche Markup, the website feedback tool</p>
+    <h1>Stop describing the bug.<br><span class="accent">Point at it.</span></h1>
+    <p class="lead">Clients and teammates click anywhere on a live site and leave a comment right on the spot. The exact element, the page, the device size and a screenshot come attached automatically. No accounts for reviewers. One line to install.</p>
     <div class="ctas">
-      <a class="btn" href="https://lancebeaudry.github.io/avalanche-markup-app/">Start free — one site, forever</a>
+      <a class="btn" href="https://lancebeaudry.github.io/avalanche-markup-app/">Start free with one site</a>
       <a class="btn ghost" href="#how">See how it works</a>
     </div>
-    <p class="fine">No credit card. Pro is $99/year for 10 sites.</p>
-    <div class="logos"><b>Works with</b> <span>WordPress</span> <span>Webflow</span> <span>Squarespace</span> <span>Shopify</span> <span>Static sites</span> <span>React, Vue, Next.js</span> <span>Anything that serves HTML</span></div>
+    <p class="fine">No credit card. Pro is $99 a year for 10 sites.</p>
+    <p class="works"><b>Works with</b> WordPress, Webflow, Squarespace, Shopify, static sites, React, Vue, Next.js and anything else that serves HTML.</p>
     <div class="frame hero-shot">
-      <div class="bar"><i></i><i></i><i></i><span>staging.acmelandscaping.com/?markup=acme</span></div>
+      <div class="bar"><span>staging.acmelandscaping.com/?markup=acme</span></div>
       <img src="img/hero-overlay.jpg" alt="A live website with numbered comment pins; one pin is open showing a threaded comment on the headline with a reply from the client." width="1800" height="1125" fetchpriority="high">
     </div>
   </div>
@@ -189,55 +181,53 @@
 
 <section class="pains">
   <div class="wrap">
-    <span class="kicker">Sound familiar?</span>
     <h2>Feedback by email is a scavenger hunt.</h2>
     <div class="three">
       <div class="pain"><q>The blue button. No, the other blue button.</q><p>Reviewers describe what they see. Developers guess what they meant. Everyone loses a day.</p></div>
       <div class="pain"><q>Here's a screenshot.</q><p>Of what page? At what width? With what text? A cropped image with no context is a riddle, not a ticket.</p></div>
-      <div class="pain"><q>It's broken on my phone.</q><p>Which phone, which page, which element — and can you reproduce it? Usually not.</p></div>
+      <div class="pain"><q>It's broken on my phone.</q><p>Which phone, which page, which element? And can you reproduce it? Usually not.</p></div>
     </div>
-    <p class="answer">Markup captures the element, the page, the viewport, the text and styles the reviewer was looking at, and the screenshot they pasted — automatically, every time. Your developer opens the comment and already knows exactly what to change.</p>
+    <p class="answer">Markup captures the element, the page, the viewport, the text and styles the reviewer was looking at, and the screenshot they pasted. Automatically, every time. Your developer opens the comment and already knows exactly what to change.</p>
   </div>
 </section>
 
 <section class="steps" id="how">
   <div class="wrap">
-    <span class="kicker">How it works</span>
     <h2>Three steps. Zero training.</h2>
 
     <div class="step">
       <div class="txt">
-        <span class="num">1</span>
+        <div class="num">1</div>
         <h3>Add one line to your site</h3>
-        <p>Install the WordPress plugin, or paste a single script tag into any site. Nothing changes for normal visitors: the feedback layer only appears for people who open your private markup link.</p>
+        <p>Install the WordPress plugin, or paste a single script tag into any site. Nothing changes for normal visitors. The feedback layer only appears for people who open your private markup link.</p>
         <pre class="code">&lt;script defer src="…/markup.js" data-project="acme"&gt;&lt;/script&gt;</pre>
       </div>
       <div class="frame">
-        <div class="bar"><i></i><i></i><i></i><span>markup dashboard · Acme Landscaping</span></div>
+        <div class="bar"><span>markup dashboard · Acme Landscaping</span></div>
         <img src="img/dash-project.png" alt="The project page in the dashboard showing the share link, WordPress install steps and the one-line embed snippet." loading="lazy" width="1800" height="1125">
       </div>
     </div>
 
     <div class="step">
       <div class="txt">
-        <span class="num">2</span>
+        <div class="num">2</div>
         <h3>Share the link. Reviewers just type their name.</h3>
-        <p>Send <span class="code">yoursite.com/?markup=acme</span>. Clients and stakeholders enter a name and start clicking — no account, no password, no email code. Prefer tighter control? Turn open feedback off and invite specific people instead.</p>
+        <p>Send <span class="code">yoursite.com/?markup=acme</span>. Clients and stakeholders enter a name and start clicking. No account, no password, no email code. Prefer tighter control? Turn open feedback off and invite specific people instead.</p>
       </div>
       <div class="frame">
-        <div class="bar"><i></i><i></i><i></i><span>staging.acmelandscaping.com/?markup=acme</span></div>
-        <img src="img/guest-card.jpg" alt="The name-only entry card: 'Add your name, then click anywhere on the page to comment.'" loading="lazy" width="1800" height="1125">
+        <div class="bar"><span>staging.acmelandscaping.com/?markup=acme</span></div>
+        <img src="img/guest-card.jpg" alt="The name-only entry card: add your name, then click anywhere on the page to comment." loading="lazy" width="1800" height="1125">
       </div>
     </div>
 
     <div class="step">
       <div class="txt">
-        <span class="num">3</span>
+        <div class="num">3</div>
         <h3>Fix it with the full context</h3>
-        <p>Every comment is pinned to a real element and carries the selector, current text and styles, the page and the viewport it was made at. Threads keep the conversation in one place; @mentions and email alerts keep everyone moving. Mark items resolved as you go.</p>
+        <p>Every comment is pinned to a real element and carries the selector, current text and styles, the page and the viewport it was made at. Threads keep the conversation in one place. Mentions and email alerts keep everyone moving. Mark items resolved as you go.</p>
       </div>
       <div class="frame">
-        <div class="bar"><i></i><i></i><i></i><span>staging.acmelandscaping.com/?markup=acme</span></div>
+        <div class="bar"><span>staging.acmelandscaping.com/?markup=acme</span></div>
         <img src="img/sidebar.jpg" alt="The comments sidebar listing feedback across the site with filters for this page, latest first and resolved items." loading="lazy" width="1800" height="1125">
       </div>
     </div>
@@ -247,13 +237,12 @@
 <section class="export">
   <div class="wrap two">
     <div>
-      <span class="kicker">What the developer gets</span>
       <h2>A ticket that writes itself.</h2>
-      <p class="lead">One click exports every open comment as Markdown, grouped by page, with the selector, the current text and styles, the device width and the requested change. Paste it into your ticketing tool — or straight into Claude Code, Cursor or any AI coding assistant, which can act on it directly.</p>
-      <div class="tools"><span>Jira</span><span>Linear</span><span>ClickUp</span><span>Notion</span><span>GitHub Issues</span><span>Claude Code</span><span>Cursor</span><span>JSON for scripts</span></div>
+      <p class="lead">One click exports every open comment as Markdown, grouped by page, with the selector, the current text and styles, the device width and the requested change.</p>
+      <p class="tools">Paste it into Jira, Linear, ClickUp, Notion or GitHub Issues. Or hand it straight to Claude Code, Cursor or any AI coding assistant, which can act on it directly. JSON export is there for scripts.</p>
     </div>
     <div>
-      <span class="md-label">Export → Markdown</span>
+      <p class="md-label">Exported Markdown</p>
 <div class="md"><span class="h"># Feedback — acmelandscaping.com</span>
 <span class="m">_Exported from Avalanche Markup_</span>
 
@@ -282,19 +271,18 @@
 
 <section class="features" id="features">
   <div class="wrap">
-    <span class="kicker" style="color:var(--ice)">Everything you need, nothing to configure</span>
     <h2>Built for the way agencies actually review sites.</h2>
     <p class="lead">We built Markup for our own client reviews at Avalanche Creative, then made it a product. Every feature exists because we needed it on a real project.</p>
     <div class="fgrid">
-      <div class="f"><div class="ic">📍</div><h3>Pinned comments</h3><p>Click any element. The pin stays attached to it even as the page changes around it.</p></div>
-      <div class="f"><div class="ic">🖼</div><h3>Screenshots &amp; paste</h3><p>Attach an image, or paste one straight from the clipboard into the comment.</p></div>
-      <div class="f"><div class="ic">💬</div><h3>Threads &amp; @mentions</h3><p>Reply in place. Tag a teammate and they get an email with a link back to the exact spot.</p></div>
-      <div class="f"><div class="ic">📱</div><h3>Desktop, tablet, mobile</h3><p>Preview the page at each size and comment there — the device width is recorded on every pin.</p></div>
-      <div class="f"><div class="ic">🙋</div><h3>No login for reviewers</h3><p>Open feedback lets anyone with the link comment by name. Or keep it invite-only.</p></div>
-      <div class="f"><div class="ic">✉️</div><h3>Email notifications</h3><p>Choose who hears about new feedback on each site. Never emailed about your own comments.</p></div>
-      <div class="f"><div class="ic">⤓</div><h3>Export to Markdown or JSON</h3><p>All open items, grouped by page, with selectors and device sizes. Paste into Jira, Linear, Notion — or an AI assistant.</p></div>
-      <div class="f"><div class="ic">✓</div><h3>Resolve &amp; track</h3><p>Mark items done, hide resolved pins, and see at a glance what's still open.</p></div>
-      <div class="f"><div class="ic">🔒</div><h3>Private by design</h3><p>Each site is its own project. Reviewers only ever see the project whose link they hold. Tokens can't be listed or guessed in bulk.</p></div>
+      <div class="f"><h3>Pinned comments</h3><p>Click any element. The pin stays attached to it even as the page changes around it.</p></div>
+      <div class="f"><h3>Screenshots and paste</h3><p>Attach an image, or paste one straight from the clipboard into the comment.</p></div>
+      <div class="f"><h3>Threads and mentions</h3><p>Reply in place. Tag a teammate and they get an email with a link back to the exact spot.</p></div>
+      <div class="f"><h3>Desktop, tablet, mobile</h3><p>Preview the page at each size and comment there. The device width is recorded on every pin.</p></div>
+      <div class="f"><h3>No login for reviewers</h3><p>Open feedback lets anyone with the link comment by name. Or keep it invite-only.</p></div>
+      <div class="f"><h3>Email notifications</h3><p>Choose who hears about new feedback on each site. Never emailed about your own comments.</p></div>
+      <div class="f"><h3>Export to Markdown or JSON</h3><p>All open items, grouped by page, with selectors and device sizes. Paste into your ticketing tool or an AI assistant.</p></div>
+      <div class="f"><h3>Resolve and track</h3><p>Mark items done, hide resolved pins, and see at a glance what's still open.</p></div>
+      <div class="f"><h3>Private by design</h3><p>Each site is its own project. Reviewers only ever see the project whose link they hold. Tokens can't be listed or guessed in bulk.</p></div>
     </div>
   </div>
 </section>
@@ -303,9 +291,8 @@
   <div class="wrap two">
     <img class="shot swap" src="img/mobile.jpg" alt="The same page previewed in a 390-pixel mobile frame with its comment pins, switched from the toolbar." loading="lazy" width="1800" height="1125">
     <div>
-      <span class="kicker">Responsive review</span>
-      <h2>"It's broken on my phone" — solved.</h2>
-      <p class="lead">Switch to tablet or mobile from the toolbar and the page reflows inside a real device frame. Comments made there are tagged with the width, so the developer opens the exact layout the reviewer saw — no guessing which phone.</p>
+      <h2>"It's broken on my phone," solved.</h2>
+      <p class="lead">Switch to tablet or mobile from the toolbar and the page reflows inside a real device frame. Comments made there are tagged with the width, so the developer opens the exact layout the reviewer saw. No guessing which phone.</p>
       <ul class="ticks">
         <li>Desktop, tablet (820px) and mobile (390px) frames</li>
         <li>Pins keep their place at every size</li>
@@ -318,18 +305,17 @@
 <section class="dash">
   <div class="wrap two">
     <div>
-      <span class="kicker">The dashboard</span>
       <h2>Every site, one place.</h2>
-      <p class="lead">Create a project, get your share link and install snippet, invite collaborators, choose who gets notified, and manage your plan — all from a simple dashboard. Sign in with a code we email you; there's no password to remember.</p>
+      <p class="lead">Create a project, get your share link and install snippet, invite collaborators, choose who gets notified, and manage your plan from a simple dashboard. Sign in with a code we email you. There's no password to remember.</p>
       <ul class="ticks">
         <li>Share link and install instructions for WordPress or any site</li>
         <li>Collaborators and per-site notification lists</li>
         <li>Open feedback toggle for staging reviews</li>
-        <li>Upgrade or cancel any time — nothing is ever deleted</li>
+        <li>Upgrade or cancel any time. Nothing is ever deleted.</li>
       </ul>
     </div>
     <div class="frame">
-      <div class="bar"><i></i><i></i><i></i><span>markup dashboard · Projects</span></div>
+      <div class="bar"><span>markup dashboard · Projects</span></div>
       <img src="img/dash-projects.png" alt="The dashboard's projects list with a plan badge and a project card." loading="lazy" width="1800" height="1125">
     </div>
   </div>
@@ -337,8 +323,7 @@
 
 <section class="who">
   <div class="wrap">
-    <span class="kicker">Who it's for</span>
-    <h2>Anyone who ships websites for someone else.</h2>
+    <h2>For anyone who ships websites for someone else.</h2>
     <div class="three">
       <div class="pain"><h3>Agencies</h3><p>Run every client review through one link per site. Ten projects on Pro covers a full roster of active builds and staging sites.</p></div>
       <div class="pain"><h3>Freelancers</h3><p>Look organized without a project-management stack. Your client clicks, you fix, you mark it resolved. One site is free forever.</p></div>
@@ -349,7 +334,6 @@
 
 <section class="pricing" id="pricing">
   <div class="wrap">
-    <span class="kicker">Pricing</span>
     <h2>Free for one site. Simple after that.</h2>
     <p class="lead">No per-seat pricing, no limits on comments or reviewers. Pay for the number of sites you're reviewing.</p>
     <div class="plans">
@@ -359,7 +343,7 @@
         <ul>
           <li>1 project (one site)</li>
           <li>Unlimited comments and reviewers</li>
-          <li>Screenshots, threads, @mentions</li>
+          <li>Screenshots, threads, mentions</li>
           <li>Device previews and export</li>
           <li>Email notifications</li>
         </ul>
@@ -367,11 +351,11 @@
       </div>
       <div class="plan pro">
         <div class="name">Pro</div>
-        <div class="price">$99 <small>/ year</small></div>
+        <div class="price">$99 <small>per year</small></div>
         <ul>
           <li>10 projects</li>
           <li>Everything in Free</li>
-          <li>Ideal for agencies and freelancers with several sites in review</li>
+          <li>Built for agencies and freelancers with several sites in review</li>
           <li>Priority support from the team that builds it</li>
         </ul>
         <a class="btn" href="https://lancebeaudry.github.io/avalanche-markup-app/">Get Pro</a>
@@ -383,14 +367,13 @@
 
 <section class="faq">
   <div class="wrap">
-    <span class="kicker">Questions</span>
     <h2>The short answers.</h2>
-    <div class="qa"><h3>Do my clients need an account?</h3><p>No. With open feedback on, anyone with your link types their name and starts commenting. If you'd rather control who gets in, invite specific email addresses and they sign in with a one-time code — still no password.</p></div>
+    <div class="qa"><h3>Do my clients need an account?</h3><p>No. With open feedback on, anyone with your link types their name and starts commenting. If you'd rather control who gets in, invite specific email addresses and they sign in with a one-time code. Still no password.</p></div>
     <div class="qa"><h3>Will visitors see anything on my site?</h3><p>Never. The feedback layer only loads for visits that include your private <span class="code">?markup=</span> link. Everyone else sees your site exactly as it is.</p></div>
     <div class="qa"><h3>Does it work outside WordPress?</h3><p>Yes. The WordPress plugin is the easiest install, but the same one-line script tag works on Webflow, Squarespace, Shopify, static sites and custom apps.</p></div>
     <div class="qa"><h3>Will it slow my site down or change how it looks?</h3><p>No. The script only does anything when the markup link is used, and the whole interface lives in its own isolated layer, so your site's styles and the feedback tool never interfere with each other.</p></div>
-    <div class="qa"><h3>Where does the feedback live?</h3><p>In our hosted backend, isolated per project. Only a project's owner, its invited collaborators and — for open-feedback sites — people holding the link can see it. Avalanche staff can access projects for support, which is disclosed in our privacy policy.</p></div>
-    <div class="qa"><h3>What happens if I cancel?</h3><p>Your oldest project keeps working on the free plan; extra projects switch to read-only. Nothing is deleted, and re-subscribing unfreezes them instantly.</p></div>
+    <div class="qa"><h3>Where does the feedback live?</h3><p>In our hosted backend, isolated per project. Only a project's owner, its invited collaborators and, for open-feedback sites, people holding the link can see it. Avalanche staff can access projects for support, which is disclosed in our privacy policy.</p></div>
+    <div class="qa"><h3>What happens if I cancel?</h3><p>Your oldest project keeps working on the free plan and extra projects switch to read-only. Nothing is deleted, and re-subscribing unfreezes them instantly.</p></div>
     <div class="qa"><h3>Who makes this?</h3><p><a href="https://avalanchegr.com/?utm_source=markup&utm_medium=landing&utm_campaign=faq">Avalanche Creative</a>, a web design and marketing agency. We built Markup for our own client reviews and use it on every site we ship.</p></div>
   </div>
 </section>
@@ -405,8 +388,9 @@
 
 <footer>
   <div class="wrap">
-    <span>© 2026 <a href="https://avalanchegr.com/?utm_source=markup&utm_medium=landing&utm_campaign=footer">Avalanche Creative</a>. Avalanche Markup is a trademark of Avalanche Creative.</span>
-    <span><a href="https://lancebeaudry.github.io/avalanche-markup-app/terms.html">Terms</a> · <a href="https://lancebeaudry.github.io/avalanche-markup-app/privacy.html">Privacy</a> · <a href="mailto:projects@avalanchegr.com">Contact</a></span>
+    <a class="logo" href="https://avalanchegr.com/?utm_source=markup&utm_medium=landing&utm_campaign=footer" aria-label="Avalanche Creative"><img src="img/avalanche-logo.png" alt="Avalanche Creative" width="768" height="102"></a>
+    <span>© 2026 Avalanche Creative. Avalanche Markup is a trademark of Avalanche Creative.</span>
+    <span class="links"><a href="https://lancebeaudry.github.io/avalanche-markup-app/terms.html">Terms</a><a href="https://lancebeaudry.github.io/avalanche-markup-app/privacy.html">Privacy</a><a href="mailto:projects@avalanchegr.com">Contact</a></span>
   </div>
 </footer>
 
