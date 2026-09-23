@@ -4,12 +4,12 @@
 //
 //   node build-app.mjs && node admin/deploy-app.mjs            # dashboard
 //   node admin/deploy-app.mjs --bundle                         # also dist/markup.js
-// Also publishes landing/ to <DASHBOARD_URL>landing/ (marketing page).
+// Publishes landing/ to https://pinpoint.avalanchegr.com/ and the dashboard to /app/.
 //
 // Why Pages: supabase.co refuses to serve text/html anywhere (Storage AND
 // edge functions rewrite it to text/plain with a sandbox CSP), so the
 // dashboard lives in a separate, public, compiled-only repository:
-//   https://github.com/lancebeaudry/avalanche-markup-app  ->  DASHBOARD_URL
+//   https://github.com/lancebeaudry/avalanche-markup-app  ->  pinpoint.avalanchegr.com (CNAME)
 // It contains no source and no secrets. A custom domain later is a CNAME
 // file + DNS.
 //
@@ -52,9 +52,11 @@ if (!existsSync(join(CLONE, '.git'))) {
   git(['reset', '-q', '--hard', 'origin/main']);
 }
 for (const f of readdirSync(CLONE)) if (f !== '.git') rmSync(join(CLONE, f), { recursive: true, force: true });
-cpSync(dist, CLONE, { recursive: true });
-// The marketing page rides along at /landing/ (the clone is wiped each deploy).
-cpSync(join(ROOT, 'landing'), join(CLONE, 'landing'), { recursive: true });
+// Layout on pinpoint.avalanchegr.com: the marketing page at the root, the
+// dashboard under /app/ (the clone is wiped each deploy, so both are copied).
+cpSync(join(ROOT, 'landing'), CLONE, { recursive: true });
+cpSync(dist, join(CLONE, 'app'), { recursive: true });
+writeFileSync(join(CLONE, 'CNAME'), 'pinpoint.avalanchegr.com\n');
 writeFileSync(join(CLONE, '.nojekyll'), '');
 writeFileSync(join(CLONE, 'README.md'),
   '# PinPoint — dashboard\n\nCompiled customer dashboard for [PinPoint by Avalanche](https://avalanchegr.com), published via GitHub Pages. Source is private. Contains no secrets (the Supabase anon key is public by design; access is enforced by row-level security).\n');
@@ -63,7 +65,7 @@ const version = readFileSync(join(dist, 'index.html'), 'utf8').match(/data-versi
 if (git(['status', '--porcelain'])) {
   git(['commit', '-q', '-m', `Deploy dashboard ${version}`]);
   git(['push', '-q', 'origin', 'main']);
-  console.log(`✔ dashboard ${version} pushed to Pages (live in ~1 min): ${env.DASHBOARD_URL || 'https://lancebeaudry.github.io/avalanche-markup-app/'}`);
+  console.log(`✔ dashboard ${version} pushed to Pages (live in ~1 min): ${env.DASHBOARD_URL || 'https://pinpoint.avalanchegr.com/app/'}`);
 } else {
   console.log('✔ dashboard unchanged — nothing to publish');
 }

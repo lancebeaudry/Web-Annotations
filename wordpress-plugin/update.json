@@ -1,11 +1,11 @@
 {
   "name": "PinPoint by Avalanche",
   "slug": "avalanche-markup",
-  "version": "2.1.1",
-  "download_url": "https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/avalanche-markup-2.1.1.zip",
-  "homepage": "https://avalanchegr.com",
+  "version": "2.1.2",
+  "download_url": "https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/avalanche-markup-2.1.2.zip",
+  "homepage": "https://pinpoint.avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "2.1.1 — The PinPoint logo. 2.1.0 — Avalanche Markup is now PinPoint. Pins find their element far more reliably after the page changes (new fingerprint matching plus live re-positioning when layout shifts). AI assistants can now reply to and resolve items from an export. 2.0.0 — Avalanche Markup 2.0: accounts and site ownership, the customer dashboard and plans, per-site bridge secrets, and a refreshed Avalanche look. After updating, add AVALANCHE_MARKUP_PROJECT_SECRET to wp-config.php — Settings → Avalanche Markup shows where to find it."
+  "changelog": "2.1.2 — PinPoint now lives at pinpoint.avalanchegr.com. 2.1.1 — The PinPoint logo. 2.1.0 — Avalanche Markup is now PinPoint. Pins find their element far more reliably after the page changes (new fingerprint matching plus live re-positioning when layout shifts). AI assistants can now reply to and resolve items from an export. 2.0.0 — Avalanche Markup 2.0: accounts and site ownership, the customer dashboard and plans, per-site bridge secrets, and a refreshed Avalanche look. After updating, add AVALANCHE_MARKUP_PROJECT_SECRET to wp-config.php — Settings → Avalanche Markup shows where to find it."
 }

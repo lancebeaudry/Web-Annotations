@@ -4,7 +4,7 @@
 import { h } from './overlay.js';
 import { MARKUP_VERSION } from '../config.js';
 
-export const BRAND_URL = 'https://avalanchegr.com/';
+export const BRAND_URL = 'https://pinpoint.avalanchegr.com/';
 
 export function brandHref(campaign, medium = 'tool') {
   return `${BRAND_URL}?utm_source=pinpoint&utm_medium=${medium}&utm_campaign=${encodeURIComponent(campaign)}`;

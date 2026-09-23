@@ -12,7 +12,7 @@ Click-to-comment website feedback, by Avalanche Creative. (Product name since 2.
 | WordPress plugin | `wordpress-plugin/avalanche-markup/` | Injects the bundle (shipped *inside* the plugin), settings page, editor auto-sign-in bridge, self-updater. |
 | Hosted bundle | Supabase Storage bucket `markup` → `…/storage/v1/object/public/markup/markup.js` | For non-WordPress sites: one `<script>` tag. Also holds the plugin zip + `plugin/update.json` the updater polls. |
 | Backend | Supabase (`supabase/`) | Postgres + RLS, Auth (email code + anonymous guests), Storage (`comment-media`), Edge Functions. |
-| Customer dashboard | `dashboard/` → GitHub Pages (`lancebeaudry/avalanche-markup-app`) | Sign up, projects, install instructions, collaborators, notifications, site secret, plan/billing. Static, hash-routed. supabase.co refuses to serve HTML, hence Pages. |
+| Customer dashboard | `dashboard/` → GitHub Pages (`lancebeaudry/avalanche-markup-app`, custom domain `pinpoint.avalanchegr.com`: landing at `/`, dashboard at `/app/`) | Sign up, projects, install instructions, collaborators, notifications, site secret, plan/billing. Static, hash-routed. supabase.co refuses to serve HTML, hence Pages. |
 | Release tooling | `admin/release.mjs`, `admin/deploy-app.mjs`, `build.mjs`, `build-app.mjs` | See *Releasing*. |
 
 ## Access model (2.0)

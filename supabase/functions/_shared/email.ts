@@ -52,5 +52,5 @@ export async function sendEmail(m: Mail): Promise<string> {
 
 // Branded footer appended to every notification.
 export const FOOTER_HTML =
-  `<p style="margin-top:20px;font-size:12px;color:#6b7a85">Sent by <a href="https://avalanchegr.com/?utm_source=pinpoint&amp;utm_medium=email&amp;utm_campaign=notify" style="color:#1B6493">PinPoint, by Avalanche Creative</a></p>`;
-export const FOOTER_TEXT = `\n— PinPoint, by Avalanche Creative · https://avalanchegr.com\n`;
+  `<p style="margin-top:20px;font-size:12px;color:#6b7a85">Sent by <a href="https://pinpoint.avalanchegr.com/?utm_source=pinpoint&amp;utm_medium=email&amp;utm_campaign=notify" style="color:#1B6493">PinPoint, by Avalanche Creative</a></p>`;
+export const FOOTER_TEXT = `\n— PinPoint, by Avalanche Creative · https://pinpoint.avalanchegr.com\n`;
