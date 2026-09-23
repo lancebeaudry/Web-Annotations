@@ -14,6 +14,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <script>
+    // Old dashboard links (…github.io/avalanche-markup-app/#/projects/…) now
+    // land here after GitHub's redirect; send hash routes on to the app.
+    if (location.hash.indexOf('#/') === 0 || /[?&](checkout|code)=/.test(location.search)) location.replace('/app/' + location.search + location.hash);
+  </script>
   <style>
     :root { --midnight:#00263D; --blue:#196695; --blue-dark:#144f74; --sky:#57C2E3; --haze:#F6F9FB; --ink:#1f2a33; --muted:#5b6b76; --line:#e1e8ed; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
