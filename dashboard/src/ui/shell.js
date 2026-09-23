@@ -2,7 +2,7 @@ import { h } from './dom.js';
 import { APP_VERSION, BRAND_URL } from '../config.js';
 
 function logo() {
-  return h('img', { src: 'img/avalanche-logo-white.png', alt: 'Avalanche Creative', class: 'logo', width: '768', height: '102' });
+  return h('img', { src: 'img/pinpoint-logo-white.png', alt: 'PinPoint by Avalanche Creative', class: 'logo', width: '573', height: '140' });
 }
 
 function mark() {
@@ -38,7 +38,7 @@ export function shell(content, { user, active } = {}) {
     h(
       'header',
       {},
-      h('a', { class: 'brand', href: '#/projects' }, logo(), h('span', { class: 'sep' }), h('span', {}, 'PinPoint')),
+      h('a', { class: 'brand', href: '#/projects' }, logo()),
       nav
     ),
     h('main', {}, content),

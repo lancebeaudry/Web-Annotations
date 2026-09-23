@@ -5,12 +5,10 @@
 html, body { margin: 0; background: #F9F9F9; color: #3A3A3A; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 a { color: #1B6493; }
 .shell { min-height: 100vh; display: flex; flex-direction: column; }
-header { background: #00263D; color: #fff; padding: 0 20px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+header { background: #00263D; color: #fff; padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
 header .brand { color: #fff; text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-header .brand img.logo { height: 22px; width: auto; display: block; }
-header .brand .sep { width: 1px; height: 22px; background: rgba(255,255,255,.35); margin: 0 4px; }
-header .brand svg { color: #9BE3FF; }
-@media (max-width: 520px) { header .brand img.logo { height: 18px; } }
+header .brand img.logo { height: 38px; width: auto; display: block; }
+@media (max-width: 520px) { header .brand img.logo { height: 30px; } }
 header nav a { color: #cfe6f2; text-decoration: none; margin-left: 18px; font-weight: 600; }
 header nav a.active, header nav a:hover { color: #fff; }
 main { flex: 1; width: 100%; max-width: 760px; margin: 0 auto; padding: 24px 16px 40px; }
