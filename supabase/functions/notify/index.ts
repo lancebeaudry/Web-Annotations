@@ -1,4 +1,4 @@
-// Avalanche Markup — new-comment notifier.
+// PinPoint — new-comment notifier.
 //
 // Triggered by the `comments_notify` Postgres trigger (see
 // supabase/notifications.sql) on every comment INSERT. Works out who to
@@ -78,6 +78,8 @@ Deno.serve(async (req) => {
 
   const who = author.startsWith("guest:")
     ? (record.author_name || "A guest")
+    : author.startsWith("agent:")
+    ? `${record.author_name || "AI assistant"} (AI assistant)`
     : (record.author_name ? `${record.author_name} (${author})` : author);
   const deepLink = `${record.page_url}?markup=${encodeURIComponent(project.token)}`;
   const kind = isReply ? "replied" : "left a comment";
@@ -92,7 +94,7 @@ Deno.serve(async (req) => {
       `<p>${esc(lead)}</p>` +
       `<p style="color:#555">Page: ${esc(record.page_path)}</p>` +
       `<blockquote style="margin:0 0 16px;padding:8px 12px;border-left:3px solid #ddd;color:#333">${esc(snippet)}</blockquote>` +
-      `<p><a href="${esc(deepLink)}" style="display:inline-block;padding:8px 14px;background:#1B6493;color:#fff;border-radius:6px;text-decoration:none">Open in Markup</a></p>` +
+      `<p><a href="${esc(deepLink)}" style="display:inline-block;padding:8px 14px;background:#1B6493;color:#fff;border-radius:6px;text-decoration:none">Open in PinPoint</a></p>` +
       FOOTER_HTML;
     try {
       await sendEmail({ to: email, subject, text, html, idempotencyKey: `notify-${record.id}-${email}` });

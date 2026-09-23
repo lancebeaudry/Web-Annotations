@@ -1,15 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, DASHBOARD_URL } from './config.js';
-import { fetchProject, fetchComments, subscribeRealtime, fetchAccess, createProject } from './data.js';
+import { fetchProject, fetchComments, subscribeRealtime, fetchAccess, createProject, getAgentKey } from './data.js';
 import { mountOverlay, toast, h } from './ui/overlay.js';
 import { renderAuthCard, renderGuestCard, removeAuthCard, savedName } from './ui/auth.js';
-import { renderPins } from './ui/pins.js';
+import { renderPins, invalidatePins } from './ui/pins.js';
 import { openCommentBox } from './ui/commentBox.js';
 import { closePopovers, refreshOpenThread, openThread } from './ui/popover.js';
 import { toggleSidebar, closeSidebar, refreshSidebar, openRootCount, resumeJumpAfterNav } from './ui/sidebar.js';
 import { toggleInviteMenu } from './ui/invite.js';
 import { prefetchMentionables } from './ui/mentions.js';
 import { buildMarkdown, buildJson, copyToClipboard } from './export.js';
+import { FUNCTIONS_URL } from './config.js';
 import { brandLink, poweredBy } from './ui/brand.js';
 
 // True when the overlay is running inside the device-preview iframe (a
@@ -275,13 +276,7 @@ async function start(app) {
     refreshOpenThread(app);
   });
 
-  let resizeTimer = null;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => renderPins(app), 150);
-  });
-  // Late layout shifts (fonts, images) move elements under the pins.
-  window.addEventListener('load', () => renderPins(app));
+  watchLayout(app);
 
   // Keyboard shortcuts: C = comment mode, B = browse mode. Ignored
   // while typing in any field (including the shadow-DOM comment box).
@@ -461,6 +456,47 @@ function svgIcon(d) {
   path.setAttribute('stroke-linejoin', 'round');
   svg.appendChild(path);
   return svg;
+}
+
+// Keep pins glued to their elements while the page moves under them.
+// Pins are absolutely positioned against the element's rect at render
+// time, so anything that shifts layout after that — fonts and images
+// loading, lazy sections, accordions, cookie banners, SPA re-renders,
+// the viewport resizing — strands them. Watch all of those and re-render
+// (debounced). A DOM mutation also drops the element cache so a pin
+// whose element was replaced gets re-located instead of pointing at a
+// detached node.
+function watchLayout(app) {
+  let timer = null;
+  const schedule = (invalidate) => {
+    if (invalidate) invalidatePins();
+    clearTimeout(timer);
+    timer = setTimeout(() => renderPins(app), 120);
+  };
+  window.addEventListener('resize', () => schedule(false));
+  window.addEventListener('load', () => schedule(false));
+  window.addEventListener('orientationchange', () => schedule(false));
+  // Images/iframes/videos that finish loading after our first render.
+  document.addEventListener('load', (e) => {
+    const t = e.target;
+    if (t && (t.tagName === 'IMG' || t.tagName === 'IFRAME' || t.tagName === 'VIDEO')) schedule(false);
+  }, true);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => schedule(false)).catch(() => {});
+  try {
+    // Document size changes cover most in-page layout shifts cheaply.
+    new ResizeObserver(() => schedule(false)).observe(document.documentElement);
+    if (document.body) new ResizeObserver(() => schedule(false)).observe(document.body);
+  } catch { /* no ResizeObserver: the mutation observer still covers most cases */ }
+  try {
+    new MutationObserver((records) => {
+      for (const r of records) {
+        // Our own host and its (shadow) contents never affect page layout.
+        if (r.target === app.ui.host || (r.target.nodeType === 1 && r.target.closest && r.target.closest('#markup-root'))) continue;
+        schedule(true);
+        return;
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'open', 'src'] });
+  } catch { /* no MutationObserver */ }
 }
 
 function renderToolbar(app) {
@@ -654,6 +690,14 @@ function renderBlockedCard(app, email) {
   app.ui.layer.appendChild(card);
 }
 
+// Owners/operators get the AI-assistant block in Markdown exports (the
+// per-project agent key + endpoint). Anyone else exports plain Markdown.
+async function agentInfo(app) {
+  if (!app.canManage || !app.project) return null;
+  const { key } = await getAgentKey(app.supabase, app.project.id);
+  return key ? { key, endpoint: `${FUNCTIONS_URL}/agent` } : null;
+}
+
 // Ending the session forgets the token and reloads without ?markup so
 // the page comes back as a normal visit — confirmed first.
 function confirmExit(app) {
@@ -698,8 +742,8 @@ function toggleExportMenu(app) {
 
   const option = (title, hint, fn) =>
     h('button', { class: 'opt', onclick: async () => {
-      const { text, count } = fn();
       menu.remove();
+      const { text, count } = await fn();
       if (!count) {
         toast(app.ui, 'No open comments to export');
         return;
@@ -712,8 +756,8 @@ function toggleExportMenu(app) {
     'div',
     { class: 'card export-menu' },
     h('div', { class: 'card-head' }, 'Export open comments'),
-    option('Markdown — this page', 'Paste into Claude Code', () => buildMarkdown(app, 'page')),
-    option('Markdown — whole project', 'All pages, grouped by path', () => buildMarkdown(app, 'project')),
+    option('Markdown — this page', 'Paste into Claude Code or a ticket', async () => buildMarkdown(app, 'page', await agentInfo(app))),
+    option('Markdown — whole project', 'All pages, grouped by path', async () => buildMarkdown(app, 'project', await agentInfo(app))),
     option('JSON — this page', 'Raw comment objects', () => buildJson(app, 'page')),
     option('JSON — whole project', 'Raw comment objects', () => buildJson(app, 'project'))
   );

@@ -1,4 +1,4 @@
-// Avalanche Markup — Stripe webhook. THE ONLY WRITER of subscriptions.plan.
+// PinPoint — Stripe webhook. THE ONLY WRITER of subscriptions.plan.
 //
 // Verifies the signature, dedupes by event id (billing_events), and for every
 // subscription-affecting event re-fetches the subscription from Stripe

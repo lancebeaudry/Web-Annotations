@@ -1,4 +1,4 @@
-// Avalanche Markup — notify-list sync bridge.
+// PinPoint — notify-list sync bridge.
 //
 // Lets the WordPress plugin's "Email notifications" field sync to the
 // backend WITHOUT any key on the WP server beyond the site's own bridge

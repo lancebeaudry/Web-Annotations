@@ -1,4 +1,4 @@
-// Avalanche Markup — start a Pro subscription (Stripe Checkout).
+// PinPoint — start a Pro subscription (Stripe Checkout).
 //
 // POST, Authorization: Bearer <user JWT>. Creates or reuses the Stripe
 // Customer for this user, then returns a Checkout Session URL. The plan is

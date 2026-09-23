@@ -1,4 +1,4 @@
-// Avalanche Markup — customer dashboard entry point.
+// PinPoint — customer dashboard entry point.
 import { h } from './ui/dom.js';
 import { shell } from './ui/shell.js';
 import { supabase, getSession, account } from './api.js';

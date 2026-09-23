@@ -1,5 +1,7 @@
 // Owner/staff export: open comments grouped by page, as Markdown ready
-// to paste into Claude Code, or raw JSON for scripting.
+// to paste into Claude Code, or raw JSON for scripting. Owners' exports
+// end with an agent block (IDs + endpoint) so an AI assistant can reply
+// and resolve items — see agentBlock().
 
 import { deviceLabel } from './capture.js';
 import { roleLabel, authorName } from './roles.js';
@@ -54,7 +56,7 @@ function repliesOf(app, rootId) {
     .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
 }
 
-export function buildMarkdown(app, scope) {
+export function buildMarkdown(app, scope, agent = null) {
   const roots = openRoots(app, scope);
   if (!roots.length) return { text: '', count: 0 };
 
@@ -67,7 +69,7 @@ export function buildMarkdown(app, scope) {
 
   const blocks = [
     `# Feedback — ${siteHost}`,
-    '_Exported from Avalanche Markup — https://avalanchegr.com_',
+    '_Exported from PinPoint by Avalanche — https://avalanchegr.com_',
     '',
   ];
   for (const [path, comments] of byPage) {
@@ -81,6 +83,7 @@ export function buildMarkdown(app, scope) {
       const styles = stylesLine(c.computed_styles);
       if (styles) lines.push(`   - Current styles: ${styles}`);
       lines.push(`   - Requested change: ${c.comment_text}`);
+      if (agent) lines.push(`   - ID: ${c.id}`);
       if (c.attachments && c.attachments.length) {
         lines.push(`   - Attachments: ${c.attachments.map((a) => a.url).join(', ')}`);
       }
@@ -92,7 +95,41 @@ export function buildMarkdown(app, scope) {
     });
     blocks.push(lines.join('\n'));
   }
+  if (agent) blocks.push(agentBlock(agent));
   return { text: blocks.join('\n'), count: roots.length };
+}
+
+// Appended to owner/operator exports: the IDs above plus a key and an
+// endpoint let an AI coding assistant reply to and resolve items itself,
+// instead of the human copying status back by hand. Kept as plain curl so
+// any assistant that can run a shell command can use it.
+export function agentBlock({ key, endpoint }) {
+  return [
+    '---',
+    '## For AI coding assistants (Claude Code, Cursor, …)',
+    '',
+    'These items are tracked in PinPoint and each one has an ID above. Work through them in order.',
+    'When you finish an item, mark it resolved with a one-line reply saying what you changed.',
+    "If you cannot do an item, reply with why and leave it open. Never resolve an item you did not complete.",
+    'Before you report that you are done, fetch the open list again and confirm nothing you handled is still open.',
+    '',
+    'Resolve with a note:',
+    '```bash',
+    `curl -s -X POST "${endpoint}" -H "content-type: application/json" -H "x-pinpoint-agent-key: ${key}" \\`,
+    `  -d '{"comment_id":"<ID>","reply":"Changed the headline to …","resolve":true,"agent_name":"Claude Code"}'`,
+    '```',
+    'Reply without resolving (blocked, question, partial):',
+    '```bash',
+    `curl -s -X POST "${endpoint}" -H "content-type: application/json" -H "x-pinpoint-agent-key: ${key}" \\`,
+    `  -d '{"comment_id":"<ID>","reply":"Could not change this because …"}'`,
+    '```',
+    'List what is still open (JSON):',
+    '```bash',
+    `curl -s "${endpoint}?status=open" -H "x-pinpoint-agent-key: ${key}"`,
+    '```',
+    'The key is private to this project. Do not commit it; keep it in your shell environment or a local, gitignored file.',
+    '',
+  ].join('\n');
 }
 
 export function buildJson(app, scope) {

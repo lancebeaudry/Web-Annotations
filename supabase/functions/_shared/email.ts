@@ -3,7 +3,7 @@
 // verified, selected by MAIL_PROVIDER=gmail. Delete the Gmail branch (and
 // the GMAIL_* secrets) once Resend is live.
 //
-// Secrets: RESEND_API_KEY, MAIL_FROM ("Avalanche Markup <notify@mail.avalanchegr.com>")
+// Secrets: RESEND_API_KEY, MAIL_FROM ("PinPoint by Avalanche <notify@mail.avalanchegr.com>")
 //          MAIL_PROVIDER (optional: resend | gmail; default resend when a key is set)
 //          GMAIL_USER, GMAIL_APP_PASSWORD (transitional)
 
@@ -43,7 +43,7 @@ export async function sendEmail(m: Mail): Promise<string> {
     connection: { hostname: "smtp.gmail.com", port: 465, tls: true, auth: { username: GMAIL_USER, password: GMAIL_APP_PASSWORD } },
   });
   try {
-    await client.send({ from: `Avalanche Markup <${GMAIL_USER}>`, to: m.to, subject: m.subject, content: m.text, html: m.html });
+    await client.send({ from: `PinPoint by Avalanche <${GMAIL_USER}>`, to: m.to, subject: m.subject, content: m.text, html: m.html });
   } finally {
     await client.close();
   }
@@ -52,5 +52,5 @@ export async function sendEmail(m: Mail): Promise<string> {
 
 // Branded footer appended to every notification.
 export const FOOTER_HTML =
-  `<p style="margin-top:20px;font-size:12px;color:#6b7a85">Sent by <a href="https://avalanchegr.com/?utm_source=markup&amp;utm_medium=email&amp;utm_campaign=notify" style="color:#1B6493">Avalanche Markup</a></p>`;
-export const FOOTER_TEXT = `\n— Avalanche Markup · https://avalanchegr.com\n`;
+  `<p style="margin-top:20px;font-size:12px;color:#6b7a85">Sent by <a href="https://avalanchegr.com/?utm_source=pinpoint&amp;utm_medium=email&amp;utm_campaign=notify" style="color:#1B6493">PinPoint, by Avalanche Creative</a></p>`;
+export const FOOTER_TEXT = `\n— PinPoint, by Avalanche Creative · https://avalanchegr.com\n`;

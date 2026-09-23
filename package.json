@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Avalanche Markup \u2014 click-to-comment visual feedback overlay for client sites",
+  "description": "PinPoint by Avalanche \u2014 click-to-comment website feedback overlay",
   "scripts": {
     "build": "node build.mjs",
     "build:mock": "node build.mjs --mock",

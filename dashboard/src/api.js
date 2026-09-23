@@ -39,6 +39,8 @@ export const setNotify = async (id, emails) => unwrap(await supabase.rpc('set_no
 
 export const bridgeSecret = async (id) => unwrap(await supabase.rpc('get_bridge_secret', { p_project: id }));
 export const rotateSecret = async (id) => unwrap(await supabase.rpc('rotate_bridge_secret', { p_project: id }));
+export const agentKey = async (id) => unwrap(await supabase.rpc('get_agent_key', { p_project: id }));
+export const rotateAgentKey = async (id) => unwrap(await supabase.rpc('rotate_agent_key', { p_project: id }));
 
 // Billing edge functions (user JWT; verified in-function).
 export async function callFn(name) {

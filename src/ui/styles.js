@@ -58,7 +58,7 @@ export const CSS = `
   padding: 4px 6px;
   border-radius: 6px;
 }
-.toolbar-brand svg { width: 16px; height: 16px; color: #1B6493; flex: none; }
+.toolbar-brand img { width: 16px; height: 16px; flex: none; }
 .toolbar-brand:hover { background: #eef2f4; color: #1B6493; }
 .toolbar-brand:focus-visible { outline: 2px solid #1B6493; outline-offset: 2px; }
 .readonly-strip {
@@ -227,6 +227,7 @@ export const CSS = `
   transition: transform 0.1s;
 }
 .pin:hover { transform: scale(1.15); }
+.pin.weak { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #f0a020; opacity: .85; }
 .pin.resolved { background: #13A89E; opacity: 0.55; }
 /* "looks addressed": amber dot badge — the content here changed since
    the comment was written, so it likely got handled. */

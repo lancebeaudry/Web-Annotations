@@ -5,3 +5,6 @@ export const MARKUP_VERSION = __MARKUP_VERSION__;
 // The customer dashboard (sign up, projects, plan). Deep-linked from the
 // overlay's cards.
 export const DASHBOARD_URL = __DASHBOARD_URL__;
+
+// Edge functions base (agent endpoint in exports).
+export const FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;

@@ -1,4 +1,4 @@
-// Avalanche Markup — attachment sweeper.
+// PinPoint — attachment sweeper.
 //
 // Deleting a comment removes its row, but Storage objects are not removed by
 // SQL. The comments_after_delete_tombstone trigger records each attachment

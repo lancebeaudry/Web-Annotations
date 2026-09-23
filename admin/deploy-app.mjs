@@ -57,7 +57,7 @@ cpSync(dist, CLONE, { recursive: true });
 cpSync(join(ROOT, 'landing'), join(CLONE, 'landing'), { recursive: true });
 writeFileSync(join(CLONE, '.nojekyll'), '');
 writeFileSync(join(CLONE, 'README.md'),
-  '# Avalanche Markup — dashboard\n\nCompiled customer dashboard for [Avalanche Markup](https://avalanchegr.com), published via GitHub Pages. Source is private. Contains no secrets (the Supabase anon key is public by design; access is enforced by row-level security).\n');
+  '# PinPoint — dashboard\n\nCompiled customer dashboard for [PinPoint by Avalanche](https://avalanchegr.com), published via GitHub Pages. Source is private. Contains no secrets (the Supabase anon key is public by design; access is enforced by row-level security).\n');
 git(['add', '-A']);
 const version = readFileSync(join(dist, 'index.html'), 'utf8').match(/data-version="([^"]+)"/)?.[1] || 'unknown';
 if (git(['status', '--porcelain'])) {

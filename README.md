@@ -1,6 +1,6 @@
-# Avalanche Markup
+# PinPoint by Avalanche
 
-Click-to-comment visual feedback for websites, by Avalanche Creative. A reviewer opens a page with a special link, clicks anywhere, and leaves a pinned, threaded comment — with screenshots, @mentions, device previews, and email notifications.
+Click-to-comment website feedback, by Avalanche Creative. (Product name since 2.1; the code, plugin slug `avalanche-markup`, `?markup=` parameter, bucket and constants keep their original identifiers on purpose — renaming them would break every installed site.) A reviewer opens a page with a special link, clicks anywhere, and leaves a pinned, threaded comment — with screenshots, @mentions, device previews, and email notifications.
 
 **Proprietary — all rights reserved.** See `LICENSE`. This repository is the internal source; it is not for distribution and cannot go on wordpress.org (which requires GPL).
 
@@ -29,9 +29,9 @@ Every permission lives in RLS + `SECURITY DEFINER` helpers (`is_operator`, `is_p
 ## Setup (one time)
 
 1. `.env` from `.env.example` — public values (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DASHBOARD_URL`, …) plus server-only `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_ACCESS_TOKEN` (never shipped).
-2. Database, in this order (each is idempotent): `schema.sql` → `notifications.sql` → `project-scoping.sql` → `attachments.sql` → `open-access.sql` → `team-create-projects.sql` → `lock-down-reads.sql` → `distribution.sql` → `tenancy.sql` → `dashboard.sql`. Apply via the SQL editor or the Management API. Do not run the older files *after* `tenancy.sql` — they would reintroduce the pre-2.0 policies.
+2. Database, in this order (each is idempotent): `schema.sql` → `notifications.sql` → `project-scoping.sql` → `attachments.sql` → `open-access.sql` → `team-create-projects.sql` → `lock-down-reads.sql` → `distribution.sql` → `tenancy.sql` → `dashboard.sql` → `agent.sql`. Apply via the SQL editor or the Management API. Do not run the older files *after* `tenancy.sql` — they would reintroduce the pre-2.0 policies.
 3. Auth: anonymous sign-ins on; email OTP 6 digits; rate limits (anonymous 20/h/IP, email 100/h); URL allowlist includes `DASHBOARD_URL/**`.
-4. Edge functions (all `--no-verify-jwt`): `notify`, `notify-sync`, `project-settings`, `wp-session`, `media-sweep`, `billing-checkout`, `billing-portal`, `stripe-webhook`. Deploy with `supabase functions deploy <name> --project-ref <ref> --no-verify-jwt --use-api` (`--use-api` avoids the Docker/TTY hang).
+4. Edge functions (all `--no-verify-jwt`): `notify`, `notify-sync`, `project-settings`, `wp-session`, `media-sweep`, `billing-checkout`, `billing-portal`, `stripe-webhook`, `agent`. Deploy with `supabase functions deploy <name> --project-ref <ref> --no-verify-jwt --use-api` (`--use-api` avoids the Docker/TTY hang).
 5. Secrets: `NOTIFY_SECRET` (must equal `private.app_settings.notify_secret`), mail (`RESEND_API_KEY`, `MAIL_FROM`, `MAIL_PROVIDER`; transitional `GMAIL_USER`/`GMAIL_APP_PASSWORD`), `LEGACY_WP_AUTH_SECRET` (old global bridge secret, until every plugin is on 2.0), `DASHBOARD_URL`, Stripe (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`).
 
 ## Local development
@@ -62,7 +62,7 @@ Both scripts spawn `git`/`zip`; in environments that block child processes, run 
 
 ## Installing on a site
 
-**WordPress:** upload `avalanche-markup.zip`, set the token under *Settings → Avalanche Markup*, and add the project's **site secret** to `wp-config.php`:
+**WordPress:** upload `avalanche-markup.zip`, set the token under *Settings → PinPoint*, and add the project's **site secret** to `wp-config.php`:
 
 ```php
 define( 'AVALANCHE_MARKUP_PROJECT_SECRET', '…' ); // Markup → Invite → Site secret, or the dashboard
@@ -84,7 +84,7 @@ Notifications (`notify`) and sign-in codes go through the provider in `supabase/
 
 ## Billing
 
-Stripe Checkout (`billing-checkout`), Customer Portal (`billing-portal`), and the webhook (`stripe-webhook`, the only writer of `subscriptions`). Functions answer `503 billing not configured` until the `STRIPE_*` secrets exist. Owner checklist: product "Avalanche Markup Pro" with a yearly price → `STRIPE_PRICE_ID`; webhook endpoint `…/functions/v1/stripe-webhook` with `checkout.session.completed`, `customer.subscription.created/updated/deleted`, `invoice.paid`, `invoice.payment_failed` → `STRIPE_WEBHOOK_SECRET`; portal enabled; smart retries with "cancel after final retry".
+Stripe Checkout (`billing-checkout`), Customer Portal (`billing-portal`), and the webhook (`stripe-webhook`, the only writer of `subscriptions`). Functions answer `503 billing not configured` until the `STRIPE_*` secrets exist. Owner checklist: product "PinPoint Pro" with a yearly price → `STRIPE_PRICE_ID`; webhook endpoint `…/functions/v1/stripe-webhook` with `checkout.session.completed`, `customer.subscription.created/updated/deleted`, `invoice.paid`, `invoice.payment_failed` → `STRIPE_WEBHOOK_SECRET`; portal enabled; smart retries with "cancel after final retry".
 
 ## Operating
 
@@ -92,3 +92,11 @@ Stripe Checkout (`billing-checkout`), Customer Portal (`billing-portal`), and th
 - Attachments: uploads are scoped to a writable project prefix and the plan quota; deleted comments tombstone their images; `media-sweep` runs hourly (pg_cron) and refuses to sweep when it can't read comments.
 - Bridges log `legacy-secret-used <token>` while a site is still on the old global secret; when that goes quiet, unset `LEGACY_WP_AUTH_SECRET`/`WP_AUTH_SECRET` and rotate the service-role key (it lived on customer servers before 2.0).
 - Repo privacy: the plugin updater and hosted bundle no longer depend on GitHub, so this repository can be private. The dashboard's Pages repo must stay public (compiled files only, no secrets).
+
+## AI-assistant loop (2.1)
+
+Owner/operator Markdown exports end with an "For AI coding assistants" block: each item carries its comment ID, and the block gives the per-project **agent key** (`get_agent_key()` / `rotate_agent_key()`, stored in `project_secrets.agent_key`) plus the `agent` edge function endpoint. The assistant can `GET ?status=open` to list items and `POST {comment_id, reply, resolve:true}` to close them; replies land as `author_role = 'agent'` and are labelled "AI assistant". The dashboard's project page shows the key and a CLAUDE.md snippet that tells the assistant to always close the loop.
+
+## Pin anchoring (2.1)
+
+`capture()` stores a v2 fingerprint in `selector_fallback` (tag, text, stable classes, key attributes, id ancestor / preceding heading, twin index). `locateElement()` scores every candidate — the stored selector is only one source of candidates, never trusted blindly, because positional `nth-of-type` paths keep matching *something* after a wrapper or banner is inserted. Pins re-render on resize, load, font/image load, and (debounced) DOM mutation; a pin that could only be placed approximately gets an amber ring.

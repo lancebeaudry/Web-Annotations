@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Avalanche Markup — release script.
+// PinPoint — release script.
 //
 //   node admin/release.mjs <version> --changelog "…" [--marker "…"]… [--dry-run] [--no-push]
 //   npm run release -- 2.0.0 --changelog "…" --marker "Powered by"

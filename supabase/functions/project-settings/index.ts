@@ -1,4 +1,4 @@
-// Avalanche Markup — project settings sync bridge.
+// PinPoint — project settings sync bridge.
 //
 // Lets the WordPress plugin push per-project settings (the "open feedback"
 // toggle, and the site name) using only the site's own bridge secret

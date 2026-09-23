@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Avalanche Markup
- * Description: Click-to-comment visual feedback overlay for Avalanche client sites. Paste the site's project token under Settings → Avalanche Markup. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 2.0.0
+ * Plugin Name: PinPoint by Avalanche
+ * Description: Click-to-comment website feedback, by Avalanche Creative. Paste the site's project token under Settings → PinPoint. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
+ * Version: 2.1.0
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  * Update URI: https://avalanchegr.com/markup
@@ -28,7 +28,7 @@ function avmk_supabase_url() {
 	return untrailingslashit( $base ?: AVMK_DEFAULT_SUPABASE_URL );
 }
 // This site's own bridge secret — per project, rotatable from the dashboard
-// or Markup → Invite → Site secret. It lives ONLY in wp-config.php. It is
+// or PinPoint → Invite → Site secret. It lives ONLY in wp-config.php. It is
 // what lets the plugin sync settings and sign editors in for THIS project
 // and nothing else (before 2.0 every site shared one global secret, and
 // some carried the service-role key; both are gone).
@@ -105,7 +105,7 @@ add_action( 'wp_head', function () {
 } );
 
 add_action( 'admin_menu', function () {
-	add_options_page( 'Avalanche Markup', 'Avalanche Markup', 'manage_options', 'avalanche-markup', 'avmk_settings_page' );
+	add_options_page( 'PinPoint by Avalanche', 'PinPoint', 'manage_options', 'avalanche-markup', 'avmk_settings_page' );
 } );
 
 // Admin-bar shortcut for logged-in users: one click to enter feedback
@@ -121,7 +121,7 @@ add_action( 'admin_bar_menu', function ( $bar ) {
 		: esc_url_raw( add_query_arg( 'markup', $token ) );
 	$bar->add_node( [
 		'id'    => 'avalanche-markup',
-		'title' => '<span class="ab-icon"></span>Markup',
+		'title' => '<span class="ab-icon"></span>PinPoint',
 		'href'  => $href,
 		'meta'  => [ 'title' => 'Enter feedback / markup mode on this page' ],
 	] );
@@ -190,7 +190,7 @@ add_filter( 'plugins_api', function ( $result, $action, $args ) {
 		return $result;
 	}
 	return (object) [
-		'name'          => 'Avalanche Markup',
+		'name'          => 'PinPoint by Avalanche',
 		'slug'          => 'avalanche-markup',
 		'version'       => $m->version ?? '',
 		'author'        => 'Avalanche Creative',
@@ -331,7 +331,7 @@ add_action( 'update_option_' . AVMK_OPEN_OPTION, function ( $old, $new ) {
 function avmk_sync_open( $value ) {
 	$on = (bool) $value;
 	if ( ! avmk_project_secret() ) {
-		avmk_notice( 'warning', 'Open feedback saved locally, but not synced: add AVALANCHE_MARKUP_PROJECT_SECRET to wp-config.php (find it under Markup → Invite → Site secret, or in the dashboard).' );
+		avmk_notice( 'warning', 'Open feedback saved locally, but not synced: add AVALANCHE_MARKUP_PROJECT_SECRET to wp-config.php (find it under PinPoint → Invite → Site secret, or in the dashboard).' );
 		return;
 	}
 	$res = wp_remote_post( avmk_supabase_url() . '/functions/v1/project-settings', [
@@ -356,7 +356,7 @@ function avmk_sync_open( $value ) {
 function avmk_sync_notify( $value ) {
 	$emails = array_values( array_filter( array_map( 'trim', preg_split( '/\R/', (string) $value ) ) ) );
 	if ( ! avmk_project_secret() ) {
-		avmk_notice( 'warning', 'Notify list saved locally, but not synced: add AVALANCHE_MARKUP_PROJECT_SECRET to wp-config.php (Markup → Invite → Site secret, or the dashboard).' );
+		avmk_notice( 'warning', 'Notify list saved locally, but not synced: add AVALANCHE_MARKUP_PROJECT_SECRET to wp-config.php (PinPoint → Invite → Site secret, or the dashboard).' );
 		return;
 	}
 	$res = wp_remote_post( avmk_supabase_url() . '/functions/v1/notify-sync', [
@@ -405,14 +405,14 @@ function avmk_settings_page() {
 	$open   = get_option( AVMK_OPEN_OPTION, '' );
 	?>
 	<div class="wrap">
-			<h1>Avalanche Markup</h1>
+			<h1>PinPoint <small style="font-weight:400;color:#646970">by Avalanche Creative</small></h1>
 			<p>Feedback mode activates only for visits with <code>?markup=TOKEN</code> in the URL — regular visitors never see anything. The first time you open that link while signed in, the site is registered to your account.</p>
 			<p class="description">
 				Bridge secret:
 				<?php if ( avmk_project_secret() ) : ?>
 					<strong style="color:#1a7f37">configured</strong> — settings sync and editor auto-sign-in are on.
 				<?php else : ?>
-					<strong style="color:#b32d2e">not configured</strong> — add <code>define( 'AVALANCHE_MARKUP_PROJECT_SECRET', '…' );</code> to <code>wp-config.php</code>. Get the value from Markup → Invite → Site secret on this site, or from the dashboard.
+					<strong style="color:#b32d2e">not configured</strong> — add <code>define( 'AVALANCHE_MARKUP_PROJECT_SECRET', '…' );</code> to <code>wp-config.php</code>. Get the value from PinPoint → Invite → Site secret on this site, or from the dashboard.
 				<?php endif; ?>
 			</p>
 		<form method="post" action="options.php">

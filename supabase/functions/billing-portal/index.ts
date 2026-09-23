@@ -1,4 +1,4 @@
-// Avalanche Markup — Stripe Customer Portal (update card, cancel at period
+// PinPoint — Stripe Customer Portal (update card, cancel at period
 // end, invoices). POST, Authorization: Bearer <user JWT>.
 // Deploy: supabase functions deploy billing-portal --no-verify-jwt
 

@@ -1,4 +1,4 @@
-import { resolveElement, looksAddressed } from '../capture.js';
+import { locateElement, looksAddressed } from '../capture.js';
 import { h } from './overlay.js';
 import { openThread } from './popover.js';
 
@@ -10,17 +10,37 @@ export function pagePins(app) {
     .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
 }
 
-// Position pins against the *live* element (selector -> fallback text
+// Resolution cache: locating an element scores every same-tag element on
+// the page, which is too much work to repeat on every scroll/resize tick.
+// Cache per comment and reuse while the element is still attached; a DOM
+// mutation (see watchLayout in app.js) clears the cache so the next
+// render re-resolves against the new page.
+const located = new Map(); // comment.id -> { el, confidence }
+export function invalidatePins() {
+  located.clear();
+}
+
+function locate(comment) {
+  const hit = located.get(comment.id);
+  if (hit && hit.el.isConnected) return hit;
+  const fresh = locateElement(comment);
+  if (fresh) located.set(comment.id, fresh);
+  else located.delete(comment.id);
+  return fresh;
+}
+
+// Position pins against the *live* element (selector -> fingerprint
 // match), so they survive responsive reflow. Unresolvable pins are
-// skipped — they still appear in exports.
+// skipped — they still appear in the sidebar and exports.
 export function pinPosition(comment) {
-  const el = resolveElement(comment);
-  if (!el) return null;
-  const rect = el.getBoundingClientRect();
+  const hit = locate(comment);
+  if (!hit) return null;
+  const rect = hit.el.getBoundingClientRect();
   if (!rect.width && !rect.height) return null;
   return {
     x: rect.left + window.scrollX + (rect.width * (Number(comment.x_pct) || 50)) / 100,
     y: rect.top + window.scrollY + (rect.height * (Number(comment.y_pct) || 50)) / 100,
+    confidence: hit.confidence,
   };
 }
 
@@ -35,11 +55,15 @@ export function renderPins(app) {
     const pos = pinPosition(comment);
     if (!pos) return;
     const addressed = looksAddressed(comment);
+    const weak = pos.confidence === 'weak';
+    let title = comment.comment_text;
+    if (addressed) title += '\n\n(content here changed since this comment — looks addressed)';
+    if (weak) title += '\n\n(approximate — the original element could not be found exactly)';
     const pin = h(
       'div',
       {
-        class: `pin${comment.status === 'resolved' ? ' resolved' : ''}${addressed ? ' addressed' : ''}`,
-        title: addressed ? `${comment.comment_text}\n\n(content here changed since this comment — looks addressed)` : comment.comment_text,
+        class: `pin${comment.status === 'resolved' ? ' resolved' : ''}${addressed ? ' addressed' : ''}${weak ? ' weak' : ''}`,
+        title,
         onclick: () => openThread(app, comment.id),
       },
       String(i + 1)

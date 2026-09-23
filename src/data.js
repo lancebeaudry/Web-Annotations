@@ -57,6 +57,10 @@ export async function getBridgeSecret(supabase, projectId) {
   const { data, error } = await supabase.rpc('get_bridge_secret', { p_project: projectId });
   return error ? { error: error.message } : { secret: data };
 }
+export async function getAgentKey(supabase, projectId) {
+  const { data, error } = await supabase.rpc('get_agent_key', { p_project: projectId });
+  return error ? { error: error.message } : { key: data };
+}
 export async function rotateBridgeSecret(supabase, projectId) {
   const { data, error } = await supabase.rpc('rotate_bridge_secret', { p_project: projectId });
   return error ? { error: error.message } : { secret: data };

@@ -1,7 +1,7 @@
 import { h, field, toast, copyBox } from '../ui/dom.js';
 import { card } from '../ui/shell.js';
-import { getProject, updateSettings, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, deleteProject } from '../api.js';
-import { BUNDLE_URL, PLUGIN_ZIP_URL } from '../config.js';
+import { getProject, updateSettings, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, deleteProject } from '../api.js';
+import { BUNDLE_URL, PLUGIN_ZIP_URL, FUNCTIONS_URL } from '../config.js';
 import { go } from '../router.js';
 
 export async function projectDetailScreen({ id, user, acct }) {
@@ -20,7 +20,7 @@ export async function projectDetailScreen({ id, user, acct }) {
       'ol',
       { class: 'steps' },
       h('li', {}, 'Install the plugin: ', h('a', { href: PLUGIN_ZIP_URL }, 'download avalanche-markup.zip'), ' → Plugins → Add New → Upload.'),
-      h('li', {}, 'Settings → Avalanche Markup → paste the token ', h('code', {}, p.token), ' and save.'),
+      h('li', {}, 'Settings → PinPoint → paste the token ', h('code', {}, p.token), ' and save.'),
       h('li', {}, 'Add the site secret (below) to ', h('code', {}, 'wp-config.php'), ' so the plugin can sync settings and sign your editors in.')
     ),
     h('h4', {}, 'Any other site'),
@@ -149,6 +149,52 @@ export async function projectDetailScreen({ id, user, acct }) {
     h('div', { class: 'copy-box' }, secretOut, reveal, copy, rotate)
   );
 
+  // --- AI assistant access
+  const keyOut = h('input', { class: 'code', readonly: true, value: '••••••••••••••••••••' });
+  const keyReveal = h('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Reveal');
+  const keyCopy = h('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Copy');
+  const keyRotate = h('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Rotate');
+  let akey = '';
+  keyReveal.addEventListener('click', async () => {
+    try {
+      akey = await agentKey(id);
+      keyOut.value = akey;
+    } catch (err) {
+      toast(err.message);
+    }
+  });
+  keyCopy.addEventListener('click', async () => {
+    if (!akey) return toast('Reveal it first');
+    await navigator.clipboard.writeText(akey).catch(() => {});
+    toast('Key copied');
+  });
+  keyRotate.addEventListener('click', async () => {
+    if (!confirm('Rotate the AI assistant key? Exports already pasted into an assistant stop working until you paste a new one.')) return;
+    try {
+      akey = await rotateAgentKey(id);
+      keyOut.value = akey;
+      toast('Rotated');
+    } catch (err) {
+      toast(err.message);
+    }
+  });
+  const claudeMd = [
+    '## PinPoint feedback',
+    'Website feedback for this project is tracked in PinPoint. When I paste a PinPoint export, work through the items in order.',
+    'When an item is done, resolve it with a one-line reply describing the change, using the curl commands and the item ID from the export.',
+    'Never resolve an item you did not complete. If you cannot do one, reply with why and leave it open.',
+    'Before reporting that you are finished, fetch the open list again and confirm nothing you handled is still open.',
+  ].join('\n');
+  const agentCard = card(
+    'AI assistant access',
+    h('p', { class: 'hint' }, 'Let Claude Code, Cursor or another assistant reply to and resolve comments. Markdown exports from the site already include this key, the item IDs and the exact commands, so the assistant can close items itself. Treat the key like a password: it can post replies and resolve items on this project only.'),
+    h('div', { class: 'copy-box' }, keyOut, keyReveal, keyCopy, keyRotate),
+    h('p', { class: 'hint' }, 'Endpoint: ', h('code', {}, `${FUNCTIONS_URL}/agent`), ' — header ', h('code', {}, 'x-pinpoint-agent-key')),
+    h('h4', {}, 'Make it stick'),
+    h('p', { class: 'hint' }, 'Add this to the CLAUDE.md (or equivalent rules file) in the site\'s repo so the assistant closes the loop every time, not just when you remember to ask:'),
+    copyBox(claudeMd, { multiline: true })
+  );
+
   // --- Danger zone
   const confirmName = h('input', { type: 'text', placeholder: `Type "${p.name}" to confirm` });
   const del = h('button', { class: 'btn btn-danger', type: 'button' }, 'Delete project');
@@ -168,12 +214,13 @@ export async function projectDetailScreen({ id, user, acct }) {
   return h(
     'div',
     {},
-    card(h('div', { class: 'head-row' }, h('span', {}, p.name), h('a', { class: 'btn btn-ghost btn-sm', href: shareLink, target: '_blank', rel: 'noopener' }, 'Open in Markup')), h('p', { class: 'hint' }, p.site_url)),
+    card(h('div', { class: 'head-row' }, h('span', {}, p.name), h('a', { class: 'btn btn-ghost btn-sm', href: shareLink, target: '_blank', rel: 'noopener' }, 'Open in PinPoint')), h('p', { class: 'hint' }, p.site_url)),
     install,
     card('Settings', settingsForm),
     card('Collaborators', inviteForm, inviteList),
     card('Email notifications', notifyForm),
     secretCard,
+    agentCard,
     card('Danger zone', h('p', { class: 'hint' }, 'Deleting a project removes all of its comments and images. This cannot be undone.'), h('div', { class: 'inline' }, confirmName, del))
   );
 }

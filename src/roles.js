@@ -6,12 +6,14 @@
 //   owner         the customer who owns the project
 //   collaborator  invited by the owner (a "client" reviewer)
 //   guest         name-only visitor on an open-feedback site
+//   agent         an AI coding assistant replying through the agent endpoint
 
 export const ROLE_LABEL = {
   operator: 'Avalanche',
   owner: 'owner',
   collaborator: 'client',
   guest: 'guest',
+  agent: 'AI assistant',
 };
 
 // Label for a stored comment. Older rows (pre-2.0) have no author_role;
@@ -26,6 +28,7 @@ export function roleLabel(comment) {
 // Display name for a stored comment.
 export function authorName(comment) {
   const email = comment.author_email || '';
+  if (email.startsWith('agent:')) return comment.author_name || 'AI assistant';
   const isGuest = email.startsWith('guest:');
   return comment.author_name || (isGuest ? 'Guest' : email);
 }

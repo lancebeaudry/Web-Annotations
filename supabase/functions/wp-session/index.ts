@@ -1,4 +1,4 @@
-// Avalanche Markup — WordPress -> Supabase session bridge.
+// PinPoint — WordPress -> Supabase session bridge.
 //
 // Called server-side by the WP plugin's /session REST route ONLY for a
 // user who is already logged into WordPress. Given that user's email, it

@@ -6,7 +6,7 @@
 //   node build-app.mjs --watch    -> rebuild on change + serve dist/app on :8124
 
 import { build, context } from 'esbuild';
-import { readFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, writeFileSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 const watch = process.argv.includes('--watch');
@@ -31,7 +31,14 @@ const APP_VERSION = process.env.MARKUP_VERSION || sha;
 
 mkdirSync('dist/app', { recursive: true });
 for (const f of readdirSync('dashboard/static')) {
-  const src = readFileSync(`dashboard/static/${f}`, 'utf8').replace(/__APP_VERSION__/g, APP_VERSION);
+  const from = `dashboard/static/${f}`;
+  if (statSync(from).isDirectory()) {
+    mkdirSync(`dist/app/${f}`, { recursive: true });
+    for (const g of readdirSync(from)) copyFileSync(`${from}/${g}`, `dist/app/${f}/${g}`);
+    continue;
+  }
+  if (!/\.(html|css|js|txt|json)$/.test(f)) { copyFileSync(from, `dist/app/${f}`); continue; }
+  const src = readFileSync(from, 'utf8').replace(/__APP_VERSION__/g, APP_VERSION);
   writeFileSync(`dist/app/${f}`, src);
 }
 

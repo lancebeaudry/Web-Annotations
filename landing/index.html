@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Avalanche Markup — Website feedback, pinned to the page</title>
+  <title>PinPoint by Avalanche — Website feedback, pinned to the page</title>
   <meta name="description" content="Let clients and teammates click anywhere on a live site and leave a comment right there — with the element, the page, the device size and a screenshot. No accounts for reviewers. One line to install. Free for one site.">
-  <meta property="og:title" content="Avalanche Markup — Stop describing the bug. Point at it.">
+  <meta property="og:title" content="PinPoint by Avalanche — Stop describing the bug. Point at it.">
   <meta property="og:description" content="Click-to-comment website feedback with the context developers need. Free for one site.">
   <meta property="og:image" content="img/hero-overlay.jpg">
   <link rel="icon" type="image/png" href="img/mark-128.png">
@@ -42,12 +42,14 @@
     /* nav */
     .nav { position: sticky; top: 0; z-index: 10; background: rgba(255,255,255,.94); backdrop-filter: saturate(180%) blur(10px); border-bottom: 1px solid var(--line); }
     .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+    .logo { display: flex; align-items: center; gap: 14px; text-decoration: none; }
     .logo img { height: 30px; width: auto; }
+    .logo .product { font-family: Poppins, sans-serif; font-weight: 700; font-size: 20px; color: var(--midnight); padding-left: 14px; border-left: 1px solid var(--line); line-height: 1; }
     .nav nav { display: flex; align-items: center; }
     .nav nav a { font-family: Poppins, sans-serif; color: var(--midnight); text-decoration: none; font-weight: 500; font-size: 14px; margin-left: 26px; }
     .nav nav a:hover { color: var(--blue); }
     .nav nav a.btn { padding: 9px 16px; color: #fff; margin-left: 18px; }
-    @media (max-width: 760px) { .nav nav a:not(.btn) { display: none; } .logo img { height: 26px; } }
+    @media (max-width: 760px) { .nav nav a:not(.btn) { display: none; } .logo img { height: 22px; } .logo .product { font-size: 17px; padding-left: 10px; } .logo { gap: 10px; } }
 
     /* hero */
     .hero { background: linear-gradient(180deg, #fff 0%, var(--haze) 100%); padding: 80px 0 64px; }
@@ -150,7 +152,7 @@
 
 <header class="nav">
   <div class="wrap">
-    <a class="logo" href="#top" aria-label="Avalanche Creative"><img src="img/avalanche-logo.png" alt="Avalanche Creative" width="768" height="102"></a>
+    <a class="logo" href="#top" aria-label="PinPoint by Avalanche Creative"><img src="img/avalanche-logo.png" alt="Avalanche Creative" width="768" height="102"><span class="product">PinPoint</span></a>
     <nav>
       <a href="#how">How it works</a>
       <a href="#features">Features</a>
@@ -163,7 +165,7 @@
 
 <section class="hero" id="top">
   <div class="wrap">
-    <p class="eyebrow">Avalanche Markup, the website feedback tool</p>
+    <p class="eyebrow">PinPoint, the website feedback tool by Avalanche Creative</p>
     <h1>Stop describing the bug.<br><span class="accent">Point at it.</span></h1>
     <p class="lead">Clients and teammates click anywhere on a live site and leave a comment right on the spot. The exact element, the page, the device size and a screenshot come attached automatically. No accounts for reviewers. One line to install.</p>
     <div class="ctas">
@@ -187,7 +189,7 @@
       <div class="pain"><q>Here's a screenshot.</q><p>Of what page? At what width? With what text? A cropped image with no context is a riddle, not a ticket.</p></div>
       <div class="pain"><q>It's broken on my phone.</q><p>Which phone, which page, which element? And can you reproduce it? Usually not.</p></div>
     </div>
-    <p class="answer">Markup captures the element, the page, the viewport, the text and styles the reviewer was looking at, and the screenshot they pasted. Automatically, every time. Your developer opens the comment and already knows exactly what to change.</p>
+    <p class="answer">PinPoint captures the element, the page, the viewport, the text and styles the reviewer was looking at, and the screenshot they pasted. Automatically, every time. Your developer opens the comment and already knows exactly what to change.</p>
   </div>
 </section>
 
@@ -199,11 +201,11 @@
       <div class="txt">
         <div class="num">1</div>
         <h3>Add one line to your site</h3>
-        <p>Install the WordPress plugin, or paste a single script tag into any site. Nothing changes for normal visitors. The feedback layer only appears for people who open your private markup link.</p>
+        <p>Install the WordPress plugin, or paste a single script tag into any site. Nothing changes for normal visitors. The feedback layer only appears for people who open your private PinPoint link.</p>
         <pre class="code">&lt;script defer src="…/markup.js" data-project="acme"&gt;&lt;/script&gt;</pre>
       </div>
       <div class="frame">
-        <div class="bar"><span>markup dashboard · Acme Landscaping</span></div>
+        <div class="bar"><span>PinPoint dashboard · Acme Landscaping</span></div>
         <img src="img/dash-project.png" alt="The project page in the dashboard showing the share link, WordPress install steps and the one-line embed snippet." loading="lazy" width="1800" height="1125">
       </div>
     </div>
@@ -239,12 +241,12 @@
     <div>
       <h2>A ticket that writes itself.</h2>
       <p class="lead">One click exports every open comment as Markdown, grouped by page, with the selector, the current text and styles, the device width and the requested change.</p>
-      <p class="tools">Paste it into Jira, Linear, ClickUp, Notion or GitHub Issues. Or hand it to Claude Code, Cursor or any AI coding assistant, which can act on it directly. JSON export is there for scripts.</p>
+      <p class="tools">Paste it into Jira, Linear, ClickUp, Notion or GitHub Issues. Or hand it to Claude Code, Cursor or any AI coding assistant: the export carries each item's ID and a project key, so the assistant can reply on an item and mark it resolved when the change is made. JSON export is there for scripts.</p>
     </div>
     <div>
       <p class="md-label">Exported Markdown</p>
 <div class="md"><span class="h"># Feedback — acmelandscaping.com</span>
-<span class="m">_Exported from Avalanche Markup_</span>
+<span class="m">_Exported from PinPoint by Avalanche_</span>
 
 <span class="h">## Feedback: /  (acmelandscaping.com)</span>
 
@@ -272,7 +274,7 @@
 <section class="features" id="features">
   <div class="wrap">
     <h2>Built for the way agencies actually review sites.</h2>
-    <p class="lead">We built Markup for our own client reviews at Avalanche Creative, then made it a product. Every feature exists because we needed it on a real project.</p>
+    <p class="lead">We built PinPoint for our own client reviews at Avalanche Creative, then made it a product. Every feature exists because we needed it on a real project.</p>
     <div class="fgrid">
       <div class="f"><h3>Pinned comments</h3><p>Click any element. The pin stays attached to it even as the page changes around it.</p></div>
       <div class="f"><h3>Screenshots and paste</h3><p>Attach an image, or paste one straight from the clipboard into the comment.</p></div>
@@ -281,6 +283,7 @@
       <div class="f"><h3>No login for reviewers</h3><p>Open feedback lets anyone with the link comment by name. Or keep it invite-only.</p></div>
       <div class="f"><h3>Email notifications</h3><p>Choose who hears about new feedback on each site. Never emailed about your own comments.</p></div>
       <div class="f"><h3>Export to Markdown or JSON</h3><p>All open items, grouped by page, with selectors and device sizes. Paste into your ticketing tool or an AI assistant.</p></div>
+      <div class="f"><h3>AI assistants close the loop</h3><p>Exports carry item IDs and a project key, so Claude Code or Cursor can reply on an item and mark it resolved when the fix lands.</p></div>
       <div class="f"><h3>Resolve and track</h3><p>Mark items done, hide resolved pins, and see at a glance what's still open.</p></div>
       <div class="f"><h3>Isolated per site</h3><p>Each site is its own project. Reviewers only ever see the project whose link they hold. Tokens can't be listed or guessed in bulk.</p></div>
     </div>
@@ -315,7 +318,7 @@
       </ul>
     </div>
     <div class="frame">
-      <div class="bar"><span>markup dashboard · Projects</span></div>
+      <div class="bar"><span>PinPoint dashboard · Projects</span></div>
       <img src="img/dash-projects.png" alt="The dashboard's projects list with a plan badge and a project card." loading="lazy" width="1800" height="1125">
     </div>
   </div>
@@ -371,10 +374,10 @@
     <div class="qa"><h3>Do my clients need an account?</h3><p>No. With open feedback on, anyone with your link types their name and starts commenting. If you'd rather control who gets in, invite specific email addresses and they sign in with a one-time code. Still no password.</p></div>
     <div class="qa"><h3>Will visitors see anything on my site?</h3><p>Never. The feedback layer only loads for visits that include your private <span class="code">?markup=</span> link. Everyone else sees your site as it is.</p></div>
     <div class="qa"><h3>Does it work outside WordPress?</h3><p>Yes. The WordPress plugin is the easiest install, but the same one-line script tag works on Webflow, Squarespace, Shopify, static sites and custom apps.</p></div>
-    <div class="qa"><h3>Will it slow my site down or change how it looks?</h3><p>No. The script only does anything when the markup link is used, and the whole interface lives in its own isolated layer, so your site's styles and the feedback tool never interfere with each other.</p></div>
+    <div class="qa"><h3>Will it slow my site down or change how it looks?</h3><p>No. The script only does anything when the PinPoint link is used, and the whole interface lives in its own isolated layer, so your site's styles and the feedback tool never interfere with each other.</p></div>
     <div class="qa"><h3>Where does the feedback live?</h3><p>In our hosted backend, isolated per project. Only a project's owner, its invited collaborators and, for open-feedback sites, people holding the link can see it. Avalanche staff can access projects for support, which is disclosed in our privacy policy.</p></div>
     <div class="qa"><h3>What happens if I cancel?</h3><p>Your oldest project keeps working on the free plan and extra projects switch to read-only. Nothing is deleted, and re-subscribing unfreezes them instantly.</p></div>
-    <div class="qa"><h3>Who makes this?</h3><p><a href="https://avalanchegr.com/?utm_source=markup&utm_medium=landing&utm_campaign=faq">Avalanche Creative</a>, a web design and marketing agency. We built Markup for our own client reviews and use it on every site we ship.</p></div>
+    <div class="qa"><h3>Who makes this?</h3><p><a href="https://avalanchegr.com/?utm_source=markup&utm_medium=landing&utm_campaign=faq">Avalanche Creative</a>, a web design and marketing agency. We built PinPoint for our own client reviews and use it on every site we ship.</p></div>
   </div>
 </section>
 
@@ -389,7 +392,7 @@
 <footer>
   <div class="wrap">
     <a class="logo" href="https://avalanchegr.com/?utm_source=markup&utm_medium=landing&utm_campaign=footer" aria-label="Avalanche Creative"><img src="img/avalanche-logo.png" alt="Avalanche Creative" width="768" height="102"></a>
-    <span>© 2026 Avalanche Creative. Avalanche Markup is a trademark of Avalanche Creative.</span>
+    <span>© 2026 Avalanche Creative. PinPoint is a trademark of Avalanche Creative.</span>
     <span class="links"><a href="https://lancebeaudry.github.io/avalanche-markup-app/terms.html">Terms</a><a href="https://lancebeaudry.github.io/avalanche-markup-app/privacy.html">Privacy</a><a href="mailto:projects@avalanchegr.com">Contact</a></span>
   </div>
 </footer>
