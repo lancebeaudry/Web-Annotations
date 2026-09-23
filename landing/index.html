@@ -212,7 +212,7 @@
       <div class="txt">
         <div class="num">2</div>
         <h3>Share the link. Reviewers just type their name.</h3>
-        <p>Send <span class="code">yoursite.com/?markup=acme</span>. Clients and stakeholders enter a name and start clicking. No account, no password, no email code. Prefer tighter control? Turn open feedback off and invite specific people instead.</p>
+        <p>Send <span class="code">yoursite.com/?markup=acme</span>. Clients and stakeholders enter a name and start clicking. No account and no password. Prefer tighter control? Turn open feedback off and invite specific people instead.</p>
       </div>
       <div class="frame">
         <div class="bar"><span>staging.acmelandscaping.com/?markup=acme</span></div>
@@ -224,7 +224,7 @@
       <div class="txt">
         <div class="num">3</div>
         <h3>Fix it with the full context</h3>
-        <p>Every comment is pinned to a real element and carries the selector, current text and styles, the page and the viewport it was made at. Threads keep the conversation in one place. Mentions and email alerts keep everyone moving. Mark items resolved as you go.</p>
+        <p>Every comment is pinned to the element itself and carries the selector, current text and styles, the page and the viewport it was made at. Threads keep the conversation in one place, and mentions send an email with a link back to the spot. Mark items resolved as you go.</p>
       </div>
       <div class="frame">
         <div class="bar"><span>staging.acmelandscaping.com/?markup=acme</span></div>
@@ -239,7 +239,7 @@
     <div>
       <h2>A ticket that writes itself.</h2>
       <p class="lead">One click exports every open comment as Markdown, grouped by page, with the selector, the current text and styles, the device width and the requested change.</p>
-      <p class="tools">Paste it into Jira, Linear, ClickUp, Notion or GitHub Issues. Or hand it straight to Claude Code, Cursor or any AI coding assistant, which can act on it directly. JSON export is there for scripts.</p>
+      <p class="tools">Paste it into Jira, Linear, ClickUp, Notion or GitHub Issues. Or hand it to Claude Code, Cursor or any AI coding assistant, which can act on it directly. JSON export is there for scripts.</p>
     </div>
     <div>
       <p class="md-label">Exported Markdown</p>
@@ -276,13 +276,13 @@
     <div class="fgrid">
       <div class="f"><h3>Pinned comments</h3><p>Click any element. The pin stays attached to it even as the page changes around it.</p></div>
       <div class="f"><h3>Screenshots and paste</h3><p>Attach an image, or paste one straight from the clipboard into the comment.</p></div>
-      <div class="f"><h3>Threads and mentions</h3><p>Reply in place. Tag a teammate and they get an email with a link back to the exact spot.</p></div>
+      <div class="f"><h3>Threads and mentions</h3><p>Reply in place. Tag a teammate and they get an email that opens the comment.</p></div>
       <div class="f"><h3>Desktop, tablet, mobile</h3><p>Preview the page at each size and comment there. The device width is recorded on every pin.</p></div>
       <div class="f"><h3>No login for reviewers</h3><p>Open feedback lets anyone with the link comment by name. Or keep it invite-only.</p></div>
       <div class="f"><h3>Email notifications</h3><p>Choose who hears about new feedback on each site. Never emailed about your own comments.</p></div>
       <div class="f"><h3>Export to Markdown or JSON</h3><p>All open items, grouped by page, with selectors and device sizes. Paste into your ticketing tool or an AI assistant.</p></div>
       <div class="f"><h3>Resolve and track</h3><p>Mark items done, hide resolved pins, and see at a glance what's still open.</p></div>
-      <div class="f"><h3>Private by design</h3><p>Each site is its own project. Reviewers only ever see the project whose link they hold. Tokens can't be listed or guessed in bulk.</p></div>
+      <div class="f"><h3>Isolated per site</h3><p>Each site is its own project. Reviewers only ever see the project whose link they hold. Tokens can't be listed or guessed in bulk.</p></div>
     </div>
   </div>
 </section>
@@ -292,7 +292,7 @@
     <img class="shot swap" src="img/mobile.jpg" alt="The same page previewed in a 390-pixel mobile frame with its comment pins, switched from the toolbar." loading="lazy" width="1800" height="1125">
     <div>
       <h2>"It's broken on my phone," solved.</h2>
-      <p class="lead">Switch to tablet or mobile from the toolbar and the page reflows inside a real device frame. Comments made there are tagged with the width, so the developer opens the exact layout the reviewer saw. No guessing which phone.</p>
+      <p class="lead">Switch to tablet or mobile from the toolbar and the page reflows inside a real device frame. Comments made there are tagged with the width, so the developer opens the same layout the reviewer saw.</p>
       <ul class="ticks">
         <li>Desktop, tablet (820px) and mobile (390px) frames</li>
         <li>Pins keep their place at every size</li>
@@ -311,7 +311,7 @@
         <li>Share link and install instructions for WordPress or any site</li>
         <li>Collaborators and per-site notification lists</li>
         <li>Open feedback toggle for staging reviews</li>
-        <li>Upgrade or cancel any time. Nothing is ever deleted.</li>
+        <li>Upgrade or cancel any time from the account page</li>
       </ul>
     </div>
     <div class="frame">
@@ -361,7 +361,7 @@
         <a class="btn" href="https://lancebeaudry.github.io/avalanche-markup-app/">Get Pro</a>
       </div>
     </div>
-    <p class="note">If a Pro plan lapses, your oldest project stays live and the rest become read-only until you renew. Nothing is deleted.</p>
+    <p class="note">If a Pro plan lapses, your oldest project stays live and the rest become read-only until you renew.</p>
   </div>
 </section>
 
@@ -369,7 +369,7 @@
   <div class="wrap">
     <h2>The short answers.</h2>
     <div class="qa"><h3>Do my clients need an account?</h3><p>No. With open feedback on, anyone with your link types their name and starts commenting. If you'd rather control who gets in, invite specific email addresses and they sign in with a one-time code. Still no password.</p></div>
-    <div class="qa"><h3>Will visitors see anything on my site?</h3><p>Never. The feedback layer only loads for visits that include your private <span class="code">?markup=</span> link. Everyone else sees your site exactly as it is.</p></div>
+    <div class="qa"><h3>Will visitors see anything on my site?</h3><p>Never. The feedback layer only loads for visits that include your private <span class="code">?markup=</span> link. Everyone else sees your site as it is.</p></div>
     <div class="qa"><h3>Does it work outside WordPress?</h3><p>Yes. The WordPress plugin is the easiest install, but the same one-line script tag works on Webflow, Squarespace, Shopify, static sites and custom apps.</p></div>
     <div class="qa"><h3>Will it slow my site down or change how it looks?</h3><p>No. The script only does anything when the markup link is used, and the whole interface lives in its own isolated layer, so your site's styles and the feedback tool never interfere with each other.</p></div>
     <div class="qa"><h3>Where does the feedback live?</h3><p>In our hosted backend, isolated per project. Only a project's owner, its invited collaborators and, for open-feedback sites, people holding the link can see it. Avalanche staff can access projects for support, which is disclosed in our privacy policy.</p></div>
