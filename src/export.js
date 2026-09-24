@@ -5,6 +5,8 @@
 
 import { deviceLabel } from './capture.js';
 import { roleLabel, authorName } from './roles.js';
+import { isOpenStatus, statusLabel } from './status.js';
+import { contextSummary } from './screenshot.js';
 
 function rgbToHex(value) {
   const m = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/.exec(value || '');
@@ -45,7 +47,7 @@ function authorLine(app, comment) {
 
 function openRoots(app, scope) {
   return [...app.comments.values()]
-    .filter((c) => !c.parent_id && c.status === 'open')
+    .filter((c) => !c.parent_id && isOpenStatus(c.status))
     .filter((c) => scope === 'page' ? c.page_path === app.pagePath : true)
     .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
 }
@@ -83,6 +85,11 @@ export function buildMarkdown(app, scope, agent = null) {
       const styles = stylesLine(c.computed_styles);
       if (styles) lines.push(`   - Current styles: ${styles}`);
       lines.push(`   - Requested change: ${c.comment_text}`);
+      if (c.status && c.status !== 'open') lines.push(`   - Status: ${statusLabel(c.status)}`);
+      if (c.assignee_email) lines.push(`   - Assigned to: ${c.assignee_email}`);
+      const ctx = contextSummary(c.context);
+      if (ctx) lines.push(`   - Reviewer's browser: ${ctx}`);
+      for (const e of ((c.context && c.context.errors) || []).slice(0, 5)) lines.push(`     - console: ${e.msg}`);
       if (agent) lines.push(`   - ID: ${c.id}`);
       if (c.attachments && c.attachments.length) {
         lines.push(`   - Attachments: ${c.attachments.map((a) => a.url).join(', ')}`);
@@ -126,6 +133,10 @@ export function agentBlock({ key, endpoint }) {
     'List what is still open (JSON):',
     '```bash',
     `curl -s "${endpoint}?status=open" -H "x-pinpoint-agent-key: ${key}"`,
+    '```',
+    'Prefer MCP? Claude Code can use PinPoint as a tool server (list_feedback, reply, set_status, assign):',
+    '```bash',
+    `claude mcp add --transport http pinpoint "${endpoint.replace(/\/agent$/, '/mcp')}" --header "x-pinpoint-agent-key: ${key}"`,
     '```',
     'The key is private to this project. Do not commit it; keep it in your shell environment or a local, gitignored file.',
     '',

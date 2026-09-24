@@ -3,6 +3,7 @@ import { updateComment, deleteComment } from '../data.js';
 import { resolveElement, looksAddressed, deviceLabel } from '../capture.js';
 import { openThread, closePopovers } from './popover.js';
 import { authorEmail } from '../app.js';
+import { STATUS_ORDER, statusLabel, isOpenStatus } from '../status.js';
 
 // Slide-out panel listing every comment in the project, grouped by
 // page (current page first), with jump-to-pin, resolve, and delete.
@@ -57,7 +58,7 @@ function groupedItems(app) {
     let items = list.map((comment, i) => ({ comment, number: i + 1 }));
 
     items = items.filter(({ comment }) => {
-      if (!showResolved && comment.status === 'resolved') return false;
+      if (!showResolved && !isOpenStatus(comment.status)) return false;
       if (needle) {
         const hay = `${comment.comment_text} ${comment.author_name || ''} ${comment.author_email} ${comment.current_text || ''} ${comment.selector || ''}`.toLowerCase();
         if (!hay.includes(needle)) return false;
@@ -72,7 +73,7 @@ function groupedItems(app) {
 }
 
 export function openRootCount(app) {
-  return [...app.comments.values()].filter((c) => !c.parent_id && c.status === 'open').length;
+  return [...app.comments.values()].filter((c) => !c.parent_id && isOpenStatus(c.status)).length;
 }
 
 export function toggleSidebar(app) {
@@ -117,7 +118,7 @@ export function toggleSidebar(app) {
     }
     app.refresh(); // updates both the list and the pins on the page
   });
-  const resolvedLabel = h('label', { class: 'side-check' }, resolvedBox, 'Show resolved');
+  const resolvedLabel = h('label', { class: 'side-check' }, resolvedBox, 'Show closed');
 
   const thisPageBox = h('input', { type: 'checkbox' });
   thisPageBox.checked = !!f.thisPageOnly;
@@ -205,26 +206,22 @@ function item(app, comment, number, onThisPage) {
   const actions = h('div', { class: 'side-actions' });
   actions.addEventListener('click', (e) => e.stopPropagation());
 
-  if (app.canManage && app.writable) {
-    const resolveBtn = h(
-      'button',
-      { class: 'mini-btn teal' },
-      comment.status === 'open' ? 'Resolve' : 'Reopen'
-    );
-    resolveBtn.addEventListener('click', async () => {
-      resolveBtn.disabled = true;
-      const row = await updateComment(app.supabase, comment.id, {
-        status: comment.status === 'open' ? 'resolved' : 'open',
-      });
+  const me = (authorEmail(app) || '').toLowerCase();
+  if (app.writable && (app.canManage || (comment.assignee_email && comment.assignee_email.toLowerCase() === me))) {
+    const sel = h('select', { class: 'status-select' }, ...STATUS_ORDER.map((s) => h('option', { value: s }, statusLabel(s))));
+    sel.value = comment.status || 'open';
+    sel.addEventListener('change', async () => {
+      sel.disabled = true;
+      const row = await updateComment(app.supabase, comment.id, { status: sel.value });
       if (!row) {
-        resolveBtn.disabled = false;
+        sel.disabled = false;
         toast(app.ui, 'Update failed');
         return;
       }
       app.comments.set(row.id, row);
       app.refresh();
     });
-    actions.appendChild(resolveBtn);
+    actions.appendChild(sel);
   }
 
   if (app.canManage || comment.author_email === authorEmail(app)) {
@@ -255,14 +252,15 @@ function item(app, comment, number, onThisPage) {
 
   const addressed = onThisPage && looksAddressed(comment);
 
-  const metaEl = h('div', { class: 'side-meta' }, `${name} · ${fmtDate(comment.created_at)}${replyCount ? ` · ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'}` : ''}`);
+  const metaEl = h('div', { class: 'side-meta' }, `${name} · ${fmtDate(comment.created_at)}${replyCount ? ` · ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'}` : ''}${comment.assignee_email ? ` · → ${comment.assignee_email.split('@')[0]}` : ''}`);
+  if (comment.status && comment.status !== 'open') metaEl.append(h('span', { class: `side-status st-${comment.status}` }, statusLabel(comment.status)));
   const device = deviceLabel(comment.viewport_w);
   if (device) metaEl.append(h('span', { class: 'device-pill' }, device));
 
   const el = h(
     'div',
     {
-      class: `side-item${comment.status === 'resolved' ? ' resolved' : ''}${addressed ? ' addressed' : ''}`,
+      class: `side-item${comment.status === 'resolved' ? ' resolved' : ''}${!isOpenStatus(comment.status) ? ' closed' : ''}${addressed ? ' addressed' : ''}`,
       onclick: () => jumpTo(app, comment, onThisPage),
     },
     h('div', { class: 'side-top' }, h('span', { class: 'side-num' }, String(number)), h('span', { class: 'side-text' }, comment.comment_text)),

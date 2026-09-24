@@ -6,6 +6,8 @@ import { attachImages } from './attach.js';
 import { authorEmail } from '../app.js';
 import { roleLabel, authorName } from '../roles.js';
 import { deviceLabel } from '../capture.js';
+import { STATUS_ORDER, statusLabel, isOpenStatus } from '../status.js';
+import { contextSummary } from '../screenshot.js';
 
 function fmtDate(iso) {
   return (iso || '').slice(0, 10);
@@ -82,11 +84,21 @@ export function openThread(app, rootId) {
   });
 
   const headBits = [h('span', {}, `Comment · <${root.element_tag || 'page'}>`)];
-  if (root.status === 'resolved') headBits.push(h('span', { class: 'status-tag' }, 'Resolved'));
+  if (root.status && root.status !== 'open') headBits.push(h('span', { class: `status-tag st-${root.status}` }, statusLabel(root.status)));
+  if (root.assignee_email) headBits.push(h('span', { class: 'status-tag' }, `→ ${root.assignee_email.split('@')[0]}`));
 
   const body = h('div', { class: 'card-body' });
   if (root.selector) {
     body.appendChild(h('div', { class: 'context' }, root.selector));
+  }
+  // Browser + console context captured when the comment was made.
+  const ctxText = contextSummary(root.context);
+  if (ctxText) {
+    const errs = (root.context.errors || []).slice(0, 8);
+    const det = h('details', { class: 'context-box' }, h('summary', {}, `Details: ${ctxText}`));
+    det.appendChild(h('div', {}, root.context.url || ''));
+    if (errs.length) det.appendChild(h('ul', {}, ...errs.map((e) => h('li', {}, `${e.kind}: ${e.msg}`))));
+    body.appendChild(det);
   }
   body.append(thread, replyForm);
 
@@ -127,26 +139,51 @@ export function openThread(app, rootId) {
     footer.appendChild(deleteBtn);
   }
 
-  if (app.canManage && app.writable) {
-    const resolveBtn = h(
-      'button',
-      { class: `btn ${root.status === 'open' ? 'btn-teal' : 'btn-ghost'}` },
-      root.status === 'open' ? 'Mark resolved' : 'Reopen'
-    );
-    resolveBtn.addEventListener('click', async () => {
-      resolveBtn.disabled = true;
-      const next = root.status === 'open' ? 'resolved' : 'open';
-      const row = await updateComment(app.supabase, rootId, { status: next });
-      resolveBtn.disabled = false;
-      if (!row) {
-        toast(app.ui, 'Update failed');
-        return;
-      }
+  // Status: the owner/staff, or whoever the item is assigned to.
+  const me = (authorEmail(app) || '').toLowerCase();
+  const canStatus = app.writable && (app.canManage || (root.assignee_email && root.assignee_email.toLowerCase() === me));
+  if (canStatus) {
+    const sel = h('select', { class: 'status-select', title: 'Status' }, ...STATUS_ORDER.map((s) => h('option', { value: s }, statusLabel(s))));
+    sel.value = root.status || 'open';
+    sel.addEventListener('change', async () => {
+      sel.disabled = true;
+      const row = await updateComment(app.supabase, rootId, { status: sel.value });
+      sel.disabled = false;
+      if (!row) return toast(app.ui, 'Update failed');
       app.comments.set(row.id, row);
       app.refresh();
       openThread(app, rootId);
     });
-    footer.appendChild(resolveBtn);
+    footer.appendChild(sel);
+    if (isOpenStatus(root.status)) {
+      const done = h('button', { class: 'btn btn-teal' }, 'Mark resolved');
+      done.addEventListener('click', async () => {
+        done.disabled = true;
+        const row = await updateComment(app.supabase, rootId, { status: 'resolved' });
+        if (!row) { done.disabled = false; return toast(app.ui, 'Update failed'); }
+        app.comments.set(row.id, row);
+        app.refresh();
+        openThread(app, rootId);
+      });
+      footer.appendChild(done);
+    }
+  }
+  // Assignee: owner/staff only, from the owner + collaborators.
+  if (app.canManage && app.writable && app.assignees) {
+    const asel = h('select', { class: 'assignee-select', title: 'Assign to' }, h('option', { value: '' }, 'Unassigned'),
+      ...app.assignees.map((e) => h('option', { value: e }, e)));
+    if (root.assignee_email && !app.assignees.includes(root.assignee_email)) asel.appendChild(h('option', { value: root.assignee_email }, root.assignee_email));
+    asel.value = root.assignee_email || '';
+    asel.addEventListener('change', async () => {
+      asel.disabled = true;
+      const row = await updateComment(app.supabase, rootId, { assignee_email: asel.value || null });
+      asel.disabled = false;
+      if (!row) return toast(app.ui, 'Update failed');
+      app.comments.set(row.id, row);
+      app.refresh();
+      openThread(app, rootId);
+    });
+    footer.appendChild(asel);
   }
 
   if (footer.children.length) body.appendChild(footer);

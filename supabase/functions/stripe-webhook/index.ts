@@ -5,8 +5,8 @@
 // (events are not delivered in order) before upserting our row.
 //
 // Status -> plan:
-//   active, trialing                          -> pro
-//   past_due                                  -> pro, grace_until = period_end + 14d
+//   active, trialing                          -> plan of the price (pro | agency)
+//   past_due                                  -> same, grace_until = period_end + 14d
 //   canceled, unpaid, incomplete*, paused     -> free
 //
 // Deploy: supabase functions deploy stripe-webhook --no-verify-jwt
@@ -15,12 +15,15 @@
 //         deleted, invoice.paid, invoice.payment_failed
 
 import { db, json } from "../_shared/db.ts";
-import { getStripe, cryptoProvider, STRIPE_WEBHOOK_SECRET } from "../_shared/stripe.ts";
+import { getStripe, cryptoProvider, STRIPE_WEBHOOK_SECRET, planForPrice } from "../_shared/stripe.ts";
 
 const GRACE_DAYS = 14;
 
-function planFor(status: string): "pro" | "free" {
-  return status === "active" || status === "trialing" || status === "past_due" ? "pro" : "free";
+// Paid statuses keep the plan the price belongs to (pro / agency); anything
+// else is free. The price object is expanded on retrieve below.
+function planFor(status: string, sub: any): "pro" | "agency" | "free" {
+  if (!(status === "active" || status === "trialing" || status === "past_due")) return "free";
+  return planForPrice(sub.items?.data?.[0]?.price);
 }
 
 async function resolveUserId(sub: any): Promise<string | null> {
@@ -79,7 +82,7 @@ Deno.serve(async (req) => {
 
   try {
     // Always re-fetch the truth.
-    const sub: any = await getStripe().subscriptions.retrieve(subscriptionId);
+    const sub: any = await getStripe().subscriptions.retrieve(subscriptionId, { expand: ["items.data.price.product"] });
     const userId = await resolveUserId(sub);
     if (!userId) {
       console.warn(`webhook ${event.id}: could not resolve user for subscription ${subscriptionId}`);
@@ -101,7 +104,7 @@ Deno.serve(async (req) => {
     const periodEndUnix: number | undefined = sub.items?.data?.[0]?.current_period_end ?? sub.current_period_end;
     const periodEnd = periodEndUnix ? new Date(periodEndUnix * 1000) : null;
     const status: string = sub.status;
-    const plan = planFor(status);
+    const plan = planFor(status, sub);
     let graceUntil: Date | null = null;
     if (status === "past_due") {
       const base = periodEnd && periodEnd.getTime() > Date.now() ? periodEnd : new Date();

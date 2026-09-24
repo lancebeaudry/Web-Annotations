@@ -1,7 +1,7 @@
 import { h, field, toast, copyBox } from '../ui/dom.js';
 import { card } from '../ui/shell.js';
-import { getProject, updateSettings, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, deleteProject } from '../api.js';
-import { BUNDLE_URL, PLUGIN_ZIP_URL, FUNCTIONS_URL } from '../config.js';
+import { getProject, updateSettings, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments } from '../api.js';
+import { BUNDLE_URL, PLUGIN_ZIP_URL, FUNCTIONS_URL, MCP_URL } from '../config.js';
 import { go } from '../router.js';
 
 export async function projectDetailScreen({ id, user, acct }) {
@@ -9,6 +9,10 @@ export async function projectDetailScreen({ id, user, acct }) {
   if (!p) return card('Not found', h('p', {}, 'This project doesn’t exist or you don’t have access.'), h('a', { class: 'btn', href: '#/projects' }, 'Back'));
   const canManage = acct.is_operator || p.owner_id === user.id;
   const shareLink = `${p.site_url.replace(/\/$/, '')}/?markup=${p.token}`;
+  const access = await projectAccess(id).catch(() => ({}));
+  const hasFeature = (f) => acct.is_operator || (access.features || []).includes(f);
+  const openCount = (await listComments(id).catch(() => [])).filter((c) => !c.parent_id && (c.status === 'open' || c.status === 'in_progress')).length;
+  const tabs = h('div', { class: 'tabs' }, h('a', { class: 'on', href: `#/projects/${id}` }, 'Settings'), h('a', { href: `#/projects/${id}/feedback` }, `Feedback (${openCount} open)`));
 
   // --- Share + install
   const install = card(
@@ -28,13 +32,15 @@ export async function projectDetailScreen({ id, user, acct }) {
     copyBox(`<script defer src="${BUNDLE_URL}" data-project="${p.token}"${p.open_access ? ' data-open="1"' : ''}></script>`, { multiline: true })
   );
 
-  if (!canManage) return h('div', {}, card(p.name, h('p', { class: 'hint' }, p.site_url)), install);
+  if (!canManage) return h('div', {}, tabs, card(p.name, h('p', { class: 'hint' }, p.site_url)), install);
 
   // --- Settings
   const name = h('input', { type: 'text', value: p.name });
   const site = h('input', { type: 'url', value: p.site_url });
   const open = h('input', { type: 'checkbox' });
   open.checked = !!p.open_access;
+  const shots = h('input', { type: 'checkbox' });
+  shots.checked = access.auto_screenshot !== false;
   const save = h('button', { class: 'btn', type: 'submit' }, 'Save settings');
   const settingsForm = h(
     'form',
@@ -42,13 +48,14 @@ export async function projectDetailScreen({ id, user, acct }) {
     field('Project name', name),
     field('Site URL', site),
     h('label', { class: 'check' }, open, ' Open feedback — anyone with the link can comment after entering their name (staging sites only; the token is visible in page source)'),
+    h('label', { class: 'check' }, shots, ' Automatic screenshots — attach a capture of the area around each new comment (the reviewer\'s browser, console errors and screen size are recorded either way)'),
     h('div', { class: 'btn-row' }, save)
   );
   settingsForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     save.disabled = true;
     try {
-      await updateSettings(id, { name: name.value.trim(), site_url: new URL(site.value.trim()).origin, open_access: open.checked });
+      await updateSettings(id, { name: name.value.trim(), site_url: new URL(site.value.trim()).origin, open_access: open.checked, auto_screenshot: shots.checked });
       toast('Saved');
       go(`#/projects/${id}`);
       location.reload();
@@ -190,10 +197,75 @@ export async function projectDetailScreen({ id, user, acct }) {
     h('p', { class: 'hint' }, 'Let Claude Code, Cursor or another assistant reply to and resolve comments. Markdown exports from the site already include this key, the item IDs and the exact commands, so the assistant can close items itself. Treat the key like a password: it can post replies and resolve items on this project only.'),
     h('div', { class: 'copy-box' }, keyOut, keyReveal, keyCopy, keyRotate),
     h('p', { class: 'hint' }, 'Endpoint: ', h('code', {}, `${FUNCTIONS_URL}/agent`), ' — header ', h('code', {}, 'x-pinpoint-agent-key')),
+    h('h4', {}, 'Claude Code (MCP)'),
+    h('p', { class: 'hint' }, 'One command registers PinPoint as a tool server: list feedback, reply, set status, assign. Reveal the key first, then copy.'),
+    copyBox(`claude mcp add --transport http pinpoint "${MCP_URL}" --header "x-pinpoint-agent-key: ${'<key>'}"`, { multiline: true }),
     h('h4', {}, 'Make it stick'),
     h('p', { class: 'hint' }, 'Add this to the CLAUDE.md (or equivalent rules file) in the site\'s repo so the assistant closes the loop every time, not just when you remember to ask:'),
     copyBox(claudeMd, { multiline: true })
   );
+
+  // --- Page approvals (Agency)
+  const approvalsList = h('div', { class: 'rows' });
+  async function refreshApprovals() {
+    const rows = await listApprovals(id).catch(() => []);
+    approvalsList.replaceChildren(...(rows.length ? rows.map((a) => {
+      const btn = h('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Reopen');
+      btn.addEventListener('click', async () => { btn.disabled = true; await reopenPage(id, a.page_path).catch((e) => toast(e.message)); refreshApprovals(); });
+      return h('div', { class: 'row' }, h('div', {}, h('div', { class: 'row-title' }, a.page_path), h('div', { class: 'hint' }, `Approved by ${a.approved_by_name || a.approved_by_email} (${a.approved_role}) · ${fmtDate(a.created_at)}${a.note ? ' · ' + a.note : ''}`)), btn);
+    }) : [h('p', { class: 'hint' }, 'No pages approved yet. Approve a page from the toolbar on the site; commenting turns off there until it is reopened.')]));
+  }
+  const approvalsCard = hasFeature('approvals')
+    ? (refreshApprovals(), card('Page approvals', h('p', { class: 'hint' }, 'A signed-off page stops accepting new comments and shows who approved it. Owners and invited collaborators can approve; the owner or the approver can reopen.'), approvalsList))
+    : card('Page approvals', h('div', { class: 'upsell' }, 'Sign off pages with a named, timestamped approval that turns commenting off. ', h('a', { href: '#/account' }, 'Part of the Agency plan.')));
+
+  // --- Integrations (Agency)
+  const intList = h('div', { class: 'rows' });
+  const slackUrl = h('input', { type: 'url', placeholder: 'https://hooks.slack.com/services/…' });
+  const slackBtn = h('button', { class: 'btn', type: 'button' }, 'Test & save');
+  const cuToken = h('input', { type: 'text', placeholder: 'pk_… (ClickUp personal API token)', autocomplete: 'off' });
+  const cuList = h('input', { type: 'text', placeholder: 'List ID (from the list URL, e.g. 901234567)' });
+  const cuBtn = h('button', { class: 'btn', type: 'button' }, 'Test & save');
+  async function refreshIntegrations() {
+    const rows = await listIntegrations(id).catch(() => []);
+    intList.replaceChildren(...(rows.length ? rows.map((r) => {
+      const rm = h('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Remove');
+      rm.addEventListener('click', async () => { rm.disabled = true; await removeIntegration(id, r.kind).catch((e) => toast(e.message)); refreshIntegrations(); });
+      return h('div', { class: 'row' }, h('div', {}, h('div', { class: 'row-title' }, r.kind === 'slack' ? 'Slack' : 'ClickUp'), h('div', { class: 'hint' }, `${r.summary} · connected ${fmtDate(r.updated_at)}`)), rm);
+    }) : [h('p', { class: 'hint' }, 'Nothing connected yet.')]));
+  }
+  slackBtn.addEventListener('click', async () => {
+    slackBtn.disabled = true;
+    try {
+      await callFn('integration-test', { project_id: id, kind: 'slack', config: { webhook_url: slackUrl.value.trim() } });
+      await saveIntegration(id, 'slack', { webhook_url: slackUrl.value.trim() });
+      slackUrl.value = '';
+      toast('Slack connected — check the channel for a hello');
+      refreshIntegrations();
+    } catch (err) { toast(err.message); }
+    slackBtn.disabled = false;
+  });
+  cuBtn.addEventListener('click', async () => {
+    cuBtn.disabled = true;
+    try {
+      const info = await callFn('integration-test', { project_id: id, kind: 'clickup', config: { token: cuToken.value.trim(), list_id: cuList.value.trim() } });
+      await saveIntegration(id, 'clickup', { token: cuToken.value.trim(), list_id: cuList.value.trim(), list_name: info.list_name });
+      cuToken.value = ''; cuList.value = '';
+      toast(`ClickUp connected — tasks go to "${info.list_name}"`);
+      refreshIntegrations();
+    } catch (err) { toast(err.message); }
+    cuBtn.disabled = false;
+  });
+  const integrationsCard = hasFeature('integrations')
+    ? (refreshIntegrations(), card('Integrations',
+        intList,
+        h('h4', {}, 'Slack'),
+        h('p', { class: 'hint' }, 'Create an incoming webhook in Slack (Apps → Incoming Webhooks → pick a channel) and paste its URL. Every new comment and status change posts there with a link straight to the item.'),
+        h('div', { class: 'inline' }, slackUrl, slackBtn),
+        h('h4', {}, 'ClickUp'),
+        h('p', { class: 'hint' }, 'Each new comment becomes a task in the list you choose; replies become task comments and PinPoint status changes update the task status. Use a personal API token from ClickUp → Settings → Apps.'),
+        h('div', { class: 'inline' }, cuToken, cuList, cuBtn)))
+    : card('Integrations', h('div', { class: 'upsell' }, 'Post every comment to Slack and turn feedback into ClickUp tasks automatically. ', h('a', { href: '#/account' }, 'Part of the Agency plan.')));
 
   // --- Danger zone
   const confirmName = h('input', { type: 'text', placeholder: `Type "${p.name}" to confirm` });
@@ -214,6 +286,7 @@ export async function projectDetailScreen({ id, user, acct }) {
   return h(
     'div',
     {},
+    tabs,
     card(h('div', { class: 'head-row' }, h('span', {}, p.name), h('a', { class: 'btn btn-ghost btn-sm', href: shareLink, target: '_blank', rel: 'noopener' }, 'Open in PinPoint')), h('p', { class: 'hint' }, p.site_url)),
     install,
     card('Settings', settingsForm),
@@ -221,6 +294,8 @@ export async function projectDetailScreen({ id, user, acct }) {
     card('Email notifications', notifyForm),
     secretCard,
     agentCard,
+    approvalsCard,
+    integrationsCard,
     card('Danger zone', h('p', { class: 'hint' }, 'Deleting a project removes all of its comments and images. This cannot be undone.'), h('div', { class: 'inline' }, confirmName, del))
   );
 }

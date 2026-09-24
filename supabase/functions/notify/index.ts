@@ -17,6 +17,7 @@
 
 import { db, json } from "../_shared/db.ts";
 import { sendEmail, mailerConfigured, mailProvider, FOOTER_HTML, FOOTER_TEXT } from "../_shared/email.ts";
+import { dispatchIntegrations, deepLink } from "../_shared/integrations.ts";
 
 const NOTIFY_SECRET = Deno.env.get("NOTIFY_SECRET") ?? "";
 
@@ -40,13 +41,15 @@ Deno.serve(async (req) => {
     return json(401, { error: "bad secret" });
   }
 
-  let record: Comment;
+  let record: Comment; let payload: any;
   try {
-    record = (await req.json()).record;
+    payload = await req.json();
+    record = payload.record;
     if (!record?.id) throw new Error("no record");
   } catch {
     return json(400, { error: "bad payload" });
   }
+  const eventKind: "insert" | "update" = payload.event === "update" ? "update" : "insert";
 
   const author = (record.author_email || "").toLowerCase();
   const isReply = !!record.parent_id;
@@ -56,6 +59,13 @@ Deno.serve(async (req) => {
   );
   const project = projects[0];
   if (!project) return json(200, { skipped: "unknown project" });
+
+  // Slack / ClickUp (Agency plan). Status and assignee changes only go here.
+  const integrations = await dispatchIntegrations(eventKind, record as any, payload.old_record ?? null, { id: record.project_id, ...project }).catch((e) => {
+    console.error("integrations failed", e);
+    return { ran: 0 };
+  });
+  if (eventKind === "update") return json(200, { sent: 0, integrations: integrations.ran });
 
   // recipient email -> reason. "mention" wins over "team" for wording.
   const recipients = new Map<string, "mention" | "team">();
@@ -81,7 +91,7 @@ Deno.serve(async (req) => {
     : author.startsWith("agent:")
     ? `${record.author_name || "AI assistant"} (AI assistant)`
     : (record.author_name ? `${record.author_name} (${author})` : author);
-  const deepLink = `${record.page_url}?markup=${encodeURIComponent(project.token)}`;
+  const deepLinkUrl = deepLink({ id: record.project_id, ...project }, record as any);
   const kind = isReply ? "replied" : "left a comment";
   const snippet = record.comment_text.length > 300 ? record.comment_text.slice(0, 300) + "…" : record.comment_text;
 
@@ -89,12 +99,12 @@ Deno.serve(async (req) => {
   for (const [email, reason] of recipients) {
     const subject = reason === "mention" ? `${who} mentioned you on ${project.name}` : `New comment on ${project.name}`;
     const lead = reason === "mention" ? `${who} mentioned you in feedback on ${project.name}.` : `${who} ${kind} on ${project.name}.`;
-    const text = `${lead}\n\nPage: ${record.page_path}\n"${snippet}"\n\nOpen it: ${deepLink}\n${FOOTER_TEXT}`;
+    const text = `${lead}\n\nPage: ${record.page_path}\n"${snippet}"\n\nOpen it: ${deepLinkUrl}\n${FOOTER_TEXT}`;
     const html =
       `<p>${esc(lead)}</p>` +
       `<p style="color:#555">Page: ${esc(record.page_path)}</p>` +
       `<blockquote style="margin:0 0 16px;padding:8px 12px;border-left:3px solid #ddd;color:#333">${esc(snippet)}</blockquote>` +
-      `<p><a href="${esc(deepLink)}" style="display:inline-block;padding:8px 14px;background:#1B6493;color:#fff;border-radius:6px;text-decoration:none">Open in PinPoint</a></p>` +
+      `<p><a href="${esc(deepLinkUrl)}" style="display:inline-block;padding:8px 14px;background:#1B6493;color:#fff;border-radius:6px;text-decoration:none">Open in PinPoint</a></p>` +
       FOOTER_HTML;
     try {
       await sendEmail({ to: email, subject, text, html, idempotencyKey: `notify-${record.id}-${email}` });
@@ -103,5 +113,5 @@ Deno.serve(async (req) => {
       console.error(`send to ${email} failed:`, e);
     }
   }
-  return json(200, { sent, recipients: recipients.size, provider: mailProvider() });
+  return json(200, { sent, recipients: recipients.size, provider: mailProvider(), integrations: integrations.ran });
 });

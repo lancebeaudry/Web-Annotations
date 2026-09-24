@@ -22,16 +22,16 @@ Click-to-comment website feedback, by Avalanche Creative. (Product name since 2.
 - **Collaborator** — an email the owner invited (`project_members`). Comment, reply, edit/delete own.
 - **Guest** — on a project with *open feedback*, anyone with the link who types a name (anonymous session). Comment, reply, edit/delete own.
 
-Plans: **free = 1 project**, **Pro = 10 projects ($99/yr)**. Limits are enforced by the database (a `BEFORE INSERT` trigger on `projects`, error `PROJECT_LIMIT_REACHED`). If a plan lapses, the owner's *oldest* projects stay live up to the free limit and newer ones become read-only — nothing is deleted. `subscriptions.plan` is written **only** by the Stripe webhook.
+Plans: **free = 1 project, 50 comments + 10 images per project**, **Pro = 10 projects ($19/mo or $149/yr)**, **Agency = unlimited projects + integrations + page approvals ($39/mo or $349/yr)**. Limits are enforced by the database (a `BEFORE INSERT` trigger on `projects`, error `PROJECT_LIMIT_REACHED`). If a plan lapses, the owner's *oldest* projects stay live up to the free limit and newer ones become read-only — nothing is deleted. `subscriptions.plan` is written **only** by the Stripe webhook.
 
 Every permission lives in RLS + `SECURITY DEFINER` helpers (`is_operator`, `is_project_owner`, `can_read_project`, `project_is_writable`, `my_project_role`, …). The anon key is public by design, so nothing may rely on client-side checks.
 
 ## Setup (one time)
 
 1. `.env` from `.env.example` — public values (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DASHBOARD_URL`, …) plus server-only `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_ACCESS_TOKEN` (never shipped).
-2. Database, in this order (each is idempotent): `schema.sql` → `notifications.sql` → `project-scoping.sql` → `attachments.sql` → `open-access.sql` → `team-create-projects.sql` → `lock-down-reads.sql` → `distribution.sql` → `tenancy.sql` → `dashboard.sql` → `agent.sql`. Apply via the SQL editor or the Management API. Do not run the older files *after* `tenancy.sql` — they would reintroduce the pre-2.0 policies.
+2. Database, in this order (each is idempotent): `schema.sql` → `notifications.sql` → `project-scoping.sql` → `attachments.sql` → `open-access.sql` → `team-create-projects.sql` → `lock-down-reads.sql` → `distribution.sql` → `tenancy.sql` → `dashboard.sql` → `agent.sql` → `v22.sql` → `v22b.sql`. Apply via the SQL editor or the Management API. Do not run the older files *after* `tenancy.sql` — they would reintroduce the pre-2.0 policies.
 3. Auth: anonymous sign-ins on; email OTP 6 digits; rate limits (anonymous 20/h/IP, email 100/h); URL allowlist includes `DASHBOARD_URL/**`.
-4. Edge functions (all `--no-verify-jwt`): `notify`, `notify-sync`, `project-settings`, `wp-session`, `media-sweep`, `billing-checkout`, `billing-portal`, `stripe-webhook`, `agent`. Deploy with `supabase functions deploy <name> --project-ref <ref> --no-verify-jwt --use-api` (`--use-api` avoids the Docker/TTY hang).
+4. Edge functions (all `--no-verify-jwt`): `notify`, `notify-sync`, `project-settings`, `wp-session`, `media-sweep`, `billing-checkout`, `billing-portal`, `stripe-webhook`, `agent`, `mcp`, `integration-test`. Deploy with `supabase functions deploy <name> --project-ref <ref> --no-verify-jwt --use-api` (`--use-api` avoids the Docker/TTY hang).
 5. Secrets: `NOTIFY_SECRET` (must equal `private.app_settings.notify_secret`), mail (`RESEND_API_KEY`, `MAIL_FROM`, `MAIL_PROVIDER`; transitional `GMAIL_USER`/`GMAIL_APP_PASSWORD`), `LEGACY_WP_AUTH_SECRET` (old global bridge secret, until every plugin is on 2.0), `DASHBOARD_URL`, Stripe (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID`).
 
 ## Local development
@@ -100,3 +100,13 @@ Owner/operator Markdown exports end with an "For AI coding assistants" block: ea
 ## Pin anchoring (2.1)
 
 `capture()` stores a v2 fingerprint in `selector_fallback` (tag, text, stable classes, key attributes, id ancestor / preceding heading, twin index). `locateElement()` scores every candidate — the stored selector is only one source of candidates, never trusted blindly, because positional `nth-of-type` paths keep matching *something* after a wrapper or banner is inserted. Pins re-render on resize, load, font/image load, and (debounced) DOM mutation; a pin that could only be placed approximately gets an amber ring.
+
+## 2.2: inbox, approvals, integrations, MCP
+
+- **Statuses** `open | in_progress | resolved | wont_fix` + `assignee_email` on comments. Owner/operator set both; an assignee may set status on their own items (RLS). "Open" everywhere means open **or** in progress.
+- **Free caps** are enforced in the DB: `comments_before_write` raises `COMMENT_LIMIT_REACHED` at `plans.comment_limit`; `storage_upload_allowed` refuses uploads past `plans.image_limit`. The overlay shows `n/50` in the toolbar and a cap card.
+- **Page approvals** (`page_approvals`, Agency feature): `approve_page()` locks new pins on that page (trigger raises `PAGE_APPROVED`); `revoke_approval()` reopens. Overlay shows "Approved by …" and hides the Comment button.
+- **Integrations** (`integrations`, Agency): Slack incoming webhook and ClickUp token+list, dispatched from `notify` on insert and on status/assignee updates (`comments_notify_update` trigger). ClickUp task ids live in `comments.external_ref`. Secrets never leave the service role; the dashboard sees a masked summary.
+- **Context + screenshots**: `comments.context` (browser, viewport, console errors) and an automatic html2canvas capture (cdnjs, lazy) unless `projects.auto_screenshot` is off.
+- **MCP**: `functions/mcp` is a stateless Streamable-HTTP MCP server (JSON responses). `claude mcp add --transport http pinpoint <url> --header "x-pinpoint-agent-key: …"`. Tools: list_feedback, list_pages, get_feedback, reply, set_status, assign, project_info.
+- **Stripe**: prices carry `metadata.plan`; the webhook maps a paid subscription to that plan. `billing-checkout` takes `{plan, interval}` and switches an active subscription in place.

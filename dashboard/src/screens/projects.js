@@ -11,7 +11,7 @@ export async function projectsScreen({ user }) {
   const planLine = h(
     'div',
     { class: 'plan-line' },
-    h('span', { class: `badge ${acct.plan === 'pro' ? 'badge-pro' : ''}` }, acct.is_operator ? 'Operator' : acct.plan === 'pro' ? 'Pro' : 'Free plan'),
+    h('span', { class: `badge ${acct.plan === 'pro' ? 'badge-pro' : acct.plan === 'agency' ? 'badge-agency' : ''}` }, acct.is_operator ? 'Operator' : acct.plan === 'agency' ? 'Agency' : acct.plan === 'pro' ? 'Pro' : 'Free plan'),
     unlimited ? ' Unlimited projects' : ` ${acct.owned_count} of ${acct.project_limit} project${acct.project_limit === 1 ? '' : 's'} used`,
     !unlimited && acct.owned_count >= acct.project_limit ? h('a', { class: 'btn btn-sm', href: '#/account' }, 'Upgrade') : null
   );

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, DASHBOARD_URL } from './config.js';
-import { fetchProject, fetchComments, subscribeRealtime, fetchAccess, createProject, getAgentKey } from './data.js';
+import { fetchProject, fetchComments, subscribeRealtime, fetchAccess, createProject, getAgentKey, approvePage, revokeApproval, listAssignees } from './data.js';
+import { installErrorLog } from './screenshot.js';
 import { mountOverlay, toast, h } from './ui/overlay.js';
 import { renderAuthCard, renderGuestCard, removeAuthCard, savedName } from './ui/auth.js';
 import { renderPins, invalidatePins } from './ui/pins.js';
@@ -71,9 +72,12 @@ export async function init(token, options = {}) {
   // build — it would hand the page's other scripts the session token).
   if (SUPABASE_URL.startsWith('mock://')) window.__avalancheMarkupApp = app;
 
+  installErrorLog(app);
+
   app.refresh = () => {
     renderPins(app);
     refreshSidebar(app);
+    updateCapStrip(app);
     if (app.sidebarBtn) {
       const n = openRootCount(app);
       app.sidebarBtn.textContent = n ? `Comments (${n})` : 'Comments';
@@ -248,6 +252,7 @@ async function start(app) {
   // folded in there too (a guest or unlocked visitor on an open project
   // comes back as role 'guest'), so there is no client-side gate to drift.
   const access = await fetchAccess(app.supabase, app.project.id);
+  app.access = access;
   app.role = access.role;
   app.writable = access.writable;
   app.canManage = app.role === 'operator' || app.role === 'owner';
@@ -267,6 +272,18 @@ async function start(app) {
 
   renderToolbar(app);
   renderPins(app);
+  if (app.canManage) listAssignees(app.supabase, app.project.id).then((list) => { app.assignees = list; });
+
+  // Deep link from an email / Slack / ClickUp: ?pp_comment=<id> opens that thread.
+  const wanted = new URLSearchParams(location.search).get('pp_comment');
+  if (wanted && app.comments.has(wanted)) {
+    const c = app.comments.get(wanted);
+    if (c.page_path === app.pagePath) setTimeout(() => {
+      const pin = [...app.ui.pinLayer.children].find((el) => el.title && el.title.startsWith(c.comment_text.slice(0, 20)));
+      if (pin) pin.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => openThread(app, wanted), 350);
+    }, 400);
+  }
 
   subscribeRealtime(app.supabase, app.project.id, (type, row) => {
     if (!row || !row.id) return;
@@ -286,7 +303,7 @@ async function start(app) {
     const tag = t && t.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
     const k = e.key.toLowerCase();
-    if (k === 'c' && app.writable) setCommentMode(app, true);
+    if (k === 'c' && app.writable && !pageApproval(app)) setCommentMode(app, true);
     else if (k === 'b') setCommentMode(app, false);
   });
 
@@ -354,6 +371,10 @@ function updateModeButtons(app) {
 }
 
 function setCommentMode(app, on) {
+  if (on && pageApproval(app)) {
+    toast(app.ui, `This page was approved by ${pageApproval(app).by} — reopen it to comment`);
+    on = false;
+  }
   if (app.commentMode === on) {
     updateModeButtons(app);
     return;
@@ -540,8 +561,11 @@ function renderToolbar(app) {
 
   // A frozen project (owner over their plan limit) is read-only: no Comment
   // button, and a strip that says why.
-  const toolbar = app.writable
+  const approval = pageApproval(app);
+  const toolbar = app.writable && !approval
     ? h('div', { class: 'toolbar' }, brand, app.modeBtn, app.browseBtn, app.sidebarBtn)
+    : approval
+    ? h('div', { class: 'toolbar' }, brand, app.browseBtn, app.sidebarBtn)
     : h(
         'div',
         { class: 'toolbar' },
@@ -555,6 +579,41 @@ function renderToolbar(app) {
   if (!IN_FRAME) toolbar.appendChild(makeDeviceControl(app));
   toolbar.appendChild(hint);
   if (who) toolbar.appendChild(who);
+  // Approved page: who signed it off, and (for the owner / collaborators) a way to reopen.
+  if (approval) {
+    const strip = h('span', { class: 'approved-strip', title: approval.email }, `✓ Approved by ${approval.by} · ${String(approval.at || '').slice(0, 10)}`);
+    toolbar.appendChild(strip);
+    if (['owner', 'collaborator', 'operator'].includes(app.role)) {
+      const reopen = h('button', { class: 'fab fab-secondary', title: 'Allow comments on this page again' }, 'Reopen page');
+      reopen.addEventListener('click', async () => {
+        reopen.disabled = true;
+        const err = await revokeApproval(app.supabase, app.project.id, app.pagePath);
+        if (err) { reopen.disabled = false; return toast(app.ui, err); }
+        app.access.approved_pages = (app.access.approved_pages || []).filter((p) => p.page_path !== app.pagePath);
+        rerenderToolbar(app);
+        toast(app.ui, 'Page reopened for comments');
+      });
+      toolbar.appendChild(reopen);
+    }
+  } else if ((app.access.features || []).includes('approvals') && ['owner', 'collaborator', 'operator'].includes(app.role) && app.writable) {
+    const approve = h('button', { class: 'fab fab-secondary', title: 'Sign this page off — turns commenting off until it is reopened' }, 'Approve page');
+    approve.addEventListener('click', async () => {
+      approve.disabled = true;
+      const { data, error } = await approvePage(app.supabase, app.project.id, app.pagePath);
+      if (error) { approve.disabled = false; return toast(app.ui, /PLAN_FEATURE/.test(error) ? 'Page approvals are part of the Agency plan' : error); }
+      app.access.approved_pages = [...(app.access.approved_pages || []), { page_path: app.pagePath, by: data.approved_by_name || data.approved_by_email, email: data.approved_by_email, at: data.created_at }];
+      setCommentMode(app, false);
+      rerenderToolbar(app);
+      toast(app.ui, 'Page approved — commenting is off here until it is reopened');
+    });
+    toolbar.appendChild(approve);
+  }
+  // Free plan: how much of the comment allowance this project has used.
+  if (app.access.comment_limit) {
+    app.capStrip = h('span', { class: 'cap-strip' });
+    toolbar.appendChild(app.capStrip);
+    updateCapStrip(app);
+  }
   // Flexible gap pushes the management buttons (Invite/Export/Exit) to
   // the far right of the bar.
   toolbar.appendChild(h('div', { class: 'toolbar-spacer' }));
@@ -644,6 +703,51 @@ function renderUnregisteredCard(app) {
 
 // Signed in and tried to register this site, but the account's plan is at
 // its project limit. Upgrade lives in the dashboard.
+// Active approval for the current page, if any.
+export function pageApproval(app) {
+  const list = (app.access && app.access.approved_pages) || [];
+  return list.find((p) => p.page_path === app.pagePath) || null;
+}
+
+function updateCapStrip(app) {
+  if (!app.capStrip || !app.access || !app.access.comment_limit) return;
+  const used = app.access.comment_count || 0;
+  const lim = app.access.comment_limit;
+  app.capStrip.textContent = `${Math.min(used, lim)}/${lim} comments`;
+  app.capStrip.title = 'Free plan allowance for this project';
+  app.capStrip.classList.toggle('full', used >= lim);
+}
+
+function rerenderToolbar(app) {
+  if (app.toolbarEl) app.toolbarEl.remove();
+  renderToolbar(app);
+}
+
+// The free plan's per-project comment allowance is used up.
+export function renderCapCard(app) {
+  if (app.ui.layer.querySelector('.cap-card')) return;
+  const upgrade = h('a', { class: 'btn', href: `${DASHBOARD_URL}#/account`, target: '_blank', rel: 'noopener' }, 'Upgrade');
+  const close = h('button', { class: 'btn btn-ghost' }, 'Not now');
+  const lim = (app.access && app.access.comment_limit) || 50;
+  const card = h(
+    'div',
+    { class: 'card auth-card cap-card' },
+    h('div', { class: 'card-head' }, 'Free plan limit reached'),
+    h(
+      'div',
+      { class: 'card-body' },
+      h('p', {}, `This project has used all ${lim} comments included in the free plan.`),
+      h('p', { class: 'hint' }, 'Upgrade to Pro for unlimited comments and images, or delete old comments to free up room.'),
+      h('div', { class: 'btn-row' }, close, upgrade)
+    ),
+    poweredBy('card')
+  );
+  close.addEventListener('click', () => card.remove());
+  app.ui.layer.appendChild(card);
+  if (app.access) app.access.comment_count = lim;
+  updateCapStrip(app);
+}
+
 function renderLimitCard(app) {
   const upgrade = h(
     'a',

@@ -1,6 +1,7 @@
 import { locateElement, looksAddressed } from '../capture.js';
 import { h } from './overlay.js';
 import { openThread } from './popover.js';
+import { isOpenStatus } from '../status.js';
 
 // Top-level pins for the current page, in creation order (their index
 // is the pin number shown to users and in the export).
@@ -51,7 +52,7 @@ export function renderPins(app) {
   // as their sidebar entry even when resolved ones are skipped.
   const showResolved = app.sidebarFilters ? app.sidebarFilters.showResolved : true;
   pagePins(app).forEach((comment, i) => {
-    if (!showResolved && comment.status === 'resolved') return;
+    if (!showResolved && !isOpenStatus(comment.status)) return;
     const pos = pinPosition(comment);
     if (!pos) return;
     const addressed = looksAddressed(comment);
@@ -62,7 +63,7 @@ export function renderPins(app) {
     const pin = h(
       'div',
       {
-        class: `pin${comment.status === 'resolved' ? ' resolved' : ''}${addressed ? ' addressed' : ''}${weak ? ' weak' : ''}`,
+        class: `pin st-${comment.status || 'open'}${comment.status === 'resolved' ? ' resolved' : ''}${addressed ? ' addressed' : ''}${weak ? ' weak' : ''}`,
         title,
         onclick: () => openThread(app, comment.id),
       },

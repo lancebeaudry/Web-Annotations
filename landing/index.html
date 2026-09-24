@@ -460,7 +460,7 @@ img{max-width:100%}
         <a href="app/" style="background:#1D5F96;color:#fff;padding:16px 26px;border-radius:10px;font-size:17px;font-weight:500" class="hv2">Start free with one site</a>
         <a href="#how" style="padding:16px 22px;border-radius:10px;font-size:17px;font-weight:500;color:#164A75;border:1px solid #C9D6E0" class="hv3">See how it works</a>
       </div>
-      <div style="font-size:14px;color:#5A6F80">No credit card. Pro is $99/year for 10 sites.</div>
+      <div style="font-size:14px;color:#5A6F80">No credit card. Pro is $19 a month for 10 sites.</div>
     </div>
   </div>
 
@@ -654,7 +654,7 @@ img{max-width:100%}
       
         <div style="padding:28px 26px 32px;border-right:1px solid rgba(255,255,255,.18);border-bottom:1px solid rgba(255,255,255,.18);display:flex;flex-direction:column;gap:10px">
           <div style="font-size:19px;font-weight:600">AI assistants close the loop</div>
-          <div style="font-size:15px;line-height:1.5;color:#C9DCEA">Claude Code or Cursor can reply on an item and resolve it when the fix ships.</div>
+          <div style="font-size:15px;line-height:1.5;color:#C9DCEA">Connect Claude Code as an MCP server, or use the plain endpoint: assistants list items, reply, set status and resolve when the fix ships.</div>
         </div>
       
         <div style="padding:28px 26px 32px;border-right:1px solid rgba(255,255,255,.18);border-bottom:1px solid rgba(255,255,255,.18);display:flex;flex-direction:column;gap:10px">
@@ -699,24 +699,36 @@ img{max-width:100%}
   </div>
 </section>
 
-<section id="pricing" data-screen-label="Pricing" style="max-width:1240px;margin:0 auto;padding:clamp(80px,10vw,140px) clamp(20px,4vw,48px);width:100%;display:flex;flex-direction:column;gap:48px">
+<section id="pricing" data-screen-label="Pricing" style="max-width:1240px;margin:0 auto;padding:clamp(80px,10vw,140px) clamp(20px,4vw,48px);width:100%;display:flex;flex-direction:column;gap:40px">
   <div style="display:flex;flex-direction:column;gap:20px;align-items:center;text-align:center">
     <h2 style="margin:0;font-size:clamp(34px,4.4vw,56px);line-height:1.02;font-weight:600;letter-spacing:-.03em">Free for one site. Simple after that.</h2>
-    <p style="margin:0;font-size:18px;color:#5A6F80;max-width:560px;line-height:1.5">No per-seat pricing and no limits on comments or reviewers. You pay by the number of sites.</p>
+    <p style="margin:0;font-size:18px;color:#5A6F80;max-width:560px;line-height:1.5">No per-seat pricing. Reviewers are always free. You pay by the number of sites you review.</p>
+    <div id="billing-toggle" style="display:inline-flex;border:1px solid #C9D6E0;border-radius:10px;overflow:hidden;font-size:15px;font-weight:500">
+      <button type="button" data-interval="month" style="border:none;background:#fff;color:#164A75;padding:10px 18px;font:inherit;cursor:pointer">Monthly</button>
+      <button type="button" data-interval="year" style="border:none;background:#10283D;color:#fff;padding:10px 18px;font:inherit;cursor:pointer">Yearly <span style="opacity:.75">· 2 months free</span></button>
+    </div>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:24px;max-width:880px;width:100%;margin:0 auto">
-    <div style="background:#fff;border:1px solid #DCE4EB;border-radius:16px;padding:36px;display:flex;flex-direction:column;gap:24px">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px;max-width:1100px;width:100%;margin:0 auto">
+    <div style="background:#fff;border:1px solid #DCE4EB;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:22px;position:relative">
       <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:18px;font-weight:600">Free</div><div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:56px;font-weight:600;letter-spacing:-.03em">$0</span><span style="color:#5A6F80">forever</span></div></div>
-      <div style="display:flex;flex-direction:column;gap:12px;font-size:16px;color:#3F5567"><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1D5F96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>1 project (one site)</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1D5F96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Unlimited comments and reviewers</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1D5F96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Screenshots, threads, mentions</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1D5F96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Device previews and export</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1D5F96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Email notifications</div></div>
+      <div style="display:flex;flex-direction:column;gap:12px;font-size:16px;color:#3F5567"><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1D5F96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>1 site</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1D5F96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>50 comments and 10 images per project</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1D5F96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Threads, mentions, device previews</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1D5F96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Markdown and JSON export</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#1D5F96" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Email notifications</div></div>
       <a href="app/" style="margin-top:auto;text-align:center;padding:15px;border-radius:10px;border:1px solid #C9D6E0;font-weight:500;color:#164A75" class="hv4">Start free</a>
     </div>
-    <div style="background:#10283D;color:#fff;border-radius:16px;padding:36px;display:flex;flex-direction:column;gap:24px;position:relative">
-      <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:18px;font-weight:600">Pro</div><div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:56px;font-weight:600;letter-spacing:-.03em">$99</span><span style="color:#9FB6C8">per year</span></div></div>
-      <div style="display:flex;flex-direction:column;gap:12px;font-size:16px;color:#C9DCEA"><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>10 projects</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Everything in Free</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Built for multiple sites in review at once</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Priority support from the team that builds it</div></div>
+
+    <div style="background:#10283D;color:#fff;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:22px;position:relative">
+      <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:18px;font-weight:600">Pro</div><div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:56px;font-weight:600;letter-spacing:-.03em"><span data-price-month>$19</span><span data-price-year hidden>$149</span></span><span style="color:#9FB6C8"><span data-per-month>per month</span><span data-per-year hidden>per year</span></span></div><div style="font-size:14px;color:#9FB6C8">For freelancers and small teams</div></div>
+      <div style="display:flex;flex-direction:column;gap:12px;font-size:16px;color:#C9DCEA"><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>10 sites</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Unlimited comments and images</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Feedback inbox: statuses, assignees, board</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>AI-assistant loop and MCP server</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Automatic screenshots and bug context</div></div>
       <a href="app/" style="margin-top:auto;text-align:center;padding:15px;border-radius:10px;background:#5BC4E8;font-weight:600;color:#10283D" class="hv5">Get Pro</a>
     </div>
+
+    <div style="background:#10283D;color:#fff;border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:22px;position:relative">
+      <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:18px;font-weight:600">Agency</div><div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:56px;font-weight:600;letter-spacing:-.03em"><span data-price-month>$39</span><span data-price-year hidden>$349</span></span><span style="color:#9FB6C8"><span data-per-month>per month</span><span data-per-year hidden>per year</span></span></div><div style="font-size:14px;color:#9FB6C8">For agencies running many client sites</div></div>
+      <div style="display:flex;flex-direction:column;gap:12px;font-size:16px;color:#C9DCEA"><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Unlimited sites</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Everything in Pro</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Slack and ClickUp integrations</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Page approvals: named sign-off that locks a page</div><div style="display:flex;gap:10px"><svg width="18" height="18" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#5BC4E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>Priority support</div></div>
+      <a href="app/" style="margin-top:auto;text-align:center;padding:15px;border-radius:10px;background:#5BC4E8;font-weight:600;color:#10283D" class="hv5">Get Agency</a>
+    </div>
+
   </div>
-  <p style="margin:0;text-align:center;font-size:14px;color:#5A6F80">If Pro lapses, your oldest project stays live and the rest go read-only until you renew.</p>
+  <p style="margin:0;text-align:center;font-size:14px;color:#5A6F80">Cancel any time. If a paid plan lapses, your oldest projects stay live up to the free allowance and the rest go read-only until you renew. Nothing is deleted.</p>
 </section>
 
 <section data-screen-label="FAQ" style="background:#fff;border-top:1px solid #E1E8EE">
@@ -826,6 +838,17 @@ img{max-width:100%}
 })();
 // Old dashboard links land here after the domain move; send hash routes on to the app.
 if (location.hash.indexOf('#/') === 0 || /[?&](checkout|code)=/.test(location.search)) location.replace('/app/' + location.search + location.hash);
+// Monthly / yearly toggle on the pricing cards.
+(function () {
+  var wrap = document.getElementById('billing-toggle'); if (!wrap) return;
+  function set(iv) {
+    wrap.querySelectorAll('button').forEach(function (b) { var on = b.getAttribute('data-interval') === iv; b.style.background = on ? '#10283D' : '#fff'; b.style.color = on ? '#fff' : '#164A75'; });
+    document.querySelectorAll('[data-price-month],[data-per-month]').forEach(function (e) { e.hidden = iv !== 'month'; });
+    document.querySelectorAll('[data-price-year],[data-per-year]').forEach(function (e) { e.hidden = iv !== 'year'; });
+  }
+  wrap.querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { set(b.getAttribute('data-interval')); }); });
+  set('year');
+})();
 // The "Copy" button on the sample export copies the sample.
 document.querySelectorAll('button, a').forEach(function (b) {
   if (b.textContent.trim() !== 'Copy') return;

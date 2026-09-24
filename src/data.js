@@ -39,7 +39,21 @@ export async function fetchAccess(supabase, projectId) {
     if (error) console.warn('[markup] access check failed:', error.message);
     return { role: 'none', writable: false };
   }
-  return { role: data.role || 'none', writable: !!data.writable };
+  return { ...data, role: data.role || 'none', writable: !!data.writable, features: data.features || [], approved_pages: data.approved_pages || [] };
+}
+
+// Page approvals (Agency): approve locks new pins on that page until reopened.
+export async function approvePage(supabase, projectId, pagePath, note) {
+  const { data, error } = await supabase.rpc('approve_page', { p_project: projectId, p_page: pagePath, p_note: note || null });
+  return error ? { error: error.message } : { data };
+}
+export async function revokeApproval(supabase, projectId, pagePath) {
+  const { error } = await supabase.rpc('revoke_approval', { p_project: projectId, p_page: pagePath });
+  return error ? error.message : null;
+}
+export async function listAssignees(supabase, projectId) {
+  const { data, error } = await supabase.rpc('list_assignees', { p_project: projectId });
+  return error ? [] : data || [];
 }
 
 // The viewer's account: plan, limits, operator flag.
@@ -129,17 +143,17 @@ export async function uploadAttachment(supabase, projectId, file) {
   return { url: data.publicUrl, name: file.name || 'image', type: file.type || 'image/png' };
 }
 
-export async function insertComment(supabase, row) {
+export async function insertCommentResult(supabase, row) {
   const { data, error } = await supabase
     .from('comments')
     .insert(row)
     .select()
     .single();
-  if (error) {
-    console.warn('[markup] comment insert failed:', error.message);
-    return null;
-  }
-  return data;
+  if (error) console.warn('[markup] comment insert failed:', error.message);
+  return { data: error ? null : data, error };
+}
+export async function insertComment(supabase, row) {
+  return (await insertCommentResult(supabase, row)).data;
 }
 
 export async function updateComment(supabase, id, patch) {

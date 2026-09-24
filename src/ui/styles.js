@@ -229,6 +229,27 @@ export const CSS = `
 .pin:hover { transform: scale(1.15); }
 .pin.weak { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #f0a020; opacity: .85; }
 .pin.resolved { background: #13A89E; opacity: 0.55; }
+.pin.st-in_progress { background: #E8A317; }
+.pin.st-wont_fix { background: #7A8A96; opacity: 0.5; }
+.status-select, .assignee-select {
+  font: inherit; font-size: 12px; padding: 5px 8px; border: 1px solid #dbe3e8; border-radius: 6px; background: #fff; color: #00263D;
+}
+.status-tag.st-in_progress { color: #B77A00; }
+.status-tag.st-wont_fix { color: #7A8A96; }
+.approved-strip {
+  font-size: 12px; font-weight: 600; color: #0f6b4f; background: #e6f6ee; border: 1px solid #bfe7d2; border-radius: 6px; padding: 4px 8px; white-space: nowrap;
+}
+.cap-strip { font-size: 12px; color: #6b7a85; white-space: nowrap; }
+.cap-strip.full { color: #b32d2e; font-weight: 600; }
+.context-box { font-size: 11px; color: #6b7a85; margin: 0 0 8px; }
+.context-box summary { cursor: pointer; color: #1B6493; }
+.context-box ul { margin: 4px 0 0 14px; padding: 0; }
+.context-box li { margin: 2px 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; word-break: break-all; }
+.side-status { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 8px; background: #eef2f4; color: #00263D; margin-left: 6px; }
+.side-status.st-in_progress { background: #fff1d6; color: #8a5a00; }
+.side-status.st-resolved { background: #dff5f2; color: #0e8a82; }
+.side-status.st-wont_fix { background: #e6eaee; color: #5b6b76; }
+.side-item.closed { opacity: 0.6; }
 /* "looks addressed": amber dot badge — the content here changed since
    the comment was written, so it likely got handled. */
 .pin.addressed::after {

@@ -45,6 +45,7 @@ export function createClient() {
     project_members: [{ project_id: 'mock-project-1', email: 'guest@client.com', note: 'demo client' }],
     operators: ['mock-operator'],
     secrets: { 'mock-project-1': 'mock-secret-0123456789abcdef' },
+    approvals: [],
   };
   let nextId = 1;
   const ok = (data) => Promise.resolve({ data, error: null });
@@ -138,8 +139,17 @@ export function createClient() {
           r.maybeSingle = () => ok(p ? { id: p.id, name: p.name, site_url: p.site_url, open_access: p.open_access } : null);
           return r;
         }
-        case 'my_project_role': return ok({ role: roleOn(pid), writable: roleOn(pid) !== 'none' && !(atLimit && roleOn(pid) === 'owner' && pid !== 'mock-project-1') });
-        case 'my_account': return ok({ signed_in: true, is_operator: isOperator(), plan: 'free', status: 'none', project_limit: isOperator() ? 2147483647 : 1, owned_count: store.projects.filter((p) => p.owner_id === user.id).length });
+        case 'my_project_role': {
+          const r = roleOn(pid);
+          const cnt = store.comments.filter((c) => c.project_id === pid).length;
+          return ok({ role: r, writable: r !== 'none' && !(atLimit && r === 'owner' && pid !== 'mock-project-1'), plan: isOperator() ? 'agency' : 'free', auto_screenshot: false,
+            comment_limit: isOperator() ? null : 50, comment_count: cnt, image_limit: isOperator() ? null : 10, image_count: 0,
+            features: isOperator() ? ['integrations', 'approvals'] : [], approved_pages: store.approvals.filter((a) => a.project_id === pid) });
+        }
+        case 'approve_page': { const a = { project_id: pid, page_path: args.p_page, approved_by_name: user.email, approved_by_email: user.email, by: user.email, email: user.email, created_at: new Date().toISOString() }; store.approvals.push(a); return ok(a); }
+        case 'revoke_approval': { store.approvals = store.approvals.filter((a) => !(a.project_id === pid && a.page_path === args.p_page)); return ok(null); }
+        case 'list_assignees': return ok(['owner@example.com', 'guest@client.com']);
+        case 'my_account': return ok({ signed_in: true, is_operator: isOperator(), plan: isOperator() ? 'agency' : 'free', features: isOperator() ? ['integrations','approvals'] : [], limits: { comments: 50, images: 10 }, status: 'none', project_limit: isOperator() ? 2147483647 : 1, owned_count: store.projects.filter((p) => p.owner_id === user.id).length });
         case 'is_member': return ok(roleOn(pid) === 'collaborator');
         case 'get_bridge_secret': return canManage(pid) ? ok(store.secrets[pid]) : fail('Only the project owner can view the site secret');
         case 'rotate_bridge_secret': if (!canManage(pid)) return fail('Only the project owner can rotate the site secret'); store.secrets[pid] = `mock-secret-${Date.now()}`; return ok(store.secrets[pid]);
