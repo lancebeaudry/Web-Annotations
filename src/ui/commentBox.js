@@ -4,7 +4,7 @@ import { h, toast } from './overlay.js';
 import { savedName } from './auth.js';
 import { closePopovers } from './popover.js';
 import { attachMentions } from './mentions.js';
-import { attachImages } from './attach.js';
+import { attachImages, imageOnlyText } from './attach.js';
 import { authorEmail, renderCapCard } from '../app.js';
 import { captureElementScreenshot, collectContext } from '../screenshot.js';
 
@@ -38,7 +38,9 @@ export function openCommentBox(app, el, clickEvent) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = input.value.trim();
-    if (!text) return;
+    if (images.isUploading()) return toast(app.ui, 'Image still uploading — one moment');
+    const atts = images.getAttachments();
+    if (!text && !atts.length) return toast(app.ui, 'Type a comment or attach an image');
     save.disabled = true;
     save.textContent = 'Saving…';
     const { data: row, error } = await insertCommentResult(app.supabase, {
@@ -50,11 +52,11 @@ export function openCommentBox(app, el, clickEvent) {
       x_pct: Math.round(xPct * 100) / 100,
       y_pct: Math.round(yPct * 100) / 100,
       viewport_w: window.innerWidth,
-      comment_text: text,
+      comment_text: text || imageOnlyText(atts.length),
       author_email: authorEmail(app),
       author_name: savedName() || null,
       mentions: mentions.getMentions(),
-      attachments: images.getAttachments(),
+      attachments: atts,
       context: collectContext(app),
     });
     if (!row) {

@@ -3,6 +3,10 @@ import { h, toast } from './overlay.js';
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
+// Text stored for an image-only comment so lists, exports and notifications
+// still have something to show.
+export const imageOnlyText = (n) => (n === 1 ? 'Attached an image' : `Attached ${n} images`);
+
 // Image-attach control for a comment/reply form. Adds an "Attach" button,
 // supports paste-to-attach (screenshots), uploads each image to Storage
 // immediately, and shows a thumbnail strip with remove buttons.
@@ -71,5 +75,6 @@ export function attachImages(app, textarea) {
   return {
     control: h('div', { class: 'attach' }, btn, strip),
     getAttachments: () => pending.filter((p) => p.url).map(({ url, name, type }) => ({ url, name, type })),
+    isUploading: () => pending.some((p) => !p.url),
   };
 }

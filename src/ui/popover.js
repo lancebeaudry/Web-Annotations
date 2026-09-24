@@ -2,7 +2,7 @@ import { insertComment, updateComment, deleteComment } from '../data.js';
 import { h, toast } from './overlay.js';
 import { savedName } from './auth.js';
 import { attachMentions, mentionLabel } from './mentions.js';
-import { attachImages } from './attach.js';
+import { attachImages, imageOnlyText } from './attach.js';
 import { authorEmail } from '../app.js';
 import { roleLabel, authorName } from '../roles.js';
 import { deviceLabel } from '../capture.js';
@@ -60,18 +60,20 @@ export function openThread(app, rootId) {
   replyForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = replyInput.value.trim();
-    if (!text) return;
+    if (replyImages.isUploading()) return toast(app.ui, 'Image still uploading — one moment');
+    const atts = replyImages.getAttachments();
+    if (!text && !atts.length) return toast(app.ui, 'Type a reply or attach an image');
     replyBtn.disabled = true;
     const row = await insertComment(app.supabase, {
       project_id: app.project.id,
       parent_id: rootId,
       page_url: root.page_url,
       page_path: root.page_path,
-      comment_text: text,
+      comment_text: text || imageOnlyText(atts.length),
       author_email: authorEmail(app),
       author_name: savedName() || null,
       mentions: replyMentions.getMentions(),
-      attachments: replyImages.getAttachments(),
+      attachments: atts,
     });
     replyBtn.disabled = false;
     if (!row) {

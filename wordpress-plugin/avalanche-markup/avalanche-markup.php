@@ -2,7 +2,7 @@
 /**
  * Plugin Name: PinPoint by Avalanche
  * Description: Click-to-comment website feedback, by Avalanche Creative. Paste the site's project token under Settings → PinPoint. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 2.2.1
+ * Version: 2.2.2
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  * Update URI: https://pinpoint.avalanchegr.com/

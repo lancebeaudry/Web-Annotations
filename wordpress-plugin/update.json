@@ -1,11 +1,11 @@
 {
   "name": "PinPoint by Avalanche",
   "slug": "avalanche-markup",
-  "version": "2.2.1",
-  "download_url": "https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/avalanche-markup-2.2.1.zip",
+  "version": "2.2.2",
+  "download_url": "https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/avalanche-markup-2.2.2.zip",
   "homepage": "https://pinpoint.avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "2.2.1 \u2014 Cleaner comment popover: status and assignee are compact controls above the thread, Delete is back beside Mark resolved / Reopen, and the image button sits on the reply row. 2.2.0 \u2014 Feedback statuses (open, in progress, resolved, won't fix) and assignees; automatic screenshots and browser context on new comments; page approvals and Slack/ClickUp integrations for Agency plans; a hosted MCP server for Claude Code; new Free/Pro/Agency plans. 2.1.2 \u2014 PinPoint now lives at pinpoint.avalanchegr.com. 2.1.1 \u2014 The PinPoint logo. 2.1.0 \u2014 Avalanche Markup is now PinPoint. Pins find their element far more reliably after the page changes (new fingerprint matching plus live re-positioning when layout shifts). AI assistants can now reply to and resolve items from an export. 2.0.0 \u2014 Avalanche Markup 2.0: accounts and site ownership, the customer dashboard and plans, per-site bridge secrets, and a refreshed Avalanche look. After updating, add AVALANCHE_MARKUP_PROJECT_SECRET to wp-config.php \u2014 Settings \u2192 Avalanche Markup shows where to find it."
+  "changelog": "2.2.2 \u2014 Comments and replies can be just an image, no text required; saving waits for an in-progress upload. 2.2.1 \u2014 Cleaner comment popover: status and assignee are compact controls above the thread, Delete is back beside Mark resolved / Reopen, and the image button sits on the reply row. 2.2.0 \u2014 Feedback statuses (open, in progress, resolved, won't fix) and assignees; automatic screenshots and browser context on new comments; page approvals and Slack/ClickUp integrations for Agency plans; a hosted MCP server for Claude Code; new Free/Pro/Agency plans. 2.1.2 \u2014 PinPoint now lives at pinpoint.avalanchegr.com. 2.1.1 \u2014 The PinPoint logo. 2.1.0 \u2014 Avalanche Markup is now PinPoint. Pins find their element far more reliably after the page changes (new fingerprint matching plus live re-positioning when layout shifts). AI assistants can now reply to and resolve items from an export. 2.0.0 \u2014 Avalanche Markup 2.0: accounts and site ownership, the customer dashboard and plans, per-site bridge secrets, and a refreshed Avalanche look. After updating, add AVALANCHE_MARKUP_PROJECT_SECRET to wp-config.php \u2014 Settings \u2192 Avalanche Markup shows where to find it."
 }
