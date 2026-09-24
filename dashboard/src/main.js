@@ -49,7 +49,7 @@ async function render() {
       default: content = await projectsScreen({ user, acct, query });
     }
     if (seq !== rendering) return; // a newer render superseded this one
-    root.replaceChildren(shell(content, { user, active: ['projectNew', 'projectDetail', 'feedback'].includes(route.name) ? 'projects' : route.name }));
+    root.replaceChildren(shell(content, { user, active: ['projectNew', 'projectDetail', 'feedback'].includes(route.name) ? 'projects' : route.name, wide: ['projectDetail', 'feedback', 'projects'].includes(route.name) }));
   } catch (err) {
     root.replaceChildren(shell(h('div', { class: 'card' }, h('div', { class: 'card-body' }, h('p', {}, 'Something went wrong: ', err.message), h('a', { class: 'btn', href: '#/projects' }, 'Back'))), { user }));
   }

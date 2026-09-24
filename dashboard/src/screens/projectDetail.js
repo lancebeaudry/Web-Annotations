@@ -1,10 +1,10 @@
 import { h, field, toast, copyBox } from '../ui/dom.js';
-import { card } from '../ui/shell.js';
+import { card, anchored, pageHead } from '../ui/shell.js';
 import { getProject, updateSettings, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments } from '../api.js';
 import { BUNDLE_URL, PLUGIN_ZIP_URL, FUNCTIONS_URL, MCP_URL } from '../config.js';
 import { go } from '../router.js';
 
-export async function projectDetailScreen({ id, user, acct }) {
+export async function projectDetailScreen({ id, user, acct, query = {} }) {
   const p = await getProject(id);
   if (!p) return card('Not found', h('p', {}, 'This project doesn’t exist or you don’t have access.'), h('a', { class: 'btn', href: '#/projects' }, 'Back'));
   const canManage = acct.is_operator || p.owner_id === user.id;
@@ -13,6 +13,7 @@ export async function projectDetailScreen({ id, user, acct }) {
   const hasFeature = (f) => acct.is_operator || (access.features || []).includes(f);
   const openCount = (await listComments(id).catch(() => [])).filter((c) => !c.parent_id && (c.status === 'open' || c.status === 'in_progress')).length;
   const tabs = h('div', { class: 'tabs' }, h('a', { class: 'on', href: `#/projects/${id}` }, 'Settings'), h('a', { href: `#/projects/${id}/feedback` }, `Feedback (${openCount} open)`));
+  const head = pageHead(p.name, p.site_url, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'All projects'), h('a', { class: 'btn', href: shareLink, target: '_blank', rel: 'noopener' }, 'Open site in PinPoint'));
 
   // --- Share + install
   const install = card(
@@ -32,7 +33,7 @@ export async function projectDetailScreen({ id, user, acct }) {
     copyBox(`<script defer src="${BUNDLE_URL}" data-project="${p.token}"${p.open_access ? ' data-open="1"' : ''}></script>`, { multiline: true })
   );
 
-  if (!canManage) return h('div', {}, tabs, card(p.name, h('p', { class: 'hint' }, p.site_url)), install);
+  if (!canManage) return h('div', {}, head, tabs, install);
 
   // --- Settings
   const name = h('input', { type: 'text', value: p.name });
@@ -283,19 +284,29 @@ export async function projectDetailScreen({ id, user, acct }) {
     }
   });
 
-  return h(
-    'div',
-    {},
-    tabs,
-    card(h('div', { class: 'head-row' }, h('span', {}, p.name), h('a', { class: 'btn btn-ghost btn-sm', href: shareLink, target: '_blank', rel: 'noopener' }, 'Open in PinPoint')), h('p', { class: 'hint' }, p.site_url)),
-    install,
-    card('Settings', settingsForm),
-    card('Collaborators', inviteForm, inviteList),
-    card('Email notifications', notifyForm),
-    secretCard,
-    agentCard,
-    approvalsCard,
-    integrationsCard,
-    card('Danger zone', h('p', { class: 'hint' }, 'Deleting a project removes all of its comments and images. This cannot be undone.'), h('div', { class: 'inline' }, confirmName, del))
-  );
+  const sections = [
+    ['install', 'Share & install', install],
+    ['settings', 'Settings', card('Settings', settingsForm)],
+    ['people', 'Collaborators', card('Collaborators', inviteForm, inviteList)],
+    ['notify', 'Email notifications', card('Email notifications', notifyForm)],
+    ['secret', 'Site secret', secretCard],
+    ['ai', 'AI assistant', agentCard],
+    ['approvals', 'Page approvals', approvalsCard],
+    ['integrations', 'Integrations', integrationsCard],
+    ['danger', 'Delete project', card('Danger zone', h('p', { class: 'hint' }, 'Deleting a project removes all of its comments and images. This cannot be undone.'), h('div', { class: 'inline' }, confirmName, del))],
+  ];
+  const nav = h('nav', { class: 'side-nav' },
+    h('div', { class: 'group' }, 'This project'),
+    ...sections.map(([sid, label]) => h('a', { href: `#/projects/${id}?to=${sid}`, 'data-to': sid }, label)));
+  nav.addEventListener('click', (e) => {
+    const a = e.target.closest('a[data-to]');
+    if (!a) return;
+    e.preventDefault();
+    document.getElementById(a.dataset.to)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    nav.querySelectorAll('a').forEach((x) => x.classList.toggle('on', x === a));
+  });
+  const content = h('div', {}, ...sections.map(([sid, , el]) => anchored(sid, el)));
+  const page = h('div', {}, head, tabs, h('div', { class: 'two-col' }, nav, content));
+  if (query.to) setTimeout(() => document.getElementById(query.to)?.scrollIntoView({ block: 'start' }), 50);
+  return page;
 }

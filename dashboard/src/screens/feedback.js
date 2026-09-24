@@ -2,7 +2,7 @@
 // status and assignee editable inline, a list and a board view, and deep
 // links that open the item on the live site.
 import { h, fmtDate, toast } from '../ui/dom.js';
-import { card } from '../ui/shell.js';
+import { card, pageHead } from '../ui/shell.js';
 import { getProject, listComments, patchComment, assignees as listAssignees } from '../api.js';
 
 const STATUS = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved', wont_fix: "Won't fix" };
@@ -116,13 +116,11 @@ export async function feedbackScreen({ id, user, acct, query }) {
   render();
 
   const openCount = roots.filter((c) => isOpen(c.status)).length;
-  document.querySelector('main')?.classList.add('wide');
   return h(
     'div',
     {},
+    pageHead(p.name, p.site_url, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'All projects'), h('a', { class: 'btn', href: `${p.site_url.replace(/\/$/, '')}/?markup=${p.token}`, target: '_blank', rel: 'noopener' }, 'Open site in PinPoint')),
     h('div', { class: 'tabs' }, h('a', { href: `#/projects/${id}` }, 'Settings'), h('a', { class: 'on', href: `#/projects/${id}/feedback` }, `Feedback (${openCount} open)`)),
-    card(h('div', { class: 'head-row' }, h('span', {}, `${p.name} — feedback`), h('a', { class: 'btn btn-ghost btn-sm', href: `${p.site_url.replace(/\/$/, '')}/?markup=${p.token}`, target: '_blank', rel: 'noopener' }, 'Open site')),
-      h('div', { class: 'filters' }, statusSel, pageSel, canManage ? assigneeSel : null, search, viewSeg),
-      body)
+    card(null, h('div', { class: 'filters' }, statusSel, pageSel, canManage ? assigneeSel : null, search, viewSeg), body)
   );
 }

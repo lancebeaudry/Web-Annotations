@@ -40,6 +40,13 @@ export const setNotify = async (id, emails) => unwrap(await supabase.rpc('set_no
 export const bridgeSecret = async (id) => unwrap(await supabase.rpc('get_bridge_secret', { p_project: id }));
 export const rotateSecret = async (id) => unwrap(await supabase.rpc('rotate_bridge_secret', { p_project: id }));
 export const agentKey = async (id) => unwrap(await supabase.rpc('get_agent_key', { p_project: id }));
+// Open (open + in_progress) root-comment counts per project, one query.
+export const openCounts = async () => {
+  const rows = unwrap(await supabase.from('comments').select('project_id,status').is('parent_id', null).in('status', ['open', 'in_progress'])) || [];
+  const out = {};
+  for (const r of rows) out[r.project_id] = (out[r.project_id] || 0) + 1;
+  return out;
+};
 export const projectAccess = async (id) => unwrap(await supabase.rpc('my_project_role', { p_project: id }));
 
 // Feedback inbox (ordinary RLS: owner / collaborator / operator can read).

@@ -34,7 +34,7 @@ export function signinScreen() {
     codeStep(body, v);
   });
 
-  return card('Sign in', body);
+  return h('div', { class: 'auth' }, card('Sign in', body));
 }
 
 function codeStep(body, email) {

@@ -61,7 +61,7 @@ const options = {
   },
   logLevel: 'info',
 };
-const css = { entryPoints: ['dashboard/src/styles.css'], bundle: true, minify: !watch, outfile: 'dist/app/app.css', logLevel: 'info' };
+const css = { entryPoints: ['dashboard/src/styles.css'], bundle: true, minify: !watch, outfile: 'dist/app/app.css', logLevel: 'info', external: ['*.woff2'] };
 
 if (watch) {
   const ctx = await context(options);
