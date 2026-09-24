@@ -55,7 +55,7 @@ export function openThread(app, rootId) {
   const replyMentions = attachMentions(app, replyInput, app.ui.layer);
   const replyImages = attachImages(app, replyInput);
   const replyBtn = h('button', { class: 'btn', type: 'submit' }, 'Reply');
-  const replyForm = h('form', {}, h('div', { class: 'field' }, replyInput), replyImages.control, h('div', { class: 'btn-row' }, replyBtn));
+  const replyForm = h('form', {}, h('div', { class: 'field' }, replyInput), h('div', { class: 'reply-row' }, replyImages.control, replyBtn));
 
   replyForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -83,11 +83,42 @@ export function openThread(app, rootId) {
     renderEntries();
   });
 
+  const me = (authorEmail(app) || '').toLowerCase();
+  const canStatus = app.writable && (app.canManage || (root.assignee_email && root.assignee_email.toLowerCase() === me));
+  const canAssign = app.canManage && app.writable && !!app.assignees;
   const headBits = [h('span', {}, `Comment · <${root.element_tag || 'page'}>`)];
-  if (root.status && root.status !== 'open') headBits.push(h('span', { class: `status-tag st-${root.status}` }, statusLabel(root.status)));
-  if (root.assignee_email) headBits.push(h('span', { class: 'status-tag' }, `→ ${root.assignee_email.split('@')[0]}`));
+  if (!canStatus && root.status && root.status !== 'open') headBits.push(h('span', { class: `status-tag st-${root.status}` }, statusLabel(root.status)));
+  if (!canAssign && root.assignee_email) headBits.push(h('span', { class: 'status-tag' }, `→ ${root.assignee_email.split('@')[0]}`));
 
   const body = h('div', { class: 'card-body' });
+
+  // Triage: small status + assignee controls, above the thread. Secondary
+  // to the conversation, so they stay compact.
+  const triage = h('div', { class: 'triage' });
+  async function patch(fields, ctl) {
+    ctl.disabled = true;
+    const row = await updateComment(app.supabase, rootId, fields);
+    ctl.disabled = false;
+    if (!row) return toast(app.ui, 'Update failed');
+    app.comments.set(row.id, row);
+    app.refresh();
+    openThread(app, rootId);
+  }
+  if (canStatus) {
+    const sel = h('select', { class: `status-select st-${root.status || 'open'}`, title: 'Status' }, ...STATUS_ORDER.map((s) => h('option', { value: s }, statusLabel(s))));
+    sel.value = root.status || 'open';
+    sel.addEventListener('change', () => patch({ status: sel.value }, sel));
+    triage.append(sel);
+  }
+  if (canAssign) {
+    const asel = h('select', { class: 'assignee-select', title: 'Assign to' }, h('option', { value: '' }, 'Unassigned'),
+      ...app.assignees.map((e) => h('option', { value: e }, e.split('@')[0])));
+    if (root.assignee_email && !app.assignees.includes(root.assignee_email)) asel.appendChild(h('option', { value: root.assignee_email }, root.assignee_email.split('@')[0]));
+    asel.value = root.assignee_email || '';
+    asel.addEventListener('change', () => patch({ assignee_email: asel.value || null }, asel));
+    triage.append(h('span', { class: 'triage-lbl' }, 'Assign'), asel);
+  }
+  if (triage.children.length) body.appendChild(triage);
   if (root.selector) {
     body.appendChild(h('div', { class: 'context' }, root.selector));
   }
@@ -102,24 +133,24 @@ export function openThread(app, rootId) {
   }
   body.append(thread, replyForm);
 
-  const footer = h('div', { class: 'btn-row' });
+  const footer = h('div', { class: 'foot-row' });
 
   // Delete: the author, the project owner, or staff; two-step confirm,
   // removes the pin and all its replies. (Deleting stays allowed on a
   // frozen project so authors can still trim their own data.)
   const canDelete = app.canManage || root.author_email === authorEmail(app);
   if (canDelete) {
-    const deleteBtn = h('button', { class: 'btn btn-danger' }, 'Delete');
+    const deleteBtn = h('button', { class: 'btn-link danger', title: 'Delete this comment and its replies' }, 'Delete');
     deleteBtn.addEventListener('click', () => {
-      const keepBtn = h('button', { class: 'btn btn-ghost' }, 'Keep it');
-      const reallyBtn = h('button', { class: 'btn btn-danger' }, 'Yes, delete');
+      const keepBtn = h('button', { class: 'btn btn-ghost btn-sm' }, 'Keep it');
+      const reallyBtn = h('button', { class: 'btn btn-danger btn-sm' }, 'Yes, delete');
       const replyCount = replies(app, rootId).length;
       const note = h(
         'span',
         { class: 'confirm-note' },
         `Delete this comment${replyCount ? ` + ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'}` : ''}?`
       );
-      footer.replaceChildren(note, keepBtn, reallyBtn);
+      footer.replaceChildren(note, h('span', { class: 'foot-spacer' }), keepBtn, reallyBtn);
       keepBtn.addEventListener('click', () => openThread(app, rootId));
       reallyBtn.addEventListener('click', async () => {
         reallyBtn.disabled = true;
@@ -139,51 +170,11 @@ export function openThread(app, rootId) {
     footer.appendChild(deleteBtn);
   }
 
-  // Status: the owner/staff, or whoever the item is assigned to.
-  const me = (authorEmail(app) || '').toLowerCase();
-  const canStatus = app.writable && (app.canManage || (root.assignee_email && root.assignee_email.toLowerCase() === me));
   if (canStatus) {
-    const sel = h('select', { class: 'status-select', title: 'Status' }, ...STATUS_ORDER.map((s) => h('option', { value: s }, statusLabel(s))));
-    sel.value = root.status || 'open';
-    sel.addEventListener('change', async () => {
-      sel.disabled = true;
-      const row = await updateComment(app.supabase, rootId, { status: sel.value });
-      sel.disabled = false;
-      if (!row) return toast(app.ui, 'Update failed');
-      app.comments.set(row.id, row);
-      app.refresh();
-      openThread(app, rootId);
-    });
-    footer.appendChild(sel);
-    if (isOpenStatus(root.status)) {
-      const done = h('button', { class: 'btn btn-teal' }, 'Mark resolved');
-      done.addEventListener('click', async () => {
-        done.disabled = true;
-        const row = await updateComment(app.supabase, rootId, { status: 'resolved' });
-        if (!row) { done.disabled = false; return toast(app.ui, 'Update failed'); }
-        app.comments.set(row.id, row);
-        app.refresh();
-        openThread(app, rootId);
-      });
-      footer.appendChild(done);
-    }
-  }
-  // Assignee: owner/staff only, from the owner + collaborators.
-  if (app.canManage && app.writable && app.assignees) {
-    const asel = h('select', { class: 'assignee-select', title: 'Assign to' }, h('option', { value: '' }, 'Unassigned'),
-      ...app.assignees.map((e) => h('option', { value: e }, e)));
-    if (root.assignee_email && !app.assignees.includes(root.assignee_email)) asel.appendChild(h('option', { value: root.assignee_email }, root.assignee_email));
-    asel.value = root.assignee_email || '';
-    asel.addEventListener('change', async () => {
-      asel.disabled = true;
-      const row = await updateComment(app.supabase, rootId, { assignee_email: asel.value || null });
-      asel.disabled = false;
-      if (!row) return toast(app.ui, 'Update failed');
-      app.comments.set(row.id, row);
-      app.refresh();
-      openThread(app, rootId);
-    });
-    footer.appendChild(asel);
+    const open = isOpenStatus(root.status);
+    const done = h('button', { class: `btn btn-sm ${open ? 'btn-teal' : 'btn-ghost'}` }, open ? 'Mark resolved' : 'Reopen');
+    done.addEventListener('click', () => patch({ status: open ? 'resolved' : 'open' }, done));
+    footer.append(h('span', { class: 'foot-spacer' }), done);
   }
 
   if (footer.children.length) body.appendChild(footer);
