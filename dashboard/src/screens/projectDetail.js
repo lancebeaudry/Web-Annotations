@@ -1,6 +1,6 @@
 import { h, field, toast, copyBox } from '../ui/dom.js';
 import { card, anchored, pageHead } from '../ui/shell.js';
-import { getProject, updateSettings, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments } from '../api.js';
+import { getProject, updateSettings, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, agentPersona, saveAgentPersona, assignees as listAssignees, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments } from '../api.js';
 import { BUNDLE_URL, PLUGIN_ZIP_URL, FUNCTIONS_URL, MCP_URL } from '../config.js';
 import { go } from '../router.js';
 
@@ -193,11 +193,51 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
     'Never resolve an item you did not complete. If you cannot do one, reply with why and leave it open.',
     'Before reporting that you are finished, fetch the open list again and confirm nothing you handled is still open.',
   ].join('\n');
+  // Who AI replies are signed as: a person on the project (default the
+  // owner), or labelled as an AI assistant if the owner prefers that.
+  const personaSel = h('select', {});
+  const personaName = h('input', { type: 'text', placeholder: 'Display name' });
+  const personaLabel = h('input', { type: 'checkbox' });
+  const personaSave = h('button', { class: 'btn btn-sm', type: 'button' }, 'Save');
+  const personaRow = h('div', { class: 'inline' }, personaSel, personaName, personaSave);
+  const personaHint = h('div', { class: 'hint' });
+  personaLabel.addEventListener('change', () => { personaRow.style.display = personaLabel.checked ? 'none' : ''; });
+  (async () => {
+    try {
+      const [who, people] = await Promise.all([agentPersona(id), listAssignees(id).catch(() => [])]);
+      const opts = [...new Set([who.owner_email, ...people].filter(Boolean))];
+      personaSel.replaceChildren(...opts.map((e) => h('option', { value: e }, e === who.owner_email ? `${e} (owner)` : e)));
+      if (!who.label && who.email && !opts.includes(who.email)) personaSel.appendChild(h('option', { value: who.email }, who.email));
+      personaSel.value = who.label ? who.owner_email : who.email;
+      personaName.value = who.label ? '' : who.name || '';
+      personaLabel.checked = !!who.label;
+      personaRow.style.display = who.label ? 'none' : '';
+    } catch (err) { personaHint.textContent = err.message; }
+  })();
+  personaSave.addEventListener('click', async () => {
+    personaSave.disabled = true;
+    try {
+      const who = await saveAgentPersona(id, { email: personaSel.value, name: personaName.value.trim(), label: personaLabel.checked });
+      personaName.value = who.label ? '' : who.name || '';
+      toast('Saved');
+    } catch (err) { toast(err.message); }
+    personaSave.disabled = false;
+  });
+  const personaLabelWrap = h('label', { class: 'check' }, personaLabel, h('span', {}, 'Show these replies as coming from an AI assistant instead'));
+  personaLabel.addEventListener('change', async () => {
+    personaSave.disabled = true;
+    try { await saveAgentPersona(id, { email: personaSel.value, name: personaName.value.trim(), label: personaLabel.checked }); toast('Saved'); } catch (err) { toast(err.message); }
+    personaSave.disabled = false;
+  });
+
   const agentCard = card(
     'AI assistant access',
     h('p', { class: 'hint' }, 'Let Claude Code, Cursor or another assistant reply to and resolve comments. Markdown exports from the site already include this key, the item IDs and the exact commands, so the assistant can close items itself. Treat the key like a password: it can post replies and resolve items on this project only.'),
     h('div', { class: 'copy-box' }, keyOut, keyReveal, keyCopy, keyRotate),
     h('p', { class: 'hint' }, 'Endpoint: ', h('code', {}, `${FUNCTIONS_URL}/agent`), ' — header ', h('code', {}, 'x-pinpoint-agent-key')),
+    h('h4', {}, 'Replies appear as'),
+    h('p', { class: 'hint' }, 'Replies the assistant posts are signed as this person. The assistant name is kept on the record either way.'),
+    personaRow, personaLabelWrap, personaHint,
     h('h4', {}, 'Claude Code (MCP)'),
     h('p', { class: 'hint' }, 'One command registers PinPoint as a tool server: list feedback, reply, set status, assign. Reveal the key first, then copy.'),
     copyBox(`claude mcp add --transport http pinpoint "${MCP_URL}" --header "x-pinpoint-agent-key: ${'<key>'}"`, { multiline: true }),

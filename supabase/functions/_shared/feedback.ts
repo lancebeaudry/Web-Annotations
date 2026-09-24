@@ -30,6 +30,17 @@ export async function resolveProject(req: Request): Promise<Project | null> {
   return p[0] ?? null;
 }
 
+// Who a reply written through the agent key is signed as. Projects default
+// to the owner; they can name a collaborator or opt in to the AI label.
+export type Persona = { label: boolean; email: string; name: string | null; role: string };
+export async function agentPersona(project: Project): Promise<Persona> {
+  try {
+    const r = await db<Persona>("rpc/agent_persona", { method: "POST", body: JSON.stringify({ p_project: project.id }) });
+    if (r && r.email) return r;
+  } catch (_) { /* fall through */ }
+  return { label: true, email: `agent:${project.id}`, name: null, role: "agent" };
+}
+
 export function shape(root: Row, all: Row[]) {
   const replies = all
     .filter((c) => c.parent_id === root.id)
@@ -85,12 +96,13 @@ export async function actOn(project: Project, item: Row, agentName: string) {
 
   const reply = (item.reply ?? item.text ?? "").toString().trim().slice(0, 4000);
   if (reply) {
+    const who = await agentPersona(project);
     const inserted = await db<Row[]>("comments", {
       method: "POST",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify({
         project_id: project.id, parent_id: target.id, page_url: target.page_url, page_path: target.page_path,
-        comment_text: reply, author_email: `agent:${project.id}`, author_name: agentName, author_role: "agent",
+        comment_text: reply, author_email: who.email, author_name: who.label ? agentName : who.name, author_role: who.role, via_agent: agentName,
       }),
     });
     out.reply_id = inserted[0]?.id;

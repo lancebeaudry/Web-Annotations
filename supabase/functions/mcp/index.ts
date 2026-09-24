@@ -32,7 +32,7 @@ const TOOLS = [
   {
     name: "reply",
     description: "Post a reply on a feedback item (for example, what you changed, or why you could not). Does not change its status.",
-    inputSchema: { type: "object", required: ["id", "text"], properties: { id: { type: "string" }, text: { type: "string" }, agent_name: { type: "string", description: "How the reply is signed. Default 'AI assistant'." } } },
+    inputSchema: { type: "object", required: ["id", "text"], properties: { id: { type: "string" }, text: { type: "string" }, agent_name: { type: "string", description: "Name of the assistant, kept on the record. Replies are signed as the person the project chose unless the project shows AI replies as AI." } } },
   },
   {
     name: "set_status",

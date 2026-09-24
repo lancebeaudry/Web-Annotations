@@ -64,6 +64,8 @@ export const integrations = async (id) => unwrap(await supabase.rpc('get_integra
 export const saveIntegration = async (id, kind, config) => unwrap(await supabase.rpc('set_integration', { p_project: id, p_kind: kind, p_config: config }));
 export const removeIntegration = async (id, kind) => unwrap(await supabase.rpc('remove_integration', { p_project: id, p_kind: kind }));
 export const rotateAgentKey = async (id) => unwrap(await supabase.rpc('rotate_agent_key', { p_project: id }));
+export const agentPersona = async (id) => unwrap(await supabase.rpc('agent_persona', { p_project: id }));
+export const saveAgentPersona = async (id, { email, name, label }) => unwrap(await supabase.rpc('update_agent_settings', { p_project: id, p_email: email ?? null, p_name: name ?? null, p_label: !!label }));
 
 // Billing edge functions (user JWT; verified in-function).
 export async function callFn(name, body) {
