@@ -252,6 +252,14 @@ function entry(app, comment) {
     const names = comment.mentions.map((e) => mentionLabel(app, e)).join(', ');
     parts.push(h('div', { class: 'mention-tag' }, `@ ${names}`));
   }
+  if (comment.kind === 'reference' && comment.source) {
+    const s = comment.source;
+    const styles = Object.entries(s.styles || {}).filter(([k]) => ['fontFamily', 'fontSize', 'fontWeight', 'color', 'backgroundColor', 'borderRadius', 'padding'].includes(k)).map(([k, v]) => `${k.replace(/([A-Z])/g, ' $1').toLowerCase()}: ${v}`).join(' · ');
+    parts.push(h('div', { class: 'ref-source' },
+      h('a', { href: s.url, target: '_blank', rel: 'noopener' }, `From ${s.host || 'another site'}${s.element_tag ? ' · <' + s.element_tag + '>' : ''}`),
+      s.text ? h('div', { class: 'ref-text' }, `“${String(s.text).slice(0, 140)}”`) : null,
+      styles ? h('div', { class: 'ref-styles' }, styles) : null));
+  }
   if (comment.attachments && comment.attachments.length) {
     const media = h('div', { class: 'entry-media' });
     for (const a of comment.attachments) {

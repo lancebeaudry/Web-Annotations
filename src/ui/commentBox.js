@@ -20,19 +20,23 @@ export function openCommentBox(app, el, clickEvent) {
   const xPct = rect.width ? ((clickEvent.clientX - rect.left) / rect.width) * 100 : 50;
   const yPct = rect.height ? ((clickEvent.clientY - rect.top) / rect.height) * 100 : 50;
 
+  const ref = app.pendingRef ? app.comments.get(app.pendingRef) : null;
   const input = h('textarea', { placeholder: 'What should change here? Type @ to notify someone', rows: '3' });
+  if (ref) input.value = ref.comment_text || '';
   const mentions = attachMentions(app, input, app.ui.layer);
   const images = attachImages(app, input);
-  const save = h('button', { class: 'btn', type: 'submit' }, 'Save comment');
-  const cancel = h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { mentions.destroy(); box.remove(); } }, 'Cancel');
+  const save = h('button', { class: 'btn', type: 'submit' }, ref ? 'Attach here' : 'Save comment');
+  const cancel = h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { mentions.destroy(); box.remove(); app.pendingRef = null; } }, 'Cancel');
 
   const form = h('form', {}, h('div', { class: 'field' }, input), images.control, h('div', { class: 'btn-row' }, cancel, save));
 
   const box = h(
     'div',
     { class: 'card popover' },
-    h('div', { class: 'card-head' }, `New comment · <${el.tagName.toLowerCase()}>`, h('span', { class: 'drag-hint' }, 'drag to move')),
-    h('div', { class: 'card-body' }, form)
+    h('div', { class: 'card-head' }, `${ref ? 'Attach reference' : 'New comment'} · <${el.tagName.toLowerCase()}>`, h('span', { class: 'drag-hint' }, 'drag to move')),
+    h('div', { class: 'card-body' },
+      ref && ref.source ? h('div', { class: 'ref-preview' }, ref.source.screenshot ? h('img', { src: ref.source.screenshot, alt: '' }) : null, h('span', {}, `From ${ref.source.host || 'another site'} — this will become a pin on the element you clicked.`)) : null,
+      form)
   );
 
   form.addEventListener('submit', async (e) => {
@@ -43,6 +47,25 @@ export function openCommentBox(app, el, clickEvent) {
     if (!text && !atts.length) return toast(app.ui, 'Type a comment or attach an image');
     save.disabled = true;
     save.textContent = 'Saving…';
+    if (ref) {
+      const updated = await updateComment(app.supabase, ref.id, {
+        ...capture(el),
+        page_url: app.pageUrl, page_path: app.pagePath,
+        x_pct: Math.round(xPct * 100) / 100, y_pct: Math.round(yPct * 100) / 100,
+        viewport_w: window.innerWidth,
+        comment_text: text || ref.comment_text,
+        attachments: [...(ref.attachments || []), ...atts],
+      });
+      app.pendingRef = null;
+      if (!updated) { save.disabled = false; save.textContent = 'Attach here'; return toast(app.ui, 'Could not attach — try again'); }
+      app.comments.set(updated.id, updated);
+      mentions.destroy();
+      box.remove();
+      if (app.setCommentMode) app.setCommentMode(false);
+      app.refresh();
+      toast(app.ui, 'Reference attached');
+      return;
+    }
     const { data: row, error } = await insertCommentResult(app.supabase, {
       project_id: app.project.id,
       parent_id: null,

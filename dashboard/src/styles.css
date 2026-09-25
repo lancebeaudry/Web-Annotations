@@ -187,6 +187,8 @@ select.mini.st-waiting { color: #5B3D99; border-color: #D9CDF0; background-color
 select.mini.st-resolved { color: var(--ok); border-color: #BFE7D2; background-color: var(--ok-bg); }
 select.mini.st-in_progress { color: var(--warn); border-color: #EFD9A8; background-color: var(--warn-bg); }
 .fb.waiting { border-left: 3px solid #7E57C2; }
+.refbox { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 13px; }
+.refbox img { width: 96px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
 .chips { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .chip { font: inherit; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--muted); cursor: default; }
 button.chip { cursor: pointer; }

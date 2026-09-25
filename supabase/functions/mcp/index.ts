@@ -21,7 +21,7 @@ const VERSION = "2.3.0";
 const TOOLS = [
   {
     name: "list_feedback",
-    description: "List feedback items for this website project. Default: open items (status open, in_progress or waiting). Each item has an id, the page, the element selector, the current text and styles, the requested change, labels, effort, assignee and any replies.",
+    description: "List feedback items for this website project. Default: open items (status open, in_progress or waiting). Each item has an id, the page, the element selector, the current text and styles, the requested change, labels, effort, assignee and any replies. Items with kind 'reference' were captured on another site with the PinPoint Chrome extension: `source` holds the source URL, a screenshot, the element text and its computed styles, and the note says what to take from it; if page_path is empty it is not yet tied to a specific element on this site.",
     inputSchema: { type: "object", properties: {
       status: { type: "string", enum: [...STATUSES, "all"], description: "Which items to list. 'open' includes in_progress and waiting." },
       page: { type: "string", description: "Only items on this page path, e.g. '/' or '/about'." },

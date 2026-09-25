@@ -25,7 +25,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
   const repliesOf = (rid) => rows.filter((r) => r.parent_id === rid);
   const link = (c) => `${c.page_url}?markup=${encodeURIComponent(p.token)}&pp_comment=${c.id}`;
 
-  const f = { status: query.status || 'open', page: '', assignee: '', label: query.label || '', device: '', q: '', view: query.view || 'list' };
+  const f = { status: query.status || 'open', page: '', assignee: '', label: query.label || '', device: '', kind: query.kind || '', q: '', view: query.view || 'list' };
   const pages = [...new Set(roots.map((r) => r.page_path))].sort();
 
   const statusSel = h('select', {}, h('option', { value: 'open' }, 'All open'), ...ORDER.map((s) => h('option', { value: s }, STATUS[s])), h('option', { value: 'all' }, 'Everything'));
@@ -34,6 +34,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
   const assigneeSel = h('select', {}, h('option', { value: '' }, 'Anyone'), h('option', { value: '__none' }, 'Unassigned'), ...people.map((e) => h('option', { value: e }, e)));
   const labelSel = h('select', {}, h('option', { value: '' }, 'Any label'), ...LABELS.map((l) => h('option', { value: l }, LABEL[l])), h('option', { value: '__none' }, 'Untriaged'));
   labelSel.value = f.label;
+  const kindSel = h('select', {}, h('option', { value: '' }, 'Comments and references'), h('option', { value: 'comment' }, 'Comments only'), h('option', { value: 'reference' }, 'References only'));
   const deviceSel = h('select', {}, h('option', { value: '' }, 'All devices'), h('option', { value: 'desktop' }, 'Desktop'), h('option', { value: 'tablet' }, 'Tablet'), h('option', { value: 'mobile' }, 'Mobile'));
   const search = h('input', { type: 'search', placeholder: 'Search feedback…' });
   const viewSeg = h('div', { class: 'seg' });
@@ -50,6 +51,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
     const labels = c.labels || [];
     if (f.label === '__none' ? labels.length : f.label && !labels.includes(f.label)) return false;
     if (f.device && (deviceOf(c.viewport_w) || 'desktop') !== f.device) return false;
+    if (f.kind && (c.kind || 'comment') !== f.kind) return false;
     const needle = f.q.trim().toLowerCase();
     if (needle && !`${c.comment_text} ${c.author_name || ''} ${c.current_text || ''} ${c.page_path}`.toLowerCase().includes(needle)) return false;
     return true;
@@ -105,8 +107,9 @@ export async function feedbackScreen({ id, user, acct, query }) {
   function item(c) {
     const n = repliesOf(c.id).length;
     const ctx = c.context || {};
+    const isRef = c.kind === 'reference';
     const sub = [
-      c.page_path,
+      isRef ? (c.page_path ? `${c.page_path} (reference)` : 'Reference, not yet attached') : c.page_path,
       `<${c.element_tag || 'page'}>`,
       deviceOf(c.viewport_w) && deviceOf(c.viewport_w) !== 'desktop' ? `${DEVICE[deviceOf(c.viewport_w)]} (${c.viewport_w}px)` : '',
       `${c.author_name || c.author_email} · ${fmtDate(c.created_at)}`,
@@ -123,6 +126,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
       h('a', { class: 'btn btn-ghost btn-sm', href: link(c), target: '_blank', rel: 'noopener' }, 'Open on site'),
       c.external_ref?.clickup_url ? h('a', { class: 'btn btn-ghost btn-sm', href: c.external_ref.clickup_url, target: '_blank', rel: 'noopener' }, 'ClickUp') : null);
     const main = h('div', {}, h('div', { class: 'txt' }, c.comment_text), h('div', { class: 'sub' }, sub));
+    if (isRef && c.source) main.appendChild(h('div', { class: 'refbox' }, c.source.screenshot ? h('img', { src: c.source.screenshot, alt: '' }) : null, h('a', { href: c.source.url, target: '_blank', rel: 'noopener' }, `From ${c.source.host || 'another site'}`)));
     if (on('labels') && (editable || (c.labels || []).length)) main.appendChild(labelChips(c, editable));
     return h('div', { class: `fb ${isOpen(c.status) ? '' : 'closed'}${c.status === 'waiting' ? ' waiting' : ''}` }, main, ctl);
   }
@@ -180,6 +184,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
   assigneeSel.addEventListener('change', () => { f.assignee = assigneeSel.value; render(); });
   labelSel.addEventListener('change', () => { f.label = labelSel.value; render(); });
   deviceSel.addEventListener('change', () => { f.device = deviceSel.value; render(); });
+  kindSel.value = f.kind; kindSel.addEventListener('change', () => { f.kind = kindSel.value; render(); });
   search.addEventListener('input', () => { f.q = search.value; render(); });
   render();
 
@@ -214,6 +219,6 @@ export async function feedbackScreen({ id, user, acct, query }) {
     {},
     pageHead(p.name, p.site_url, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'All projects'), h('a', { class: 'btn', href: `${p.site_url.replace(/\/$/, '')}/?markup=${p.token}`, target: '_blank', rel: 'noopener' }, 'Open site in PinPoint')),
     h('div', { class: 'tabs' }, h('a', { href: `#/projects/${id}` }, 'Settings'), h('a', { class: 'on', href: `#/projects/${id}/feedback` }, `Feedback (${openCount} open)`)),
-    card(null, summary, h('div', { class: 'filters' }, on('status') ? statusSel : null, pageSel, on('labels') ? labelSel : null, deviceSel, canManage && on('assignee') ? assigneeSel : null, search, viewSeg), body, on('status') ? digestCard : null)
+    card(null, summary, h('div', { class: 'filters' }, on('status') ? statusSel : null, pageSel, on('labels') ? labelSel : null, kindSel, deviceSel, canManage && on('assignee') ? assigneeSel : null, search, viewSeg), body, on('status') ? digestCard : null)
   );
 }

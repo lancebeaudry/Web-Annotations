@@ -65,7 +65,7 @@ export function renderPins(app) {
     const pin = h(
       'div',
       {
-        class: `pin st-${comment.status || 'open'}${comment.status === 'resolved' ? ' resolved' : ''}${addressed ? ' addressed' : ''}${weak ? ' weak' : ''}${dev && dev !== 'desktop' ? ` dev-${dev}` : ''}`,
+        class: `pin st-${comment.status || 'open'}${comment.status === 'resolved' ? ' resolved' : ''}${addressed ? ' addressed' : ''}${weak ? ' weak' : ''}${dev && dev !== 'desktop' ? ` dev-${dev}` : ''}${comment.kind === 'reference' ? ' kind-ref' : ''}`,
         title,
         onclick: () => openThread(app, comment.id),
       },

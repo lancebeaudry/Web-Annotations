@@ -481,6 +481,17 @@ export const CSS = `
   color: #1B6493;
 }
 /* device badge: which viewport (tablet/mobile) a pin was placed at */
+.side-ref { background: #7E57C2 !important; }
+.mini-btn.attach-btn { color: #fff; background: #1B6493; border-color: #1B6493; white-space: nowrap; }
+.side-ref-box { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; font-size: 11px; color: #6b7a85; }
+.side-ref-box img { width: 56px; height: 36px; object-fit: cover; border-radius: 4px; border: 1px solid #dbe3e8; }
+.ref-preview { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #6b7a85; margin-bottom: 10px; }
+.ref-preview img { width: 72px; height: 48px; object-fit: cover; border-radius: 5px; border: 1px solid #dbe3e8; flex: none; }
+.ref-source { font-size: 12px; margin: 4px 0 6px; }
+.ref-source a { color: #1B6493; font-weight: 600; }
+.ref-text { color: #3A3A3A; margin-top: 2px; }
+.ref-styles { color: #6b7a85; font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; margin-top: 3px; }
+.pin.kind-ref { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #7E57C2; }
 .side-devnote { font-size: 11px; color: #8a5a00; background: #fff6e3; border-radius: 4px; padding: 2px 6px; margin: 4px 0 2px; }
 .status-tag.dev-mobile, .status-tag.dev-tablet { color: #C9DCEA; text-transform: none; letter-spacing: 0; font-weight: 500; }
 .device-pill.dev-desktop { color: #6b7a85; }

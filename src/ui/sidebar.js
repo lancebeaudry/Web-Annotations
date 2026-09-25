@@ -198,7 +198,7 @@ function renderList(app) {
 
   for (const [path, items] of groups) {
     const here = path === app.pagePath;
-    list.appendChild(h('div', { class: 'side-group-h' }, here ? `${path} — this page` : path));
+    list.appendChild(h('div', { class: 'side-group-h' }, path === '' ? 'References from other sites' : here ? `${path} — this page` : path));
     items.forEach(({ comment, number }) => list.appendChild(item(app, comment, number, here)));
   }
 }
@@ -260,6 +260,20 @@ function item(app, comment, number, onThisPage) {
   }
 
   const addressed = onThisPage && looksAddressed(comment);
+  const isRef = comment.kind === 'reference';
+  const src = (isRef && comment.source) || null;
+  // References captured elsewhere: "Attach to an element" hands the item
+  // to comment mode; the next click on this page pins it there.
+  if (isRef && !comment.page_path && app.writable && (app.canManage || comment.author_email === authorEmail(app)) && app.setCommentMode) {
+    const attach = h('button', { class: 'mini-btn attach-btn', title: 'Put this reference on an element of this page' }, 'Attach');
+    attach.addEventListener('click', () => {
+      app.pendingRef = comment.id;
+      closeSidebar(app);
+      app.setCommentMode(true);
+      toast(app.ui, 'Click the element on this page this reference is for');
+    });
+    actions.prepend(attach);
+  }
 
   const metaEl = h('div', { class: 'side-meta' }, `${name} · ${fmtDate(comment.created_at)}${replyCount ? ` · ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'}` : ''}${comment.assignee_email ? ` · → ${comment.assignee_email.split('@')[0]}` : ''}`);
   if (comment.status && comment.status !== 'open') metaEl.append(h('span', { class: `side-status st-${comment.status}` }, statusLabel(comment.status)));
@@ -278,7 +292,8 @@ function item(app, comment, number, onThisPage) {
       class: `side-item${comment.status === 'resolved' ? ' resolved' : ''}${!isOpenStatus(comment.status) ? ' closed' : ''}${addressed ? ' addressed' : ''}`,
       onclick: () => jumpTo(app, comment, onThisPage),
     },
-    h('div', { class: 'side-top' }, h('span', { class: 'side-num' }, String(number)), h('span', { class: 'side-text' }, comment.comment_text)),
+    h('div', { class: 'side-top' }, isRef && !comment.page_path ? h('span', { class: 'side-num side-ref' }, '↗') : h('span', { class: 'side-num' }, String(number)), h('span', { class: 'side-text' }, comment.comment_text)),
+    src ? h('div', { class: 'side-ref-box' }, src.screenshot ? h('img', { src: src.screenshot, alt: '' }) : null, h('span', {}, `From ${src.host || ''}`)) : null,
     addressed ? h('div', { class: 'side-addressed' }, '✎ Content changed here — looks addressed') : null,
     mismatch ? h('div', { class: 'side-devnote' }, `Left on ${DEVICE_TEXT[dev].toLowerCase()} — click to switch to that view`) : null,
     metaEl,
@@ -288,6 +303,12 @@ function item(app, comment, number, onThisPage) {
 }
 
 function jumpTo(app, comment, onThisPage) {
+  // A reference not yet attached to a page: just open its thread here.
+  if (comment.kind === 'reference' && !comment.page_path) {
+    closePopovers(app);
+    openThread(app, comment.id);
+    return;
+  }
   if (!onThisPage) {
     // Remember the target so the destination page can reopen the sidebar
     // and jump straight to this comment after it loads.

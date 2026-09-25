@@ -11,7 +11,7 @@ export const LABELS = ["bug", "copy", "design", "content", "photo", "decision"] 
 export const EFFORTS = ["quick", "medium", "large"] as const;
 export type Status = typeof STATUSES[number];
 const KEY_RE = /^pp_[0-9a-f]{40}$/;
-export const SELECT = "id,project_id,parent_id,page_url,page_path,element_tag,selector,current_text,computed_styles,x_pct,y_pct,viewport_w,comment_text,author_name,author_role,status,assignee_email,labels,effort,created_at,attachments,context";
+export const SELECT = "id,project_id,parent_id,page_url,page_path,element_tag,selector,current_text,computed_styles,x_pct,y_pct,viewport_w,comment_text,author_name,author_role,status,assignee_email,labels,effort,kind,source,created_at,attachments,context";
 
 // Key from x-pinpoint-agent-key or Authorization: Bearer pp_…
 export function keyFrom(req: Request): string {

@@ -661,6 +661,7 @@ function renderToolbar(app) {
 
   app.toolbarEl = toolbar;
   app.setDevice = (d) => setDevice(app, d);
+  app.setCommentMode = (on) => setCommentMode(app, on);
   // The framed copy asks us to change device (e.g. a desktop comment
   // clicked from the mobile preview). Same origin only.
   window.addEventListener('message', (e) => {

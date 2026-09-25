@@ -65,6 +65,7 @@ export function buildMarkdown(app, scope, agent = null) {
   const siteHost = (app.project.site_url || location.origin).replace(/^https?:\/\//, '').replace(/\/$/, '');
   const byPage = new Map();
   for (const c of roots) {
+    if (c.kind === 'reference' && !c.page_path) continue; // listed in their own section below
     if (!byPage.has(c.page_path)) byPage.set(c.page_path, []);
     byPage.get(c.page_path).push(c);
   }
@@ -87,6 +88,7 @@ export function buildMarkdown(app, scope, agent = null) {
       lines.push(`   - Requested change: ${c.comment_text}`);
       if (c.status && c.status !== 'open') lines.push(`   - Status: ${statusLabel(c.status)}`);
       if (c.labels && c.labels.length) lines.push(`   - Labels: ${c.labels.map(labelText).join(', ')}`);
+      if (c.kind === 'reference' && c.source) lines.push(...sourceLines(c.source));
       if (c.effort) lines.push(`   - Effort: ${effortText(c.effort)}`);
       if (c.assignee_email) lines.push(`   - Assigned to: ${c.assignee_email}`);
       const ctx = contextSummary(c.context);
@@ -104,10 +106,34 @@ export function buildMarkdown(app, scope, agent = null) {
     });
     blocks.push(lines.join('\n'));
   }
+  const refs = roots.filter((c) => c.kind === 'reference' && !c.page_path);
+  if (refs.length) {
+    const lines = ['## References from other sites  (not yet tied to an element here)', ''];
+    refs.forEach((c, i) => {
+      lines.push(`${i + 1}. **${c.comment_text}**`);
+      lines.push(...sourceLines(c.source || {}));
+      if (c.labels && c.labels.length) lines.push(`   - Labels: ${c.labels.map(labelText).join(', ')}`);
+      if (agent) lines.push(`   - ID: ${c.id}`);
+      lines.push(`   - — ${authorLine(app, c)}`);
+      lines.push('');
+    });
+    blocks.push(lines.join('\n'));
+  }
   const triage = triageSummary(roots);
   if (triage) blocks.splice(3, 0, triage);
   if (agent) blocks.push(agentBlock(agent));
   return { text: blocks.join('\n'), count: roots.length };
+}
+
+// Where a reference came from, for a developer or an assistant to imitate.
+function sourceLines(s) {
+  const out = [];
+  if (s.url) out.push(`   - Reference: ${s.url}`);
+  if (s.screenshot) out.push(`   - Reference screenshot: ${s.screenshot}`);
+  if (s.text) out.push(`   - Reference text: "${String(s.text).slice(0, 200)}"`);
+  const st = Object.entries(s.styles || {}).map(([k, v]) => `${k}: ${v}`).join('; ');
+  if (st) out.push(`   - Reference styles: ${st}`);
+  return out;
 }
 
 // A short "who owns what" summary at the top of the export, built from the

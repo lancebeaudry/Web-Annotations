@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
     ? `${record.author_name || "AI assistant"} (AI assistant)`
     : (record.author_name ? `${record.author_name} (${author})` : author);
   const deepLinkUrl = deepLink({ id: record.project_id, ...project }, record as any);
-  const kind = isReply ? "replied" : "left a comment";
+  const kind = isReply ? "replied" : (record as any).kind === "reference" ? `saved a reference from ${(((record as any).source || {}).host) || "another site"}` : "left a comment";
   const snippet = record.comment_text.length > 300 ? record.comment_text.slice(0, 300) + "…" : record.comment_text;
 
   let sent = 0;
