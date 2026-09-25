@@ -5,7 +5,7 @@ import { attachMentions, mentionLabel } from './mentions.js';
 import { attachImages, imageOnlyText } from './attach.js';
 import { authorEmail } from '../app.js';
 import { roleLabel, authorName } from '../roles.js';
-import { deviceLabel } from '../capture.js';
+import { deviceLabel, deviceOf, DEVICE_TEXT } from '../capture.js';
 import { STATUS_ORDER, statusLabel, isOpenStatus, LABEL_ORDER, labelText, EFFORT_ORDER, effortText } from '../status.js';
 import { contextSummary } from '../screenshot.js';
 
@@ -89,6 +89,8 @@ export function openThread(app, rootId) {
   const canStatus = app.writable && (app.canManage || (root.assignee_email && root.assignee_email.toLowerCase() === me));
   const canAssign = app.canManage && app.writable && !!app.assignees;
   const headBits = [h('span', {}, `Comment · <${root.element_tag || 'page'}>`)];
+  const rootDev = deviceOf(root.viewport_w);
+  if (rootDev && rootDev !== 'desktop') headBits.push(h('span', { class: `status-tag dev-${rootDev}` }, `${DEVICE_TEXT[rootDev]} · ${root.viewport_w}px`));
   if (!canStatus && root.status && root.status !== 'open') headBits.push(h('span', { class: `status-tag st-${root.status}` }, statusLabel(root.status)));
   if (!canAssign && root.assignee_email) headBits.push(h('span', { class: 'status-tag' }, `→ ${root.assignee_email.split('@')[0]}`));
 

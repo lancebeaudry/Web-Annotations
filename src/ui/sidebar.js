@@ -1,6 +1,6 @@
 import { h, toast } from './overlay.js';
 import { updateComment, deleteComment } from '../data.js';
-import { resolveElement, looksAddressed, deviceLabel } from '../capture.js';
+import { resolveElement, looksAddressed, deviceOf, DEVICE_TEXT, currentDevice } from '../capture.js';
 import { openThread, closePopovers } from './popover.js';
 import { authorEmail } from '../app.js';
 import { STATUS_ORDER, statusLabel, isOpenStatus, labelText, effortText } from '../status.js';
@@ -18,7 +18,7 @@ function fmtDate(iso) {
 // re-sorted or filtered. Then apply the active search / sort / status
 // filters for display.
 function groupedItems(app) {
-  const { q, sort, showResolved, thisPageOnly } = app.sidebarFilters;
+  const { q, sort, showResolved, thisPageOnly, device } = app.sidebarFilters;
   const needle = q.trim().toLowerCase();
 
   const roots = [...app.comments.values()]
@@ -59,6 +59,7 @@ function groupedItems(app) {
 
     items = items.filter(({ comment }) => {
       if (!showResolved && !isOpenStatus(comment.status)) return false;
+      if (device && device !== 'all' && (deviceOf(comment.viewport_w) || 'desktop') !== device) return false;
       if (needle) {
         const hay = `${comment.comment_text} ${comment.author_name || ''} ${comment.author_email} ${comment.current_text || ''} ${comment.selector || ''}`.toLowerCase();
         if (!hay.includes(needle)) return false;
@@ -128,11 +129,17 @@ export function toggleSidebar(app) {
   });
   const thisPageLabel = h('label', { class: 'side-check' }, thisPageBox, 'This page only');
 
+  // Device the comment was left on. Old rows without a width count as desktop.
+  const deviceSel = h('select', { class: 'side-select', title: 'Device the comment was left on' },
+    h('option', { value: 'all' }, 'All devices'), h('option', { value: 'desktop' }, 'Desktop'), h('option', { value: 'tablet' }, 'Tablet'), h('option', { value: 'mobile' }, 'Mobile'));
+  deviceSel.value = f.device || 'all';
+  deviceSel.addEventListener('change', () => { f.device = deviceSel.value; renderList(app); });
+
   const controls = h(
     'div',
     { class: 'side-controls' },
     search,
-    h('div', { class: 'side-filters' }, sortSel, resolvedLabel, thisPageLabel)
+    h('div', { class: 'side-filters' }, sortSel, deviceSel, resolvedLabel, thisPageLabel)
   );
 
   const list = h('div', { class: 'side-list' });
@@ -256,8 +263,12 @@ function item(app, comment, number, onThisPage) {
   if (comment.status && comment.status !== 'open') metaEl.append(h('span', { class: `side-status st-${comment.status}` }, statusLabel(comment.status)));
   for (const l of comment.labels || []) metaEl.append(h('span', { class: `side-status lb-${l}` }, labelText(l)));
   if (comment.effort) metaEl.append(h('span', { class: 'side-status' }, effortText(comment.effort)));
-  const device = deviceLabel(comment.viewport_w);
-  if (device) metaEl.append(h('span', { class: 'device-pill' }, device));
+  const dev = deviceOf(comment.viewport_w);
+  if (dev) metaEl.append(h('span', { class: `device-pill dev-${dev}` }, DEVICE_TEXT[dev]));
+  // On this page but left at a different width: say so, and the click
+  // below switches the preview instead of scrolling to nothing.
+  const here = currentDevice();
+  const mismatch = onThisPage && dev && dev !== here;
 
   const el = h(
     'div',
@@ -267,6 +278,7 @@ function item(app, comment, number, onThisPage) {
     },
     h('div', { class: 'side-top' }, h('span', { class: 'side-num' }, String(number)), h('span', { class: 'side-text' }, comment.comment_text)),
     addressed ? h('div', { class: 'side-addressed' }, '✎ Content changed here — looks addressed') : null,
+    mismatch ? h('div', { class: 'side-devnote' }, `Left on ${DEVICE_TEXT[dev].toLowerCase()} — click to switch to that view`) : null,
     metaEl,
     actions
   );
@@ -297,6 +309,19 @@ function jumpTo(app, comment, onThisPage) {
     location.href = url.toString();
     return;
   }
+  // Left at another width? Switch the preview to that device; the framed
+  // copy picks the comment up from sessionStorage when it loads.
+  const dev = deviceOf(comment.viewport_w);
+  if (dev && dev !== currentDevice() && app.setDevice) {
+    try { sessionStorage.setItem('markup_jump', comment.id); } catch { /* fine */ }
+    if (window.self !== window.top) {
+      // We're the framed copy: ask the top page to switch (it owns the frame).
+      window.parent.postMessage({ markupDevice: dev }, location.origin);
+      return;
+    }
+    app.setDevice(dev);
+    return;
+  }
   // Keep the sidebar open — just scroll to the pin and open its thread.
   closePopovers(app);
   const target = resolveElement(comment);
@@ -317,7 +342,9 @@ export function resumeJumpAfterNav(app) {
   if (!id) return;
   const comment = app.comments.get(id);
   if (!comment || comment.page_path !== app.pagePath) return;
-  if (!app.sidebarEl) toggleSidebar(app);
+  // Inside a device frame the sidebar would cover the whole page, so only
+  // reopen it at the top level.
+  if (!app.sidebarEl && window.self === window.top) toggleSidebar(app);
   const target = resolveElement(comment);
   if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
   setTimeout(() => openThread(app, comment.id), target ? 600 : 0);

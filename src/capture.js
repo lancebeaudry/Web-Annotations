@@ -210,6 +210,18 @@ export function deviceLabel(viewportW) {
   return null;
 }
 
+// Which preview a comment belongs to: 'mobile' | 'tablet' | 'desktop', or
+// null for old rows that never recorded a width.
+export function deviceOf(viewportW) {
+  const w = Number(viewportW);
+  if (!w) return null;
+  if (w < 600) return 'mobile';
+  if (w < 1024) return 'tablet';
+  return 'desktop';
+}
+export const DEVICE_TEXT = { mobile: 'Mobile', tablet: 'Tablet', desktop: 'Desktop' };
+export const currentDevice = () => deviceOf(window.innerWidth);
+
 // Heuristic "looks addressed": has the content this open comment points
 // at changed since it was written? Locate the element by its fingerprint
 // (id, classes, attributes, landmark — the things that survive a text

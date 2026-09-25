@@ -328,7 +328,7 @@ async function start(app) {
 
   // If we got here from a cross-page comment click, reopen the sidebar
   // and jump to that comment. (Top page only — not the preview frame.)
-  if (!IN_FRAME) resumeJumpAfterNav(app);
+  resumeJumpAfterNav(app);
 }
 
 /* ---------------- comment mode ---------------- */
@@ -660,6 +660,14 @@ function renderToolbar(app) {
   }
 
   app.toolbarEl = toolbar;
+  app.setDevice = (d) => setDevice(app, d);
+  // The framed copy asks us to change device (e.g. a desktop comment
+  // clicked from the mobile preview). Same origin only.
+  window.addEventListener('message', (e) => {
+    if (e.origin !== location.origin || !e.data || !e.data.markupDevice) return;
+    setDevice(app, e.data.markupDevice);
+    if (e.data.markupDevice === 'desktop') setTimeout(() => resumeJumpAfterNav(app), 50);
+  });
   app.ui.layer.appendChild(toolbar);
   updateModeButtons(app); // reflect the current mode on the buttons
 

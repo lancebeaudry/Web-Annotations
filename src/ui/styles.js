@@ -232,6 +232,13 @@ export const CSS = `
 .pin.st-in_progress { background: #E8A317; }
 .pin.st-wont_fix { background: #7A8A96; opacity: 0.5; }
 .pin.st-waiting { background: #7E57C2; }
+/* device badge: a small rounded tag at the pin's corner for tablet/mobile pins */
+.pin.dev-mobile::after, .pin.dev-tablet::after {
+  content: ''; position: absolute; right: -5px; bottom: -5px; width: 12px; height: 12px; border-radius: 3px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 2h8v20H8zM11 18h2' fill='none' stroke='%2300263D' stroke-width='2.4'/%3E%3C/svg%3E") center/9px no-repeat;
+  box-shadow: 0 0 0 1.5px #00263D;
+}
+.pin.dev-tablet::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 3h14v18H5zM11 18h2' fill='none' stroke='%2300263D' stroke-width='2.4'/%3E%3C/svg%3E"); }
 .triage { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
 .triage-lbl { font-size: 11px; color: #6b7a85; margin-left: 4px; }
 .status-select, .assignee-select {
@@ -467,6 +474,10 @@ export const CSS = `
   color: #1B6493;
 }
 /* device badge: which viewport (tablet/mobile) a pin was placed at */
+.side-devnote { font-size: 11px; color: #8a5a00; background: #fff6e3; border-radius: 4px; padding: 2px 6px; margin: 4px 0 2px; }
+.status-tag.dev-mobile, .status-tag.dev-tablet { color: #C9DCEA; text-transform: none; letter-spacing: 0; font-weight: 500; }
+.device-pill.dev-desktop { color: #6b7a85; }
+.device-pill.dev-mobile, .device-pill.dev-tablet { color: #00263D; background: #dbe7f0; }
 .device-pill {
   display: inline-block;
   margin-left: 6px;

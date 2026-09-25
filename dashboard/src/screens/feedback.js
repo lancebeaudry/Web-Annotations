@@ -12,6 +12,8 @@ const isOpen = (s) => s === 'open' || s === 'in_progress' || s === 'waiting';
 const LABEL = { bug: 'Bug', copy: 'Copy', design: 'Design', content: 'Content needed', photo: 'Photo needed', decision: 'Decision' };
 const LABELS = Object.keys(LABEL);
 const EFFORT = { quick: 'Quick', medium: 'Medium', large: 'Large' };
+const deviceOf = (w) => (!Number(w) ? null : Number(w) < 600 ? 'mobile' : Number(w) < 1024 ? 'tablet' : 'desktop');
+const DEVICE = { mobile: 'Mobile', tablet: 'Tablet', desktop: 'Desktop' };
 
 export async function feedbackScreen({ id, user, acct, query }) {
   const p = await getProject(id);
@@ -23,7 +25,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
   const repliesOf = (rid) => rows.filter((r) => r.parent_id === rid);
   const link = (c) => `${c.page_url}?markup=${encodeURIComponent(p.token)}&pp_comment=${c.id}`;
 
-  const f = { status: query.status || 'open', page: '', assignee: '', label: query.label || '', q: '', view: query.view || 'list' };
+  const f = { status: query.status || 'open', page: '', assignee: '', label: query.label || '', device: '', q: '', view: query.view || 'list' };
   const pages = [...new Set(roots.map((r) => r.page_path))].sort();
 
   const statusSel = h('select', {}, h('option', { value: 'open' }, 'All open'), ...ORDER.map((s) => h('option', { value: s }, STATUS[s])), h('option', { value: 'all' }, 'Everything'));
@@ -32,6 +34,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
   const assigneeSel = h('select', {}, h('option', { value: '' }, 'Anyone'), h('option', { value: '__none' }, 'Unassigned'), ...people.map((e) => h('option', { value: e }, e)));
   const labelSel = h('select', {}, h('option', { value: '' }, 'Any label'), ...LABELS.map((l) => h('option', { value: l }, LABEL[l])), h('option', { value: '__none' }, 'Untriaged'));
   labelSel.value = f.label;
+  const deviceSel = h('select', {}, h('option', { value: '' }, 'All devices'), h('option', { value: 'desktop' }, 'Desktop'), h('option', { value: 'tablet' }, 'Tablet'), h('option', { value: 'mobile' }, 'Mobile'));
   const search = h('input', { type: 'search', placeholder: 'Search feedback…' });
   const viewSeg = h('div', { class: 'seg' });
   const body = h('div', {});
@@ -44,6 +47,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
     if (f.assignee === '__none' ? c.assignee_email : f.assignee && c.assignee_email !== f.assignee) return false;
     const labels = c.labels || [];
     if (f.label === '__none' ? labels.length : f.label && !labels.includes(f.label)) return false;
+    if (f.device && (deviceOf(c.viewport_w) || 'desktop') !== f.device) return false;
     const needle = f.q.trim().toLowerCase();
     if (needle && !`${c.comment_text} ${c.author_name || ''} ${c.current_text || ''} ${c.page_path}`.toLowerCase().includes(needle)) return false;
     return true;
@@ -102,6 +106,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
     const sub = [
       c.page_path,
       `<${c.element_tag || 'page'}>`,
+      deviceOf(c.viewport_w) && deviceOf(c.viewport_w) !== 'desktop' ? `${DEVICE[deviceOf(c.viewport_w)]} (${c.viewport_w}px)` : '',
       `${c.author_name || c.author_email} · ${fmtDate(c.created_at)}`,
       n ? `${n} repl${n === 1 ? 'y' : 'ies'}` : '',
       ctx.browser ? `${ctx.browser}${ctx.os ? ' on ' + ctx.os : ''}` : '',
@@ -171,6 +176,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
   pageSel.addEventListener('change', () => { f.page = pageSel.value; render(); });
   assigneeSel.addEventListener('change', () => { f.assignee = assigneeSel.value; render(); });
   labelSel.addEventListener('change', () => { f.label = labelSel.value; render(); });
+  deviceSel.addEventListener('change', () => { f.device = deviceSel.value; render(); });
   search.addEventListener('input', () => { f.q = search.value; render(); });
   render();
 
@@ -205,6 +211,6 @@ export async function feedbackScreen({ id, user, acct, query }) {
     {},
     pageHead(p.name, p.site_url, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'All projects'), h('a', { class: 'btn', href: `${p.site_url.replace(/\/$/, '')}/?markup=${p.token}`, target: '_blank', rel: 'noopener' }, 'Open site in PinPoint')),
     h('div', { class: 'tabs' }, h('a', { href: `#/projects/${id}` }, 'Settings'), h('a', { class: 'on', href: `#/projects/${id}/feedback` }, `Feedback (${openCount} open)`)),
-    card(null, summary, h('div', { class: 'filters' }, statusSel, pageSel, labelSel, canManage ? assigneeSel : null, search, viewSeg), body, digestCard)
+    card(null, summary, h('div', { class: 'filters' }, statusSel, pageSel, labelSel, deviceSel, canManage ? assigneeSel : null, search, viewSeg), body, digestCard)
   );
 }

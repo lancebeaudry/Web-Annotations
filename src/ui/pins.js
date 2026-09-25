@@ -1,4 +1,4 @@
-import { locateElement, looksAddressed } from '../capture.js';
+import { locateElement, looksAddressed, deviceOf, DEVICE_TEXT } from '../capture.js';
 import { h } from './overlay.js';
 import { openThread } from './popover.js';
 import { isOpenStatus } from '../status.js';
@@ -57,13 +57,15 @@ export function renderPins(app) {
     if (!pos) return;
     const addressed = looksAddressed(comment);
     const weak = pos.confidence === 'weak';
+    const dev = deviceOf(comment.viewport_w);
     let title = comment.comment_text;
+    if (dev && dev !== 'desktop') title += `\n\nLeft on ${DEVICE_TEXT[dev]} (${comment.viewport_w}px wide)`;
     if (addressed) title += '\n\n(content here changed since this comment — looks addressed)';
     if (weak) title += '\n\n(approximate — the original element could not be found exactly)';
     const pin = h(
       'div',
       {
-        class: `pin st-${comment.status || 'open'}${comment.status === 'resolved' ? ' resolved' : ''}${addressed ? ' addressed' : ''}${weak ? ' weak' : ''}`,
+        class: `pin st-${comment.status || 'open'}${comment.status === 'resolved' ? ' resolved' : ''}${addressed ? ' addressed' : ''}${weak ? ' weak' : ''}${dev && dev !== 'desktop' ? ` dev-${dev}` : ''}`,
         title,
         onclick: () => openThread(app, comment.id),
       },
