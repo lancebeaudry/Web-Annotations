@@ -40,6 +40,8 @@ export async function feedbackScreen({ id, user, acct, query }) {
   const body = h('div', {});
 
   const canEdit = (c) => canManage || (c.assignee_email && c.assignee_email.toLowerCase() === me);
+  const T = access.triage || {};
+  const on = (k) => T[k] !== false;
 
   function matches(c, ignoreStatus = false) {
     if (!ignoreStatus && (f.status === 'open' ? !isOpen(c.status) : f.status !== 'all' && c.status !== f.status)) return false;
@@ -115,13 +117,13 @@ export async function feedbackScreen({ id, user, acct, query }) {
     ].filter(Boolean).join(' · ');
     const editable = canEdit(c);
     const ctl = h('div', { class: 'ctl' },
-      editable ? statusCtl(c) : h('span', { class: `st ${c.status}` }, STATUS[c.status] || c.status),
-      editable ? effortCtl(c) : c.effort ? h('span', { class: 'st' }, EFFORT[c.effort]) : null,
-      canManage ? assigneeCtl(c) : c.assignee_email ? h('span', { class: 'hint' }, `→ ${c.assignee_email}`) : null,
+      !on('status') ? null : editable ? statusCtl(c) : h('span', { class: `st ${c.status}` }, STATUS[c.status] || c.status),
+      !on('effort') ? null : editable ? effortCtl(c) : c.effort ? h('span', { class: 'st' }, EFFORT[c.effort]) : null,
+      !on('assignee') ? null : canManage ? assigneeCtl(c) : c.assignee_email ? h('span', { class: 'hint' }, `→ ${c.assignee_email}`) : null,
       h('a', { class: 'btn btn-ghost btn-sm', href: link(c), target: '_blank', rel: 'noopener' }, 'Open on site'),
       c.external_ref?.clickup_url ? h('a', { class: 'btn btn-ghost btn-sm', href: c.external_ref.clickup_url, target: '_blank', rel: 'noopener' }, 'ClickUp') : null);
     const main = h('div', {}, h('div', { class: 'txt' }, c.comment_text), h('div', { class: 'sub' }, sub));
-    if (editable || (c.labels || []).length) main.appendChild(labelChips(c, editable));
+    if (on('labels') && (editable || (c.labels || []).length)) main.appendChild(labelChips(c, editable));
     return h('div', { class: `fb ${isOpen(c.status) ? '' : 'closed'}${c.status === 'waiting' ? ' waiting' : ''}` }, main, ctl);
   }
 
@@ -152,13 +154,14 @@ export async function feedbackScreen({ id, user, acct, query }) {
       b.addEventListener('click', on);
       return b;
     };
-    summary.replaceChildren(
-      pill('waiting on the client', waiting.length, () => { f.status = 'waiting'; statusSel.value = 'waiting'; f.label = ''; labelSel.value = ''; render(); }),
-      pill('quick wins', quick, () => { f.status = 'open'; statusSel.value = 'open'; f.q = ''; search.value = ''; render('quick'); }),
-      pill('medium', medium, () => render('medium')),
-      pill('large', large, () => render('large')),
-      pill('untriaged', untriaged, () => { f.status = 'open'; statusSel.value = 'open'; f.label = '__none'; labelSel.value = '__none'; render(); }),
-    );
+    summary.replaceChildren(...[
+      on('status') ? pill('waiting on the client', waiting.length, () => { f.status = 'waiting'; statusSel.value = 'waiting'; f.label = ''; labelSel.value = ''; render(); }) : null,
+      on('effort') ? pill('quick wins', quick, () => { f.status = 'open'; statusSel.value = 'open'; f.q = ''; search.value = ''; render('quick'); }) : null,
+      on('effort') ? pill('medium', medium, () => render('medium')) : null,
+      on('effort') ? pill('large', large, () => render('large')) : null,
+      on('effort') || on('labels') ? pill('untriaged', untriaged, () => { f.status = 'open'; statusSel.value = 'open'; f.label = '__none'; labelSel.value = '__none'; render(); }) : null,
+    ].filter(Boolean));
+    summary.style.display = summary.children.length ? '' : 'none';
   }
 
   function render(effortOnly) {
@@ -211,6 +214,6 @@ export async function feedbackScreen({ id, user, acct, query }) {
     {},
     pageHead(p.name, p.site_url, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'All projects'), h('a', { class: 'btn', href: `${p.site_url.replace(/\/$/, '')}/?markup=${p.token}`, target: '_blank', rel: 'noopener' }, 'Open site in PinPoint')),
     h('div', { class: 'tabs' }, h('a', { href: `#/projects/${id}` }, 'Settings'), h('a', { class: 'on', href: `#/projects/${id}/feedback` }, `Feedback (${openCount} open)`)),
-    card(null, summary, h('div', { class: 'filters' }, statusSel, pageSel, labelSel, deviceSel, canManage ? assigneeSel : null, search, viewSeg), body, digestCard)
+    card(null, summary, h('div', { class: 'filters' }, on('status') ? statusSel : null, pageSel, on('labels') ? labelSel : null, deviceSel, canManage && on('assignee') ? assigneeSel : null, search, viewSeg), body, on('status') ? digestCard : null)
   );
 }

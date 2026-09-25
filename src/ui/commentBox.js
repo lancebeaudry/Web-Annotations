@@ -1,6 +1,6 @@
 import { capture } from '../capture.js';
 import { insertCommentResult, updateComment } from '../data.js';
-import { h, toast } from './overlay.js';
+import { h, toast, makeDraggable } from './overlay.js';
 import { savedName } from './auth.js';
 import { closePopovers } from './popover.js';
 import { attachMentions } from './mentions.js';
@@ -31,7 +31,7 @@ export function openCommentBox(app, el, clickEvent) {
   const box = h(
     'div',
     { class: 'card popover' },
-    h('div', { class: 'card-head' }, `New comment · <${el.tagName.toLowerCase()}>`),
+    h('div', { class: 'card-head' }, `New comment · <${el.tagName.toLowerCase()}>`, h('span', { class: 'drag-hint' }, 'drag to move')),
     h('div', { class: 'card-body' }, form)
   );
 
@@ -103,6 +103,7 @@ export function openCommentBox(app, el, clickEvent) {
   box.style.left = `${Math.max(window.scrollX + 12, Math.min(x, maxX))}px`;
   box.style.top = `${y}px`;
 
+  makeDraggable(box, box.querySelector('.card-head'));
   app.ui.layer.appendChild(box);
   input.focus();
 }

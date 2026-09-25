@@ -1,5 +1,5 @@
 import { insertComment, updateComment, deleteComment } from '../data.js';
-import { h, toast } from './overlay.js';
+import { h, toast, makeDraggable } from './overlay.js';
 import { savedName } from './auth.js';
 import { attachMentions, mentionLabel } from './mentions.js';
 import { attachImages, imageOnlyText } from './attach.js';
@@ -86,8 +86,14 @@ export function openThread(app, rootId) {
   });
 
   const me = (authorEmail(app) || '').toLowerCase();
-  const canStatus = app.writable && (app.canManage || (root.assignee_email && root.assignee_email.toLowerCase() === me));
-  const canAssign = app.canManage && app.writable && !!app.assignees;
+  // Per-project switches: an owner can hide any of these on the project.
+  const T = (app.access && app.access.triage) || {};
+  const on = (k) => T[k] !== false;
+  const mayTriage = app.writable && (app.canManage || (root.assignee_email && root.assignee_email.toLowerCase() === me));
+  const canStatus = mayTriage && on('status');
+  const canEffort = mayTriage && on('effort');
+  const canLabels = mayTriage && on('labels');
+  const canAssign = app.canManage && app.writable && !!app.assignees && on('assignee');
   const headBits = [h('span', {}, `Comment · <${root.element_tag || 'page'}>`)];
   const rootDev = deviceOf(root.viewport_w);
   if (rootDev && rootDev !== 'desktop') headBits.push(h('span', { class: `status-tag dev-${rootDev}` }, `${DEVICE_TEXT[rootDev]} · ${root.viewport_w}px`));
@@ -114,7 +120,7 @@ export function openThread(app, rootId) {
     sel.addEventListener('change', () => patch({ status: sel.value }, sel));
     triage.append(sel);
   }
-  if (canStatus) {
+  if (canEffort) {
     // Effort: quick / medium / large.
     const esel = h('select', { class: 'assignee-select effort-select', title: 'Effort' }, h('option', { value: '' }, 'Effort'), ...EFFORT_ORDER.map((e) => h('option', { value: e }, effortText(e))));
     esel.value = root.effort || '';
@@ -129,25 +135,28 @@ export function openThread(app, rootId) {
     asel.addEventListener('change', () => patch({ assignee_email: asel.value || null }, asel));
     triage.append(asel);
   }
-  if (triage.children.length) body.appendChild(triage);
+  // Triage sits below the conversation: the comment comes first.
+  const triageBlock = h('div', { class: 'triage-block' });
+  if (triage.children.length) triageBlock.appendChild(triage);
   // Labels: toggle chips. Editable by whoever can set status; read-only
   // chips for everyone else when any are set.
   const labels = new Set(root.labels || []);
-  if (canStatus || labels.size) {
+  if (canLabels || (labels.size && on('labels'))) {
     const chips = h('div', { class: 'label-row' });
-    for (const l of canStatus ? LABEL_ORDER : [...labels]) {
-      const chip = h('button', { type: 'button', class: `label-chip lb-${l}${labels.has(l) ? ' on' : ''}`, title: canStatus ? 'Toggle label' : '' }, labelText(l));
-      if (canStatus) chip.addEventListener('click', () => {
+    for (const l of canLabels ? LABEL_ORDER : [...labels]) {
+      const chip = h('button', { type: 'button', class: `label-chip lb-${l}${labels.has(l) ? ' on' : ''}`, title: canLabels ? 'Toggle label' : '' }, labelText(l));
+      if (canLabels) chip.addEventListener('click', () => {
         if (labels.has(l)) labels.delete(l); else labels.add(l);
         chip.classList.toggle('on', labels.has(l));
         patch({ labels: LABEL_ORDER.filter((x) => labels.has(x)) }, chip);
       });
       chips.appendChild(chip);
     }
-    body.appendChild(chips);
+    triageBlock.appendChild(chips);
   }
+  const metaBlock = h('div', { class: 'meta-block' });
   if (root.selector) {
-    body.appendChild(h('div', { class: 'context' }, root.selector));
+    metaBlock.appendChild(h('div', { class: 'context' }, root.selector));
   }
   // Browser + console context captured when the comment was made.
   const ctxText = contextSummary(root.context);
@@ -156,9 +165,9 @@ export function openThread(app, rootId) {
     const det = h('details', { class: 'context-box' }, h('summary', {}, `Details: ${ctxText}`));
     det.appendChild(h('div', {}, root.context.url || ''));
     if (errs.length) det.appendChild(h('ul', {}, ...errs.map((e) => h('li', {}, `${e.kind}: ${e.msg}`))));
-    body.appendChild(det);
+    metaBlock.appendChild(det);
   }
-  body.append(thread, replyForm);
+  body.append(thread, metaBlock, replyForm, triageBlock);
 
   const footer = h('div', { class: 'foot-row' });
 
@@ -206,17 +215,9 @@ export function openThread(app, rootId) {
 
   if (footer.children.length) body.appendChild(footer);
 
-  const pop = h(
-    'div',
-    { class: 'card popover' },
-    h(
-      'div',
-      { class: 'card-head' },
-      ...headBits,
-      h('button', { class: 'close', onclick: () => closePopovers(app) }, '✕')
-    ),
-    body
-  );
+  const head = h('div', { class: 'card-head' }, ...headBits, h('button', { class: 'close', onclick: () => closePopovers(app) }, '✕'));
+  const pop = h('div', { class: 'card popover' }, head, body);
+  makeDraggable(pop, head);
 
   // Anchor next to the pin (falls back to viewport center)
   const pinEl = [...app.ui.pinLayer.children].find(

@@ -1,6 +1,6 @@
 import { h, field, toast, copyBox } from '../ui/dom.js';
 import { card, anchored, pageHead } from '../ui/shell.js';
-import { getProject, updateSettings, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, agentPersona, saveAgentPersona, assignees as listAssignees, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments } from '../api.js';
+import { getProject, updateSettings, saveTriage, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, agentPersona, saveAgentPersona, assignees as listAssignees, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments } from '../api.js';
 import { BUNDLE_URL, PLUGIN_ZIP_URL, FUNCTIONS_URL, MCP_URL } from '../config.js';
 import { go } from '../router.js';
 
@@ -42,6 +42,13 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
   open.checked = !!p.open_access;
   const shots = h('input', { type: 'checkbox' });
   shots.checked = access.auto_screenshot !== false;
+  const T = access.triage || {};
+  const tri = {};
+  const triRow = h('div', { class: 'tri-row' }, ...[['status', 'Status'], ['effort', 'Effort'], ['assignee', 'Assignee'], ['labels', 'Labels']].map(([k, label]) => {
+    tri[k] = h('input', { type: 'checkbox' });
+    tri[k].checked = T[k] !== false;
+    return h('label', { class: 'check', style: 'margin:0' }, tri[k], h('span', {}, label));
+  }));
   const save = h('button', { class: 'btn', type: 'submit' }, 'Save settings');
   const settingsForm = h(
     'form',
@@ -50,6 +57,9 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
     field('Site URL', site),
     h('label', { class: 'check' }, open, ' Open feedback — anyone with the link can comment after entering their name (staging sites only; the token is visible in page source)'),
     h('label', { class: 'check' }, shots, ' Automatic screenshots — attach a capture of the area around each new comment (the reviewer\'s browser, console errors and screen size are recorded either way)'),
+    h('h4', {}, 'Triage controls'),
+    h('p', { class: 'hint' }, 'Turn off what this project doesn’t need. Hidden controls disappear from the site overlay and the inbox; existing values are kept.'),
+    triRow,
     h('div', { class: 'btn-row' }, save)
   );
   settingsForm.addEventListener('submit', async (e) => {
@@ -57,6 +67,7 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
     save.disabled = true;
     try {
       await updateSettings(id, { name: name.value.trim(), site_url: new URL(site.value.trim()).origin, open_access: open.checked, auto_screenshot: shots.checked });
+      await saveTriage(id, { status: tri.status.checked, effort: tri.effort.checked, assignee: tri.assignee.checked, labels: tri.labels.checked });
       toast('Saved');
       go(`#/projects/${id}`);
       location.reload();

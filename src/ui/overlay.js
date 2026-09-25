@@ -56,6 +56,30 @@ function keepMounted(host) {
   setInterval(reattach, 1000);
 }
 
+// Let a floating card be dragged by its header. The card is absolutely
+// positioned in page coordinates (left/top), so we move it by the pointer
+// delta. Buttons inside the handle (close) still work as buttons.
+export function makeDraggable(box, handle) {
+  let start = null;
+  handle.style.cursor = 'move';
+  handle.style.touchAction = 'none';
+  handle.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || e.target.closest('button, a, input, select')) return;
+    start = { x: e.clientX, y: e.clientY, left: parseFloat(box.style.left) || 0, top: parseFloat(box.style.top) || 0 };
+    handle.setPointerCapture(e.pointerId);
+    box.classList.add('dragging');
+    e.preventDefault();
+  });
+  handle.addEventListener('pointermove', (e) => {
+    if (!start) return;
+    box.style.left = `${Math.max(0, start.left + e.clientX - start.x)}px`;
+    box.style.top = `${Math.max(0, start.top + e.clientY - start.y)}px`;
+  });
+  const end = () => { start = null; box.classList.remove('dragging'); };
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
+}
+
 let toastTimer = null;
 export function toast(ui, message) {
   ui.toastEl.textContent = message;

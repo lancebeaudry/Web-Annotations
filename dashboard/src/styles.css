@@ -204,6 +204,8 @@ button.chip:hover { border-color: var(--blue); color: var(--blue); }
 .tpill.empty { opacity: .55; }
 .digest { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
 .digest label.check { white-space: nowrap; align-items: center; }
+.tri-row { display: flex; gap: 18px; flex-wrap: wrap; margin: 4px 0 14px; }
+.tri-row label.check { align-items: center; }
 .board { display: grid; grid-template-columns: repeat(5, minmax(160px, 1fr)); gap: 10px; overflow-x: auto; }
 .col { background: var(--page); border: 1px solid var(--line-soft); border-radius: 12px; padding: 8px; min-height: 120px; }
 .col h5 { margin: 6px 6px 10px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }

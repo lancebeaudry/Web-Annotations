@@ -239,7 +239,14 @@ export const CSS = `
   box-shadow: 0 0 0 1.5px #00263D;
 }
 .pin.dev-tablet::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 3h14v18H5zM11 18h2' fill='none' stroke='%2300263D' stroke-width='2.4'/%3E%3C/svg%3E"); }
-.triage { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+.triage { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 6px; }
+.triage-block { margin-top: 12px; padding-top: 10px; border-top: 1px solid #eef2f4; }
+.triage-block .label-row { margin: 0; }
+.meta-block { margin: 6px 0 10px; }
+.meta-block .context { margin-top: 0; }
+.card.dragging { opacity: .92; user-select: none; }
+.drag-hint { margin-left: auto; font-size: 10px; font-weight: 400; opacity: .55; }
+.card-head { cursor: move; }
 .triage-lbl { font-size: 11px; color: #6b7a85; margin-left: 4px; }
 .status-select, .assignee-select {
   font: inherit; font-size: 11.5px; font-weight: 600; padding: 3px 22px 3px 9px; border: 1px solid #dbe3e8; border-radius: 999px;

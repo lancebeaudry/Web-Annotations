@@ -215,7 +215,8 @@ function item(app, comment, number, onThisPage) {
   actions.addEventListener('click', (e) => e.stopPropagation());
 
   const me = (authorEmail(app) || '').toLowerCase();
-  if (app.writable && (app.canManage || (comment.assignee_email && comment.assignee_email.toLowerCase() === me))) {
+  const triageOn = !(app.access && app.access.triage && app.access.triage.status === false);
+  if (triageOn && app.writable && (app.canManage || (comment.assignee_email && comment.assignee_email.toLowerCase() === me))) {
     const sel = h('select', { class: 'status-select' }, ...STATUS_ORDER.map((s) => h('option', { value: s }, statusLabel(s))));
     sel.value = comment.status || 'open';
     sel.addEventListener('change', async () => {

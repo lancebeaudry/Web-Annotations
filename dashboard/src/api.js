@@ -54,6 +54,7 @@ export const listComments = async (id) =>
   unwrap(await supabase.from('comments').select('id,parent_id,page_path,page_url,element_tag,selector,current_text,comment_text,author_email,author_name,author_role,status,assignee_email,labels,effort,viewport_w,created_at,attachments,context,external_ref').eq('project_id', id).order('created_at')) || [];
 export const patchComment = async (id, patch) => unwrap(await supabase.from('comments').update(patch).eq('id', id).select('id,status,assignee_email,labels,effort').single());
 export const sendDigest = async (id, to) => callFn('digest', { project_id: id, to });
+export const saveTriage = async (id, t) => unwrap(await supabase.rpc('update_triage_settings', { p_project: id, p_triage: t }));
 export const setDigestWeekly = async (id, weekly) => unwrap(await supabase.rpc('update_digest_settings', { p_project: id, p_weekly: !!weekly }));
 export const assignees = async (id) => unwrap(await supabase.rpc('list_assignees', { p_project: id })) || [];
 
