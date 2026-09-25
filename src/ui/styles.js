@@ -231,6 +231,7 @@ export const CSS = `
 .pin.resolved { background: #13A89E; opacity: 0.55; }
 .pin.st-in_progress { background: #E8A317; }
 .pin.st-wont_fix { background: #7A8A96; opacity: 0.5; }
+.pin.st-waiting { background: #7E57C2; }
 .triage { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
 .triage-lbl { font-size: 11px; color: #6b7a85; margin-left: 4px; }
 .status-select, .assignee-select {
@@ -242,6 +243,18 @@ export const CSS = `
 .status-select.st-in_progress { color: #8a5a00; border-color: #efd9a8; background-color: #fff6e3; }
 .status-select.st-resolved { color: #0f6b4f; border-color: #bfe7d2; background-color: #e6f6ee; }
 .status-select.st-wont_fix { color: #5c6b76; border-color: #d5dde3; background-color: #f1f4f6; }
+.status-select.st-waiting { color: #5b3d99; border-color: #d9cdf0; background-color: #f2edfa; }
+.effort-select { max-width: 90px; }
+.label-row { display: flex; flex-wrap: wrap; gap: 4px; margin: -4px 0 10px; }
+.label-chip { font: inherit; font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid #dbe3e8; background: #fff; color: #6b7a85; cursor: pointer; }
+.label-chip:hover { border-color: #1B6493; color: #1B6493; }
+.label-chip.on { color: #fff; border-color: transparent; }
+.label-chip.on.lb-bug { background: #B3392B; }
+.label-chip.on.lb-copy { background: #1B6493; }
+.label-chip.on.lb-design { background: #13A89E; }
+.label-chip.on.lb-content { background: #E8A317; }
+.label-chip.on.lb-photo { background: #E8A317; }
+.label-chip.on.lb-decision { background: #7E57C2; }
 .reply-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .reply-row .attach { margin: 0; flex: 1; }
 .foot-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid #eef2f4; }
@@ -252,6 +265,7 @@ export const CSS = `
 .btn-link.danger { color: #B3392B; }
 .status-tag.st-in_progress { color: #B77A00; }
 .status-tag.st-wont_fix { color: #7A8A96; }
+.status-tag.st-waiting { color: #7E57C2; }
 .approved-strip {
   font-size: 12px; font-weight: 600; color: #0f6b4f; background: #e6f6ee; border: 1px solid #bfe7d2; border-radius: 6px; padding: 4px 8px; white-space: nowrap;
 }
@@ -265,6 +279,12 @@ export const CSS = `
 .side-status.st-in_progress { background: #fff1d6; color: #8a5a00; }
 .side-status.st-resolved { background: #dff5f2; color: #0e8a82; }
 .side-status.st-wont_fix { background: #e6eaee; color: #5b6b76; }
+.side-status.st-waiting { background: #f2edfa; color: #5b3d99; }
+.side-status.lb-bug { background: #fbe9e7; color: #B3392B; }
+.side-status.lb-copy { background: #eef5fa; color: #1B6493; }
+.side-status.lb-design { background: #dff5f2; color: #0e8a82; }
+.side-status.lb-content, .side-status.lb-photo { background: #fff1d6; color: #8a5a00; }
+.side-status.lb-decision { background: #f2edfa; color: #5b3d99; }
 .side-item.closed { opacity: 0.6; }
 /* "looks addressed": amber dot badge — the content here changed since
    the comment was written, so it likely got handled. */

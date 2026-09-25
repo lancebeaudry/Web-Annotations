@@ -5,7 +5,7 @@
 
 import { deviceLabel } from './capture.js';
 import { roleLabel, authorName } from './roles.js';
-import { isOpenStatus, statusLabel } from './status.js';
+import { isOpenStatus, statusLabel, labelText, effortText } from './status.js';
 import { contextSummary } from './screenshot.js';
 
 function rgbToHex(value) {
@@ -86,6 +86,8 @@ export function buildMarkdown(app, scope, agent = null) {
       if (styles) lines.push(`   - Current styles: ${styles}`);
       lines.push(`   - Requested change: ${c.comment_text}`);
       if (c.status && c.status !== 'open') lines.push(`   - Status: ${statusLabel(c.status)}`);
+      if (c.labels && c.labels.length) lines.push(`   - Labels: ${c.labels.map(labelText).join(', ')}`);
+      if (c.effort) lines.push(`   - Effort: ${effortText(c.effort)}`);
       if (c.assignee_email) lines.push(`   - Assigned to: ${c.assignee_email}`);
       const ctx = contextSummary(c.context);
       if (ctx) lines.push(`   - Reviewer's browser: ${ctx}`);
@@ -102,8 +104,31 @@ export function buildMarkdown(app, scope, agent = null) {
     });
     blocks.push(lines.join('\n'));
   }
+  const triage = triageSummary(roots);
+  if (triage) blocks.splice(3, 0, triage);
   if (agent) blocks.push(agentBlock(agent));
   return { text: blocks.join('\n'), count: roots.length };
+}
+
+// A short "who owns what" summary at the top of the export, built from the
+// triage fields when any are set: waiting on the client, then by effort.
+function triageSummary(roots) {
+  const triaged = roots.filter((c) => c.status === 'waiting' || c.effort || (c.labels && c.labels.length));
+  if (!triaged.length) return '';
+  const groups = [
+    ['Waiting on the client', roots.filter((c) => c.status === 'waiting')],
+    ['Quick wins', roots.filter((c) => c.status !== 'waiting' && c.effort === 'quick')],
+    ['Medium', roots.filter((c) => c.status !== 'waiting' && c.effort === 'medium')],
+    ['Large', roots.filter((c) => c.status !== 'waiting' && c.effort === 'large')],
+    ['Photos and content needed', roots.filter((c) => c.status !== 'waiting' && !c.effort && (c.labels || []).some((l) => l === 'photo' || l === 'content'))],
+  ].filter(([, list]) => list.length);
+  const lines = ['## Summary', ''];
+  for (const [title, list] of groups) {
+    lines.push(`**${title} — ${list.length}**`);
+    for (const c of list) lines.push(`- ${c.page_path}: ${c.comment_text.split('\n')[0].slice(0, 90)}${(c.labels || []).length ? ` (${c.labels.map(labelText).join(', ')})` : ''}`);
+    lines.push('');
+  }
+  return lines.join('\n');
 }
 
 // Appended to owner/operator exports: the IDs above plus a key and an
@@ -115,7 +140,7 @@ export function agentBlock({ key, endpoint }) {
     '---',
     '## For AI coding assistants (Claude Code, Cursor, …)',
     '',
-    'These items are tracked in PinPoint and each one has an ID above. Work through them in order.',
+    'These items are tracked in PinPoint and each one has an ID above. Triage anything untriaged first: labels (bug, copy, design, content, photo, decision), effort (quick, medium, large), and status "waiting" with a reply when the client must decide or supply something. Then work through what you own, quick items first.',
     'When you finish an item, mark it resolved with a one-line reply saying what you changed.',
     "If you cannot do an item, reply with why and leave it open. Never resolve an item you did not complete.",
     'Before you report that you are done, fetch the open list again and confirm nothing you handled is still open.',
@@ -124,6 +149,12 @@ export function agentBlock({ key, endpoint }) {
     '```bash',
     `curl -s -X POST "${endpoint}" -H "content-type: application/json" -H "x-pinpoint-agent-key: ${key}" \\`,
     `  -d '{"comment_id":"<ID>","reply":"Changed the headline to …","resolve":true,"agent_name":"Claude Code"}'`,
+    '```',
+    '',
+    'Triage an item (labels: bug, copy, design, content, photo, decision; effort: quick, medium, large) or hand it to the client:',
+    '```bash',
+    `curl -s -X POST "${endpoint}" -H "content-type: application/json" -H "x-pinpoint-agent-key: ${key}" \\`,
+    `  -d '{"comment_id":"<ID>","labels":["photo"],"effort":"quick","status":"waiting","reply":"Need the new team photo from you before I can place it."}'`,
     '```',
     'Reply without resolving (blocked, question, partial):',
     '```bash',

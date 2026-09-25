@@ -11,7 +11,7 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
   const shareLink = `${p.site_url.replace(/\/$/, '')}/?markup=${p.token}`;
   const access = await projectAccess(id).catch(() => ({}));
   const hasFeature = (f) => acct.is_operator || (access.features || []).includes(f);
-  const openCount = (await listComments(id).catch(() => [])).filter((c) => !c.parent_id && (c.status === 'open' || c.status === 'in_progress')).length;
+  const openCount = (await listComments(id).catch(() => [])).filter((c) => !c.parent_id && (c.status === 'open' || c.status === 'in_progress' || c.status === 'waiting')).length;
   const tabs = h('div', { class: 'tabs' }, h('a', { class: 'on', href: `#/projects/${id}` }, 'Settings'), h('a', { href: `#/projects/${id}/feedback` }, `Feedback (${openCount} open)`));
   const head = pageHead(p.name, p.site_url, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'All projects'), h('a', { class: 'btn', href: shareLink, target: '_blank', rel: 'noopener' }, 'Open site in PinPoint'));
 
@@ -188,7 +188,8 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
   });
   const claudeMd = [
     '## PinPoint feedback',
-    'Website feedback for this project is tracked in PinPoint. When I paste a PinPoint export, work through the items in order.',
+    'Website feedback for this project is tracked in PinPoint. Start by triaging anything untriaged: label it (bug, copy, design, content, photo, decision), size it (quick, medium, large), and mark items the client must decide or supply as waiting with a reply saying what you need.',
+    'Then work through what we own, quick items first.',
     'When an item is done, resolve it with a one-line reply describing the change, using the curl commands and the item ID from the export.',
     'Never resolve an item you did not complete. If you cannot do one, reply with why and leave it open.',
     'Before reporting that you are finished, fetch the open list again and confirm nothing you handled is still open.',

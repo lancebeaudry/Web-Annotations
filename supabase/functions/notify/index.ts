@@ -65,7 +65,25 @@ Deno.serve(async (req) => {
     console.error("integrations failed", e);
     return { ran: 0 };
   });
-  if (eventKind === "update") return json(200, { sent: 0, integrations: integrations.ran });
+  if (eventKind === "update") {
+    // Moved to "waiting on client" with someone assigned: tell that person.
+    const old = payload.old_record ?? {};
+    const assignee = (record.assignee_email || "").toLowerCase().trim();
+    const becameWaiting = record.status === "waiting" && (old.status !== "waiting" || (old.assignee_email || "").toLowerCase() !== assignee);
+    if (becameWaiting && assignee && mailerConfigured()) {
+      const link = deepLink({ id: record.project_id, ...project }, record as any);
+      const snippet = record.comment_text.length > 300 ? record.comment_text.slice(0, 300) + "…" : record.comment_text;
+      const lead = `An item on ${project.name} needs your decision before work can continue.`;
+      const text = `${lead}\n\nPage: ${record.page_path}\n"${snippet}"\n\nOpen it and reply: ${link}\n${FOOTER_TEXT}`;
+      const html = `<p>${esc(lead)}</p><p style="color:#555">Page: ${esc(record.page_path)}</p>` +
+        `<blockquote style="margin:0 0 16px;padding:8px 12px;border-left:3px solid #ddd;color:#333">${esc(snippet)}</blockquote>` +
+        `<p><a href="${esc(link)}" style="display:inline-block;padding:8px 14px;background:#1B6493;color:#fff;border-radius:6px;text-decoration:none">Open and reply</a></p>` + FOOTER_HTML;
+      try { await sendEmail({ to: assignee, subject: `Needs your decision — ${project.name}`, text, html, idempotencyKey: `waiting-${record.id}-${assignee}-${Date.now()}` }); }
+      catch (e) { console.error("waiting email failed", e); }
+      return json(200, { sent: 1, integrations: integrations.ran });
+    }
+    return json(200, { sent: 0, integrations: integrations.ran });
+  }
 
   // recipient email -> reason. "mention" wins over "team" for wording.
   const recipients = new Map<string, "mention" | "team">();

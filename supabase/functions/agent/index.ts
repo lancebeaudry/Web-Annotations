@@ -1,8 +1,8 @@
 // PinPoint — AI-assistant endpoint (curl-shaped). See _shared/feedback.ts.
 //
-//   GET  /agent?status=open|in_progress|resolved|wont_fix|all[&page=/path]
+//   GET  /agent?status=open|in_progress|waiting|resolved|wont_fix|all[&page=/path][&label=bug]
 //   GET  /agent?pages=1                       -> pages with open counts
-//   POST /agent  { comment_id, reply?, status?, resolve?, reopen?, assignee?, agent_name? }
+//   POST /agent  { comment_id, reply?, status?, resolve?, reopen?, assignee?, labels?, effort?, agent_name? }
 //   POST /agent  { items: [ … ], agent_name? }
 // Auth: x-pinpoint-agent-key (or Authorization: Bearer pp_…). The same key
 // works with the MCP server at /mcp for assistants that speak MCP.
@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
 
   if (req.method === "GET") {
     if (url.searchParams.get("pages")) return json(200, { pages: await listPages(project) }, noStore);
-    return json(200, await listFeedback(project, { status: url.searchParams.get("status") ?? "open", page: url.searchParams.get("page") ?? undefined }), noStore);
+    return json(200, await listFeedback(project, { status: url.searchParams.get("status") ?? "open", page: url.searchParams.get("page") ?? undefined, label: url.searchParams.get("label") ?? undefined }), noStore);
   }
 
   let body: Record<string, any>;

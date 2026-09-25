@@ -1,47 +1,54 @@
 // Feedback inbox for one project: every comment across the site, with
-// status and assignee editable inline, a list and a board view, and deep
-// links that open the item on the live site.
+// status, assignee, labels and effort editable inline, a list and a board
+// view, a "Needs your decision" view for the client, and deep links that
+// open the item on the live site.
 import { h, fmtDate, toast } from '../ui/dom.js';
 import { card, pageHead } from '../ui/shell.js';
-import { getProject, listComments, patchComment, assignees as listAssignees } from '../api.js';
+import { getProject, listComments, patchComment, assignees as listAssignees, projectAccess, sendDigest, setDigestWeekly } from '../api.js';
 
-const STATUS = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved', wont_fix: "Won't fix" };
-const ORDER = ['open', 'in_progress', 'resolved', 'wont_fix'];
-const isOpen = (s) => s === 'open' || s === 'in_progress';
+const STATUS = { open: 'Open', in_progress: 'In progress', waiting: 'Waiting on client', resolved: 'Resolved', wont_fix: "Won't fix" };
+const ORDER = ['open', 'in_progress', 'waiting', 'resolved', 'wont_fix'];
+const isOpen = (s) => s === 'open' || s === 'in_progress' || s === 'waiting';
+const LABEL = { bug: 'Bug', copy: 'Copy', design: 'Design', content: 'Content needed', photo: 'Photo needed', decision: 'Decision' };
+const LABELS = Object.keys(LABEL);
+const EFFORT = { quick: 'Quick', medium: 'Medium', large: 'Large' };
 
 export async function feedbackScreen({ id, user, acct, query }) {
   const p = await getProject(id);
   if (!p) return card('Not found', h('p', {}, 'This project doesn’t exist or you don’t have access.'), h('a', { class: 'btn', href: '#/projects' }, 'Back'));
   const canManage = acct.is_operator || p.owner_id === user.id;
   const me = (user.email || '').toLowerCase();
-  const [rows, people] = await Promise.all([listComments(id), canManage ? listAssignees(id).catch(() => []) : Promise.resolve([])]);
+  const [rows, people, access] = await Promise.all([listComments(id), canManage ? listAssignees(id).catch(() => []) : Promise.resolve([]), projectAccess(id).catch(() => ({}))]);
   const roots = rows.filter((r) => !r.parent_id);
   const repliesOf = (rid) => rows.filter((r) => r.parent_id === rid);
   const link = (c) => `${c.page_url}?markup=${encodeURIComponent(p.token)}&pp_comment=${c.id}`;
 
-  const f = { status: query.status || 'open', page: '', assignee: '', q: '', view: query.view || 'list' };
+  const f = { status: query.status || 'open', page: '', assignee: '', label: query.label || '', q: '', view: query.view || 'list' };
   const pages = [...new Set(roots.map((r) => r.page_path))].sort();
 
-  const statusSel = h('select', {}, h('option', { value: 'open' }, 'Open + in progress'), ...ORDER.map((s) => h('option', { value: s }, STATUS[s])), h('option', { value: 'all' }, 'All'));
+  const statusSel = h('select', {}, h('option', { value: 'open' }, 'All open'), ...ORDER.map((s) => h('option', { value: s }, STATUS[s])), h('option', { value: 'all' }, 'Everything'));
   statusSel.value = f.status;
   const pageSel = h('select', {}, h('option', { value: '' }, 'All pages'), ...pages.map((pg) => h('option', { value: pg }, pg)));
   const assigneeSel = h('select', {}, h('option', { value: '' }, 'Anyone'), h('option', { value: '__none' }, 'Unassigned'), ...people.map((e) => h('option', { value: e }, e)));
+  const labelSel = h('select', {}, h('option', { value: '' }, 'Any label'), ...LABELS.map((l) => h('option', { value: l }, LABEL[l])), h('option', { value: '__none' }, 'Untriaged'));
+  labelSel.value = f.label;
   const search = h('input', { type: 'search', placeholder: 'Search feedback…' });
   const viewSeg = h('div', { class: 'seg' });
   const body = h('div', {});
 
   const canEdit = (c) => canManage || (c.assignee_email && c.assignee_email.toLowerCase() === me);
 
-  function visible() {
+  function matches(c, ignoreStatus = false) {
+    if (!ignoreStatus && (f.status === 'open' ? !isOpen(c.status) : f.status !== 'all' && c.status !== f.status)) return false;
+    if (f.page && c.page_path !== f.page) return false;
+    if (f.assignee === '__none' ? c.assignee_email : f.assignee && c.assignee_email !== f.assignee) return false;
+    const labels = c.labels || [];
+    if (f.label === '__none' ? labels.length : f.label && !labels.includes(f.label)) return false;
     const needle = f.q.trim().toLowerCase();
-    return roots.filter((c) => {
-      if (f.status === 'open' ? !isOpen(c.status) : f.status !== 'all' && c.status !== f.status) return false;
-      if (f.page && c.page_path !== f.page) return false;
-      if (f.assignee === '__none' ? c.assignee_email : f.assignee && c.assignee_email !== f.assignee) return false;
-      if (needle && !`${c.comment_text} ${c.author_name || ''} ${c.current_text || ''} ${c.page_path}`.toLowerCase().includes(needle)) return false;
-      return true;
-    }).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+    if (needle && !`${c.comment_text} ${c.author_name || ''} ${c.current_text || ''} ${c.page_path}`.toLowerCase().includes(needle)) return false;
+    return true;
   }
+  const visible = () => roots.filter((c) => matches(c)).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 
   async function setField(c, patch, el) {
     el.disabled = true;
@@ -56,7 +63,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
   }
 
   const statusCtl = (c) => {
-    const s = h('select', { class: 'mini' }, ...ORDER.map((k) => h('option', { value: k }, STATUS[k])));
+    const s = h('select', { class: `mini st-${c.status}` }, ...ORDER.map((k) => h('option', { value: k }, STATUS[k])));
     s.value = c.status;
     s.addEventListener('change', () => setField(c, { status: s.value }, s));
     return s;
@@ -67,6 +74,26 @@ export async function feedbackScreen({ id, user, acct, query }) {
     s.value = c.assignee_email || '';
     s.addEventListener('change', () => setField(c, { assignee_email: s.value || null }, s));
     return s;
+  };
+  const effortCtl = (c) => {
+    const s = h('select', { class: 'mini', title: 'Effort' }, h('option', { value: '' }, 'Effort'), ...Object.keys(EFFORT).map((k) => h('option', { value: k }, EFFORT[k])));
+    s.value = c.effort || '';
+    s.addEventListener('change', () => setField(c, { effort: s.value || null }, s));
+    return s;
+  };
+  // Labels: clickable chips for editors, plain chips for everyone else.
+  const labelChips = (c, editable) => {
+    const have = new Set(c.labels || []);
+    const wrap = h('span', { class: 'chips' });
+    for (const l of editable ? LABELS : [...have]) {
+      const chip = h(editable ? 'button' : 'span', { type: editable ? 'button' : null, class: `chip lb-${l}${have.has(l) ? ' on' : ''}` }, LABEL[l]);
+      if (editable) chip.addEventListener('click', () => {
+        if (have.has(l)) have.delete(l); else have.add(l);
+        setField(c, { labels: LABELS.filter((x) => have.has(x)) }, chip);
+      });
+      wrap.appendChild(chip);
+    }
+    return wrap;
   };
 
   function item(c) {
@@ -81,39 +108,96 @@ export async function feedbackScreen({ id, user, acct, query }) {
       (ctx.errors || []).length ? `${ctx.errors.length} console error${ctx.errors.length === 1 ? '' : 's'}` : '',
       c.external_ref?.clickup_url ? 'in ClickUp' : '',
     ].filter(Boolean).join(' · ');
+    const editable = canEdit(c);
     const ctl = h('div', { class: 'ctl' },
-      h('span', { class: `st ${c.status}` }, STATUS[c.status] || c.status),
-      canEdit(c) ? statusCtl(c) : null,
+      editable ? statusCtl(c) : h('span', { class: `st ${c.status}` }, STATUS[c.status] || c.status),
+      editable ? effortCtl(c) : c.effort ? h('span', { class: 'st' }, EFFORT[c.effort]) : null,
       canManage ? assigneeCtl(c) : c.assignee_email ? h('span', { class: 'hint' }, `→ ${c.assignee_email}`) : null,
       h('a', { class: 'btn btn-ghost btn-sm', href: link(c), target: '_blank', rel: 'noopener' }, 'Open on site'),
       c.external_ref?.clickup_url ? h('a', { class: 'btn btn-ghost btn-sm', href: c.external_ref.clickup_url, target: '_blank', rel: 'noopener' }, 'ClickUp') : null);
-    return h('div', { class: `fb ${isOpen(c.status) ? '' : 'closed'}` }, h('div', {}, h('div', { class: 'txt' }, c.comment_text), h('div', { class: 'sub' }, sub)), ctl);
+    const main = h('div', {}, h('div', { class: 'txt' }, c.comment_text), h('div', { class: 'sub' }, sub));
+    if (editable || (c.labels || []).length) main.appendChild(labelChips(c, editable));
+    return h('div', { class: `fb ${isOpen(c.status) ? '' : 'closed'}${c.status === 'waiting' ? ' waiting' : ''}` }, main, ctl);
   }
 
   function board(list) {
     return h('div', { class: 'board' }, ...ORDER.map((s) =>
       h('div', { class: 'col' }, h('h5', {}, `${STATUS[s]} (${list.filter((c) => c.status === s).length})`),
         ...list.filter((c) => c.status === s).map((c) => {
-          const el = h('div', { class: 'cardlet', title: 'Open on site' }, c.comment_text.slice(0, 120), h('div', { class: 'sub' }, `${c.page_path} · ${c.assignee_email ? '→ ' + c.assignee_email.split('@')[0] : c.author_name || 'reviewer'}`));
+          const el = h('div', { class: 'cardlet', title: 'Open on site' }, c.comment_text.slice(0, 120),
+            (c.labels || []).length || c.effort ? h('div', { class: 'chips' }, ...(c.labels || []).map((l) => h('span', { class: `chip on lb-${l}` }, LABEL[l])), c.effort ? h('span', { class: 'chip' }, EFFORT[c.effort]) : null) : null,
+            h('div', { class: 'sub' }, `${c.page_path} · ${c.assignee_email ? '→ ' + c.assignee_email.split('@')[0] : c.author_name || 'reviewer'}`));
           el.addEventListener('click', () => window.open(link(c), '_blank', 'noopener'));
           return el;
         }))));
   }
 
-  function render() {
+  // Counts for the summary strip: what we own vs what the client decides.
+  const summary = h('div', { class: 'triage-strip' });
+  function renderSummary() {
+    const open = roots.filter((c) => isOpen(c.status));
+    const waiting = open.filter((c) => c.status === 'waiting');
+    const ours = open.filter((c) => c.status !== 'waiting');
+    const quick = ours.filter((c) => c.effort === 'quick').length;
+    const medium = ours.filter((c) => c.effort === 'medium').length;
+    const large = ours.filter((c) => c.effort === 'large').length;
+    const untriaged = open.filter((c) => !(c.labels || []).length && !c.effort && c.status !== 'waiting').length;
+    const pill = (label, n, on) => {
+      const b = h('button', { type: 'button', class: `tpill${n ? '' : ' empty'}` }, h('b', {}, String(n)), ' ', label);
+      b.addEventListener('click', on);
+      return b;
+    };
+    summary.replaceChildren(
+      pill('waiting on the client', waiting.length, () => { f.status = 'waiting'; statusSel.value = 'waiting'; f.label = ''; labelSel.value = ''; render(); }),
+      pill('quick wins', quick, () => { f.status = 'open'; statusSel.value = 'open'; f.q = ''; search.value = ''; render('quick'); }),
+      pill('medium', medium, () => render('medium')),
+      pill('large', large, () => render('large')),
+      pill('untriaged', untriaged, () => { f.status = 'open'; statusSel.value = 'open'; f.label = '__none'; labelSel.value = '__none'; render(); }),
+    );
+  }
+
+  function render(effortOnly) {
     viewSeg.replaceChildren(...['list', 'board'].map((v) => {
       const b = h('button', { type: 'button', class: v === f.view ? 'on' : '' }, v === 'list' ? 'List' : 'Board');
       b.addEventListener('click', () => { f.view = v; render(); });
       return b;
     }));
-    const list = f.view === 'board' ? roots.filter((c) => (!f.page || c.page_path === f.page) && (f.assignee === '__none' ? !c.assignee_email : !f.assignee || c.assignee_email === f.assignee)) : visible();
+    let list = f.view === 'board' ? roots.filter((c) => matches(c, true)) : visible();
+    if (effortOnly) list = list.filter((c) => c.effort === effortOnly && c.status !== 'waiting');
     body.replaceChildren(list.length || f.view === 'board' ? (f.view === 'board' ? board(list) : h('div', {}, ...list.map(item))) : h('p', { class: 'hint' }, roots.length ? 'Nothing matches these filters.' : 'No feedback yet. Share the review link and comments will show up here.'));
+    renderSummary();
   }
   statusSel.addEventListener('change', () => { f.status = statusSel.value; render(); });
   pageSel.addEventListener('change', () => { f.page = pageSel.value; render(); });
   assigneeSel.addEventListener('change', () => { f.assignee = assigneeSel.value; render(); });
+  labelSel.addEventListener('change', () => { f.label = labelSel.value; render(); });
   search.addEventListener('input', () => { f.q = search.value; render(); });
   render();
+
+  // Digest: email the client what is waiting on them, now or weekly.
+  let digestCard = null;
+  if (canManage) {
+    const sendBtn = h('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Email the client now');
+    sendBtn.addEventListener('click', async () => {
+      const n = roots.filter((c) => c.status === 'waiting').length;
+      if (!n) return toast('Nothing is waiting on the client');
+      sendBtn.disabled = true;
+      try {
+        const r = await sendDigest(id);
+        toast(r.sent ? `Sent to ${r.to.join(', ')}` : 'No collaborators to send to — invite them first');
+      } catch (err) { toast(err.message); }
+      sendBtn.disabled = false;
+    });
+    const weekly = h('input', { type: 'checkbox' });
+    weekly.checked = access.digest_weekly === true;
+    weekly.addEventListener('change', async () => {
+      try { await setDigestWeekly(id, weekly.checked); toast(weekly.checked ? 'Weekly digest on' : 'Weekly digest off'); }
+      catch (err) { weekly.checked = !weekly.checked; toast(err.message); }
+    });
+    digestCard = h('div', { class: 'digest' },
+      h('div', {}, h('b', {}, 'Needs your decision'), h('div', { class: 'hint' }, 'Emails every collaborator the items marked “Waiting on client”, grouped by page, with a link to reply on the site.')),
+      h('div', { class: 'inline' }, sendBtn, h('label', { class: 'check', style: 'margin:0' }, weekly, h('span', {}, 'Send every Monday'))));
+  }
 
   const openCount = roots.filter((c) => isOpen(c.status)).length;
   return h(
@@ -121,6 +205,6 @@ export async function feedbackScreen({ id, user, acct, query }) {
     {},
     pageHead(p.name, p.site_url, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'All projects'), h('a', { class: 'btn', href: `${p.site_url.replace(/\/$/, '')}/?markup=${p.token}`, target: '_blank', rel: 'noopener' }, 'Open site in PinPoint')),
     h('div', { class: 'tabs' }, h('a', { href: `#/projects/${id}` }, 'Settings'), h('a', { class: 'on', href: `#/projects/${id}/feedback` }, `Feedback (${openCount} open)`)),
-    card(null, h('div', { class: 'filters' }, statusSel, pageSel, canManage ? assigneeSel : null, search, viewSeg), body)
+    card(null, summary, h('div', { class: 'filters' }, statusSel, pageSel, labelSel, canManage ? assigneeSel : null, search, viewSeg), body, digestCard)
   );
 }

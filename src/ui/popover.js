@@ -6,7 +6,7 @@ import { attachImages, imageOnlyText } from './attach.js';
 import { authorEmail } from '../app.js';
 import { roleLabel, authorName } from '../roles.js';
 import { deviceLabel } from '../capture.js';
-import { STATUS_ORDER, statusLabel, isOpenStatus } from '../status.js';
+import { STATUS_ORDER, statusLabel, isOpenStatus, LABEL_ORDER, labelText, EFFORT_ORDER, effortText } from '../status.js';
 import { contextSummary } from '../screenshot.js';
 
 function fmtDate(iso) {
@@ -112,15 +112,38 @@ export function openThread(app, rootId) {
     sel.addEventListener('change', () => patch({ status: sel.value }, sel));
     triage.append(sel);
   }
+  if (canStatus) {
+    // Effort: quick / medium / large.
+    const esel = h('select', { class: 'assignee-select effort-select', title: 'Effort' }, h('option', { value: '' }, 'Effort'), ...EFFORT_ORDER.map((e) => h('option', { value: e }, effortText(e))));
+    esel.value = root.effort || '';
+    esel.addEventListener('change', () => patch({ effort: esel.value || null }, esel));
+    triage.append(esel);
+  }
   if (canAssign) {
     const asel = h('select', { class: 'assignee-select', title: 'Assign to' }, h('option', { value: '' }, 'Unassigned'),
       ...app.assignees.map((e) => h('option', { value: e }, e.split('@')[0])));
     if (root.assignee_email && !app.assignees.includes(root.assignee_email)) asel.appendChild(h('option', { value: root.assignee_email }, root.assignee_email.split('@')[0]));
     asel.value = root.assignee_email || '';
     asel.addEventListener('change', () => patch({ assignee_email: asel.value || null }, asel));
-    triage.append(h('span', { class: 'triage-lbl' }, 'Assign'), asel);
+    triage.append(asel);
   }
   if (triage.children.length) body.appendChild(triage);
+  // Labels: toggle chips. Editable by whoever can set status; read-only
+  // chips for everyone else when any are set.
+  const labels = new Set(root.labels || []);
+  if (canStatus || labels.size) {
+    const chips = h('div', { class: 'label-row' });
+    for (const l of canStatus ? LABEL_ORDER : [...labels]) {
+      const chip = h('button', { type: 'button', class: `label-chip lb-${l}${labels.has(l) ? ' on' : ''}`, title: canStatus ? 'Toggle label' : '' }, labelText(l));
+      if (canStatus) chip.addEventListener('click', () => {
+        if (labels.has(l)) labels.delete(l); else labels.add(l);
+        chip.classList.toggle('on', labels.has(l));
+        patch({ labels: LABEL_ORDER.filter((x) => labels.has(x)) }, chip);
+      });
+      chips.appendChild(chip);
+    }
+    body.appendChild(chips);
+  }
   if (root.selector) {
     body.appendChild(h('div', { class: 'context' }, root.selector));
   }

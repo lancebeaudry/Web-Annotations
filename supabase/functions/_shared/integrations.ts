@@ -8,7 +8,7 @@ import { db } from "./db.ts";
 
 type Row = Record<string, any>;
 type Project = { id: string; name: string; site_url: string; token: string };
-const LABEL: Record<string, string> = { open: "Open", in_progress: "In progress", resolved: "Resolved", wont_fix: "Won't fix" };
+const LABEL: Record<string, string> = { open: "Open", in_progress: "In progress", waiting: "Waiting on client", resolved: "Resolved", wont_fix: "Won't fix" };
 const esc = (s: string) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 export function deepLink(project: Project, record: Row) {
@@ -92,6 +92,7 @@ async function statusNameFor(token: string, listId: string, status: string): Pro
   switch (status) {
     case "resolved": return pick(["complete", "done", "closed", "resolved"]);
     case "in_progress": return pick(["in progress", "doing", "working"]);
+    case "waiting": return pick(["waiting", "on hold", "blocked", "client", "review"]);
     case "wont_fix": return pick(["won't fix", "wont fix", "closed", "cancel", "complete"]);
     default: return pick(["to do", "open", "todo", "backlog"]) ?? names[0] ?? null;
   }

@@ -42,7 +42,7 @@ export const rotateSecret = async (id) => unwrap(await supabase.rpc('rotate_brid
 export const agentKey = async (id) => unwrap(await supabase.rpc('get_agent_key', { p_project: id }));
 // Open (open + in_progress) root-comment counts per project, one query.
 export const openCounts = async () => {
-  const rows = unwrap(await supabase.from('comments').select('project_id,status').is('parent_id', null).in('status', ['open', 'in_progress'])) || [];
+  const rows = unwrap(await supabase.from('comments').select('project_id,status').is('parent_id', null).in('status', ['open', 'in_progress', 'waiting'])) || [];
   const out = {};
   for (const r of rows) out[r.project_id] = (out[r.project_id] || 0) + 1;
   return out;
@@ -51,8 +51,10 @@ export const projectAccess = async (id) => unwrap(await supabase.rpc('my_project
 
 // Feedback inbox (ordinary RLS: owner / collaborator / operator can read).
 export const listComments = async (id) =>
-  unwrap(await supabase.from('comments').select('id,parent_id,page_path,page_url,element_tag,selector,current_text,comment_text,author_email,author_name,author_role,status,assignee_email,created_at,attachments,context,external_ref').eq('project_id', id).order('created_at')) || [];
-export const patchComment = async (id, patch) => unwrap(await supabase.from('comments').update(patch).eq('id', id).select('id,status,assignee_email').single());
+  unwrap(await supabase.from('comments').select('id,parent_id,page_path,page_url,element_tag,selector,current_text,comment_text,author_email,author_name,author_role,status,assignee_email,labels,effort,created_at,attachments,context,external_ref').eq('project_id', id).order('created_at')) || [];
+export const patchComment = async (id, patch) => unwrap(await supabase.from('comments').update(patch).eq('id', id).select('id,status,assignee_email,labels,effort').single());
+export const sendDigest = async (id, to) => callFn('digest', { project_id: id, to });
+export const setDigestWeekly = async (id, weekly) => unwrap(await supabase.rpc('update_digest_settings', { p_project: id, p_weekly: !!weekly }));
 export const assignees = async (id) => unwrap(await supabase.rpc('list_assignees', { p_project: id })) || [];
 
 // Page approvals (Agency).

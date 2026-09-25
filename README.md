@@ -110,3 +110,11 @@ Owner/operator Markdown exports end with an "For AI coding assistants" block: ea
 - **Context + screenshots**: `comments.context` (browser, viewport, console errors) and an automatic html2canvas capture (cdnjs, lazy) unless `projects.auto_screenshot` is off.
 - **MCP**: `functions/mcp` is a stateless Streamable-HTTP MCP server (JSON responses). `claude mcp add --transport http pinpoint <url> --header "x-pinpoint-agent-key: …"`. Tools: list_feedback, list_pages, get_feedback, reply, set_status, assign, project_info.
 - **Stripe**: prices carry `metadata.plan`; the webhook maps a paid subscription to that plan. `billing-checkout` takes `{plan, interval}` and switches an active subscription in place.
+
+## 2.3: triage — waiting on client, labels, effort, digest
+
+- **Status `waiting`** ("Waiting on client") joins the open states; it counts as open everywhere. Moving an item to waiting with an assignee emails that person a "Needs your decision" note (`notify`, update event).
+- **Labels** `comments.labels text[]` ⊂ `bug copy design content photo decision`; **effort** `comments.effort` ∈ `quick medium large`. Editable by whoever can set status: chips + select in the overlay popover, chips + select in the dashboard inbox. Exports lead with a Summary grouped by waiting / quick / medium / large / photos-and-content.
+- **MCP `triage` tool** (`{id, labels?, effort?}`), `list_feedback` gains `label`; the server instructions tell the assistant to triage untriaged items first and mark client decisions as waiting.
+- **Digest** (`functions/digest`): owner/operator POST `{project_id, to?}` emails collaborators (+ assignees of waiting items) the waiting list grouped by page with deep links; `{all:true}` + `x-notify-secret` is the weekly run (pg_cron `pinpoint-digest-weekly`, Mondays 13:00 UTC) for projects with `projects.digest_weekly`. Dashboard inbox has "Email the client now" and the weekly toggle (`update_digest_settings`). Migration: `supabase/v23.sql`.
+- **AI replies as a person** (2.2.3): `agent_persona()` / `update_agent_settings()`; `comments.via_agent` keeps the assistant name. Migration: `supabase/v223.sql`.

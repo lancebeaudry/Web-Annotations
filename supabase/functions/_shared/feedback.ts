@@ -6,10 +6,12 @@ import { db } from "./db.ts";
 export type Row = Record<string, any>;
 export type Project = { id: string; name: string; site_url: string; token: string };
 
-export const STATUSES = ["open", "in_progress", "resolved", "wont_fix"] as const;
+export const STATUSES = ["open", "in_progress", "waiting", "resolved", "wont_fix"] as const;
+export const LABELS = ["bug", "copy", "design", "content", "photo", "decision"] as const;
+export const EFFORTS = ["quick", "medium", "large"] as const;
 export type Status = typeof STATUSES[number];
 const KEY_RE = /^pp_[0-9a-f]{40}$/;
-export const SELECT = "id,project_id,parent_id,page_url,page_path,element_tag,selector,current_text,computed_styles,x_pct,y_pct,viewport_w,comment_text,author_name,author_role,status,assignee_email,created_at,attachments,context";
+export const SELECT = "id,project_id,parent_id,page_url,page_path,element_tag,selector,current_text,computed_styles,x_pct,y_pct,viewport_w,comment_text,author_name,author_role,status,assignee_email,labels,effort,created_at,attachments,context";
 
 // Key from x-pinpoint-agent-key or Authorization: Bearer pp_…
 export function keyFrom(req: Request): string {
@@ -50,13 +52,14 @@ export function shape(root: Row, all: Row[]) {
   return { ...rest, replies };
 }
 
-export async function listFeedback(project: Project, opts: { status?: string; page?: string } = {}) {
+export async function listFeedback(project: Project, opts: { status?: string; page?: string; label?: string } = {}) {
   const status = opts.status ?? "open";
   let q = `comments?project_id=eq.${project.id}&select=${SELECT}&order=created_at.asc&limit=2000`;
   if (opts.page) q += `&page_path=eq.${encodeURIComponent(opts.page)}`;
   const all = await db<Row[]>(q);
-  const wanted = (s: string) => status === "all" || (status === "open" ? s === "open" || s === "in_progress" : s === status);
-  const roots = all.filter((c) => !c.parent_id && wanted(c.status));
+  const wanted = (s: string) => status === "all" || (status === "open" ? s === "open" || s === "in_progress" || s === "waiting" : s === status);
+  const label = (opts.label ?? "").trim().toLowerCase();
+  const roots = all.filter((c) => !c.parent_id && wanted(c.status) && (!label || (c.labels ?? []).includes(label)));
   return { project: { name: project.name, site_url: project.site_url }, count: roots.length, comments: roots.map((r) => shape(r, all)) };
 }
 
@@ -117,11 +120,25 @@ export async function actOn(project: Project, item: Row, agentName: string) {
     patch.status = status;
   }
   if (item.assignee !== undefined) patch.assignee_email = item.assignee ? String(item.assignee).toLowerCase() : null;
+  if (item.labels !== undefined) {
+    const list = Array.isArray(item.labels) ? item.labels : String(item.labels).split(",");
+    const clean = [...new Set(list.map((l: unknown) => String(l).trim().toLowerCase()).filter(Boolean))];
+    const bad = clean.filter((l) => !(LABELS as readonly string[]).includes(l));
+    if (bad.length) return { ...out, error: `unknown label(s) ${bad.join(", ")}; use ${LABELS.join(", ")}` };
+    patch.labels = clean;
+  }
+  if (item.effort !== undefined) {
+    const e = item.effort ? String(item.effort).trim().toLowerCase() : null;
+    if (e && !(EFFORTS as readonly string[]).includes(e)) return { ...out, error: `effort must be one of ${EFFORTS.join(", ")}` };
+    patch.effort = e;
+  }
   if (Object.keys(patch).length) {
     await db(`comments?id=eq.${target.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) });
   }
   out.status = patch.status ?? target.status;
   if ("assignee_email" in patch) out.assignee = patch.assignee_email;
-  if (!reply && !Object.keys(patch).length) out.error = "nothing to do: send reply, status, resolve:true, reopen:true or assignee";
+  if ("labels" in patch) out.labels = patch.labels;
+  if ("effort" in patch) out.effort = patch.effort;
+  if (!reply && !Object.keys(patch).length) out.error = "nothing to do: send reply, status, resolve:true, reopen:true, assignee, labels or effort";
   return out;
 }

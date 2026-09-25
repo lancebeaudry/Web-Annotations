@@ -3,7 +3,7 @@ import { updateComment, deleteComment } from '../data.js';
 import { resolveElement, looksAddressed, deviceLabel } from '../capture.js';
 import { openThread, closePopovers } from './popover.js';
 import { authorEmail } from '../app.js';
-import { STATUS_ORDER, statusLabel, isOpenStatus } from '../status.js';
+import { STATUS_ORDER, statusLabel, isOpenStatus, labelText, effortText } from '../status.js';
 
 // Slide-out panel listing every comment in the project, grouped by
 // page (current page first), with jump-to-pin, resolve, and delete.
@@ -254,6 +254,8 @@ function item(app, comment, number, onThisPage) {
 
   const metaEl = h('div', { class: 'side-meta' }, `${name} · ${fmtDate(comment.created_at)}${replyCount ? ` · ${replyCount} repl${replyCount === 1 ? 'y' : 'ies'}` : ''}${comment.assignee_email ? ` · → ${comment.assignee_email.split('@')[0]}` : ''}`);
   if (comment.status && comment.status !== 'open') metaEl.append(h('span', { class: `side-status st-${comment.status}` }, statusLabel(comment.status)));
+  for (const l of comment.labels || []) metaEl.append(h('span', { class: `side-status lb-${l}` }, labelText(l)));
+  if (comment.effort) metaEl.append(h('span', { class: 'side-status' }, effortText(comment.effort)));
   const device = deviceLabel(comment.viewport_w);
   if (device) metaEl.append(h('span', { class: 'device-pill' }, device));
 
