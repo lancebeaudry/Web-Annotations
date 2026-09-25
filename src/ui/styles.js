@@ -639,9 +639,10 @@ export const CSS = `
 .side-filters {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
+.side-filters .side-select { flex: 1 1 0; min-width: 0; }
+.side-checks { gap: 16px; margin-top: -2px; }
 .side-select {
   border: 1px solid #c9d6de;
   border-radius: 6px;

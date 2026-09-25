@@ -139,7 +139,8 @@ export function toggleSidebar(app) {
     'div',
     { class: 'side-controls' },
     search,
-    h('div', { class: 'side-filters' }, sortSel, deviceSel, resolvedLabel, thisPageLabel)
+    h('div', { class: 'side-filters' }, sortSel, deviceSel),
+    h('div', { class: 'side-filters side-checks' }, resolvedLabel, thisPageLabel)
   );
 
   const list = h('div', { class: 'side-list' });
