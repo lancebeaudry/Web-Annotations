@@ -24,7 +24,7 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
     h(
       'ol',
       { class: 'steps' },
-      h('li', {}, 'Install the plugin: ', h('a', { href: PLUGIN_ZIP_URL }, 'download avalanche-markup.zip'), ' → Plugins → Add New → Upload.'),
+      h('li', {}, 'Install the plugin: ', h('a', { href: PLUGIN_ZIP_URL }, 'download pinpoint-by-avalanche.zip'), ' → Plugins → Add New → Upload.'),
       h('li', {}, 'Settings → PinPoint → paste the token ', h('code', {}, p.token), ' and save.'),
       h('li', {}, 'Add the site secret (below) to ', h('code', {}, 'wp-config.php'), ' so the plugin can sync settings and sign your editors in.')
     ),
@@ -358,6 +358,18 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
     nav.querySelectorAll('a').forEach((x) => x.classList.toggle('on', x === a));
   });
   const content = h('div', {}, ...sections.map(([sid, , el]) => anchored(sid, el)));
+  // Highlight the section currently in view. The observer's root margin
+  // makes the band just below the sticky header the "active" zone.
+  const links = [...nav.querySelectorAll('a[data-to]')];
+  const seen = new Map();
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) seen.set(e.target.id, e.isIntersecting ? e.intersectionRatio : 0);
+    let best = null;
+    for (const [sid] of sections) { if ((seen.get(sid) || 0) > 0) { best = sid; break; } }
+    if (!best) return;
+    links.forEach((a) => a.classList.toggle('on', a.dataset.to === best));
+  }, { rootMargin: '-90px 0px -60% 0px', threshold: [0, 0.1, 0.5] });
+  setTimeout(() => sections.forEach(([sid]) => { const el = document.getElementById(sid); if (el) io.observe(el); }), 0);
   const page = h('div', {}, head, tabs, h('div', { class: 'two-col' }, nav, content));
   if (query.to) setTimeout(() => document.getElementById(query.to)?.scrollIntoView({ block: 'start' }), 50);
   return page;
