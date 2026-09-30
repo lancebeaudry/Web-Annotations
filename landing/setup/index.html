@@ -166,6 +166,7 @@
     .q-next { background: var(--page); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-top: 20px; }
     .q-next small { font-size: 14px; color: var(--muted); display: block; margin-bottom: 6px; }
     .q-next div { font-size: 17px; line-height: 1.5; }
+    .q-pay { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-top: 24px; }
     .q-result, .q-step, .q-contact { display: flex; flex-direction: column; gap: 22px; flex: 1; }
     .q-result { gap: 0; }
     [hidden] { display: none !important; }
@@ -441,7 +442,11 @@
       <div class="q-kicker" id="r-kicker"></div>
       <h3 id="r-title"></h3>
       <div class="body" id="r-body"></div>
-      <div class="q-next"><small>What happens next</small><div id="r-next"></div></div>
+      <div class="q-next" id="r-nextbox"><small>What happens next</small><div id="r-next"></div></div>
+      <div class="q-pay" id="r-pay" hidden>
+        <a class="btn" href="https://buy.stripe.com/bJe00l60K3lrbI18Fccs800" target="_blank" rel="noopener">Pay $497 now</a>
+        <span class="aside">Optional. You can also pay after the call.</span>
+      </div>
       <div class="q-err" id="r-err" role="status" style="margin-top:12px"></div>
       <div class="q-foot">
         <button type="button" class="q-back" id="q-restart">Start over</button>
@@ -466,7 +471,7 @@
     support: { kicker: 'A better option for you', color: '#1D5F96', title: 'Hosting and support is the better fit.', body: 'You would rather not run it yourself, and that is fine. You make requests in PinPoint and we get them live.', next: 'We will email you what that includes and what it costs.' },
     move: { kicker: 'Not yet', color: '#8A5A00', title: 'Your site needs a move first.', body: 'Squarespace, Wix and Webflow keep your site inside their editor, so there are no files for an assistant to change.', next: 'We will email you a quote for moving the site somewhere this works.' },
     hosting: { kicker: 'One thing first', color: '#8A5A00', title: 'We need to find your hosting account.', body: 'Everything else looks fine. We cannot set anything up until someone can sign in where the site is hosted.', next: 'We will email you how to track it down. It usually takes a day.' },
-    fit: { kicker: 'Good news', color: '#1F6B45', title: 'Your site is a fit.', body: 'Setup is $497, one time. It ends when you have made three real changes to your own site yourself.', next: 'We will email you a link to pay and pick a setup day.' }
+    fit: { kicker: 'Good news', color: '#1F6B45', title: 'Your site is a fit.', body: 'Setup is $497, one time. Someone from our team will reach out to schedule a setup call.', next: '', pay: true }
   };
   var $ = function (id) { return document.getElementById(id); };
   var overlay = $('q'), step = 0, answers = {}, lastFocus = null;
@@ -510,6 +515,8 @@
       show('result');
       $('r-kicker').textContent = r.kicker; $('r-kicker').style.color = r.color;
       $('r-title').textContent = r.title; $('r-body').textContent = r.body; $('r-next').textContent = r.next;
+      $('r-nextbox').hidden = !r.next;
+      $('r-pay').hidden = !r.pay;
       $('q-done').focus();
     }
   }
@@ -544,6 +551,15 @@
       });
   });
   if (location.hash === '#fit-check') open();
+  // Back from Stripe after paying: say thanks in the same card.
+  if (/[?&]paid=1/.test(location.search)) {
+    overlay.classList.add('open'); document.body.style.overflow = 'hidden';
+    show('result');
+    $('r-kicker').textContent = 'Payment received'; $('r-kicker').style.color = '#1F6B45';
+    $('r-title').textContent = 'Thank you. You\u2019re booked in.';
+    $('r-body').textContent = 'Someone from our team will reach out to schedule your setup call. Your receipt is on its way from Stripe.';
+    $('r-nextbox').hidden = true; $('r-pay').hidden = true; $('q-restart').style.visibility = 'hidden';
+  }
 })();
 </script>
 
