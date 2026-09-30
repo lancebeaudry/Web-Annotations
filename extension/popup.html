@@ -5,7 +5,7 @@
   <title>PinPoint Anywhere</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; width: 320px; font: 14px/1.5 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: #1F2A33; background: #F7F9FB; }
+    body { margin: 0; width: 340px; font: 14px/1.5 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: #1F2A33; background: #F7F9FB; }
     header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: #fff; border-bottom: 1px solid #DCE4EB; }
     header img { height: 26px; }
     header b { font-size: 15px; color: #10283D; }
@@ -22,6 +22,18 @@
     .who a { color: #1D5F96; cursor: pointer; }
     kbd { font: 11px ui-monospace, Menlo, monospace; background: #EEF4F9; border: 1px solid #DCE4EB; border-radius: 4px; padding: 1px 5px; }
     .hidden { display: none; }
+    .feed-h { font-size: 12px; font-weight: 600; color: #10283D; margin-top: 12px; }
+    .feed { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; max-height: 300px; overflow: auto; }
+    .item { display: flex; gap: 10px; align-items: center; padding: 6px; border: 1px solid #DCE4EB; border-radius: 8px; background: #fff; cursor: pointer; text-decoration: none; color: inherit; }
+    .item:hover { border-color: #1D5F96; }
+    .item img, .item .noimg { width: 56px; height: 40px; border-radius: 5px; object-fit: cover; background: #EEF4F9; flex: none; border: 1px solid #E8EEF3; }
+    .item .t { font-size: 13px; line-height: 1.3; color: #10283D; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .item .m { font-size: 11px; color: #5A6F80; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item .m a { color: #1D5F96; }
+    .item > div { min-width: 0; flex: 1; }
+    .acct { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #5A6F80; margin-top: 12px; padding-top: 10px; border-top: 1px solid #DCE4EB; }
+    .acct a { color: #1D5F96; cursor: pointer; }
+    .acct > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   </style>
 </head>
 <body>
@@ -48,13 +60,18 @@
       <div class="err" id="err1"></div>
     </section>
     <section id="app" class="hidden">
-      <div class="who"><span id="whoEmail"></span><a id="signout">Sign out</a></div>
-      <label for="name">Your name (shown on references)</label>
-      <input id="name" type="text" placeholder="e.g. Nick">
-      <div style="height:6px"></div>
       <button class="btn" id="pick">Pick an element on this page</button>
-      <div class="hint">Or press <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd> on any page. Then click the element you want to save.</div>
+      <div class="hint" style="margin-top:6px">Or press <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd>, then click the element you want to save.</div>
       <div class="err" id="err2"></div>
+      <div class="feed-h">Recently saved</div>
+      <div id="feed" class="feed"><div class="hint">Loading…</div></div>
+      <div class="acct">
+        <span><span id="whoName"></span> · <span id="whoEmail"></span></span>
+        <span><a id="editName">Edit name</a> · <a id="signout">Sign out</a></span>
+      </div>
+      <div id="nameRow" class="hidden" style="margin-top:6px">
+        <input id="name" type="text" placeholder="Name shown on your references">
+      </div>
     </section>
   </main>
   <script src="popup.js"></script>

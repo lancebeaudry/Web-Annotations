@@ -8,6 +8,8 @@
 
 const SUPABASE_URL = __SUPABASE_URL__;
 const ANON_KEY = __SUPABASE_ANON_KEY__;
+const DASHBOARD_URL = __DASHBOARD_URL__;
+const nameFromEmail = (e) => (e || '').split('@')[0].split(/[._-]/)[0].replace(/^./, (c) => c.toUpperCase());
 const STORE = chrome.storage.local;
 
 const get = (k) => STORE.get(k).then((r) => r[k]);
@@ -105,11 +107,23 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
         if (!r.ok) throw new Error('That code didn’t work. Codes expire after 10 minutes.');
         const s = await r.json();
         await set('pp_session', s);
+        // Ask for a name once: start from the email, editable in the popup.
+        if (!(await get('pp_name'))) await set('pp_name', nameFromEmail(s.user.email));
         return { ok: true, email: s.user.email };
       }
       case 'signOut': await STORE.remove('pp_session'); return { ok: true };
       case 'setName': await set('pp_name', (msg.name || '').trim().slice(0, 80)); return { ok: true };
       case 'startPicker': return startPicker(msg.tabId);
+      case 'recent': {
+        // The signed-in person's latest references, newest first.
+        const s = await session();
+        if (!s) return { items: [] };
+        const email = encodeURIComponent((s.user.email || '').toLowerCase());
+        const rows = await api(`/rest/v1/comments?kind=eq.reference&author_email=eq.${email}&select=id,project_id,comment_text,source,page_path,created_at,projects(name)&order=created_at.desc&limit=6`);
+        return { items: rows.map((r) => ({ id: r.id, note: r.comment_text, project: r.projects ? r.projects.name : '', attached: !!r.page_path, created_at: r.created_at,
+          host: r.source && r.source.host, url: r.source && r.source.url, shot: r.source && r.source.screenshot,
+          inbox: `${DASHBOARD_URL}#/projects/${r.project_id}/feedback?kind=reference` })) };
+      }
       case 'projects': {
         const list = await api('/rest/v1/projects?select=id,name,site_url&order=name.asc');
         return { projects: list, last: await get('pp_last_project'), name: (await get('pp_name')) || '' };

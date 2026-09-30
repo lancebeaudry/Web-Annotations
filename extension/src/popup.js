@@ -35,7 +35,9 @@ async function render() {
   if (signedIn) {
     await store.remove(['pp_pending', 'pp_email_draft']);
     $('whoEmail').textContent = s.email;
+    $('whoName').textContent = s.name || 'No name set';
     $('name').value = s.name || '';
+    loadFeed();
     return;
   }
   const pending = await getPending();
@@ -94,11 +96,36 @@ $('change').addEventListener('click', async () => {
   showEmailStep(pending ? pending.email : '');
 });
 
+// Recent references by this person, newest first.
+const ago = (iso) => { const m = Math.max(1, Math.round((Date.now() - new Date(iso)) / 60000)); return m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
+async function loadFeed() {
+  const r = await send({ type: 'recent' });
+  const feed = $('feed');
+  feed.replaceChildren();
+  const items = (r && r.ok && r.items) || [];
+  if (!items.length) {
+    const e = document.createElement('div'); e.className = 'hint';
+    e.textContent = r && !r.ok ? r.error : 'Nothing yet. Pick an element on any page and it will show up here.';
+    return feed.appendChild(e);
+  }
+  for (const it of items) {
+    const row = document.createElement('a'); row.className = 'item'; row.href = it.url || it.inbox; row.target = '_blank'; row.rel = 'noopener'; row.title = 'Open the page this came from';
+    const img = document.createElement(it.shot ? 'img' : 'div'); if (it.shot) { img.src = it.shot; img.alt = ''; } else img.className = 'noimg';
+    const body = document.createElement('div');
+    const t = document.createElement('div'); t.className = 't'; t.textContent = it.note;
+    const m = document.createElement('div'); m.className = 'm';
+    const proj = document.createElement('a'); proj.textContent = it.project || 'PinPoint'; proj.href = it.inbox; proj.target = '_blank'; proj.rel = 'noopener'; proj.title = 'Open this project’s references in PinPoint';
+    proj.addEventListener('click', (e) => e.stopPropagation());
+    m.append(proj, ` · ${it.host || ''} · ${ago(it.created_at)}${it.attached ? ' · attached' : ''}`);
+    body.append(t, m); row.append(img, body); feed.appendChild(row);
+  }
+}
+
 $('signout').addEventListener('click', async () => { await send({ type: 'signOut' }); render(); });
+$('editName').addEventListener('click', () => { $('nameRow').classList.toggle('hidden'); if (!$('nameRow').classList.contains('hidden')) $('name').focus(); });
 let nameTimer;
-$('name').addEventListener('input', () => { clearTimeout(nameTimer); nameTimer = setTimeout(() => send({ type: 'setName', name: $('name').value }), 300); });
+$('name').addEventListener('input', () => { clearTimeout(nameTimer); $('whoName').textContent = $('name').value.trim() || 'No name set'; nameTimer = setTimeout(() => send({ type: 'setName', name: $('name').value }), 300); });
 $('pick').addEventListener('click', async () => {
-  await send({ type: 'setName', name: $('name').value });
   const r = await send({ type: 'startPicker' });
   if (!r.ok) return ($('err2').textContent = r.error);
   window.close();

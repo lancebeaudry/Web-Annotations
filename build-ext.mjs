@@ -19,7 +19,8 @@ for (const k of ['SUPABASE_URL', 'SUPABASE_ANON_KEY']) if (!env[k]) throw new Er
 
 const out = 'dist/extension';
 mkdirSync(`${out}/icons`, { recursive: true });
-const define = { __SUPABASE_URL__: JSON.stringify(env.SUPABASE_URL), __SUPABASE_ANON_KEY__: JSON.stringify(env.SUPABASE_ANON_KEY) };
+const dash = (env.DASHBOARD_URL || 'https://pinpoint.avalanchegr.com/app/').split(',')[0].trim().replace(/\/?$/, '/');
+const define = { __SUPABASE_URL__: JSON.stringify(env.SUPABASE_URL), __SUPABASE_ANON_KEY__: JSON.stringify(env.SUPABASE_ANON_KEY), __DASHBOARD_URL__: JSON.stringify(dash) };
 for (const [entry, file] of [['extension/src/background.js', 'background.js'], ['extension/src/picker.js', 'picker.js'], ['extension/src/popup.js', 'popup.js']]) {
   await build({ entryPoints: [entry], bundle: true, minify: false, format: 'iife', target: ['chrome120'], outfile: `${out}/${file}`, define, logLevel: 'error' });
 }
