@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PinPoint Setup — Run your website by pointing at it</title>
+  <meta name="description" content="We set up PinPoint and an AI coding assistant on your website, so making a change is a click and a sentence. One-time setup, $497.">
+  <meta property="og:title" content="PinPoint Setup — Run your website by pointing at it">
+  <meta property="og:description" content="A one-time setup that connects your site, PinPoint and Claude Code or Codex. Click what you want changed, review it on staging, push it live. $497.">
+  <meta property="og:image" content="https://pinpoint.avalanchegr.com/img/hero-overlay.jpg">
+  <meta property="og:url" content="https://pinpoint.avalanchegr.com/setup/">
+  <link rel="canonical" href="https://pinpoint.avalanchegr.com/setup/">
+  <link rel="icon" type="image/png" href="/img/pinpoint-mark.png">
+  <link rel="stylesheet" href="/fonts.css">
+  <style>
+    :root { --blue:#1D5F96; --blue-dark:#164A75; --navy:#10283D; --text:#3F5567; --muted:#5A6F80; --line:#DCE4EB; --page:#F7F9FB; --sky:#5BC4E8; --tint:#EEF4F9; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--page); font-family: Outfit, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--navy); -webkit-font-smoothing: antialiased; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { color: var(--blue-dark); }
+    h1, h2, h3, p { margin: 0; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 48px); }
+    .btn { display: inline-block; background: var(--blue); color: #fff; padding: 16px 26px; border-radius: 10px; font-size: 17px; font-weight: 500; }
+    .btn:hover { background: var(--blue-dark); color: #fff; }
+    .btn-quiet { display: inline-block; padding: 16px 22px; border-radius: 10px; font-size: 17px; font-weight: 500; color: var(--blue-dark); border: 1px solid #C9D6E0; background: #fff; }
+    .btn-quiet:hover { border-color: var(--blue); }
+
+    header { position: sticky; top: 0; z-index: 20; background: rgba(247,249,251,.9); backdrop-filter: blur(10px); border-bottom: 1px solid #E1E8EE; }
+    header .bar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-top: 14px; padding-bottom: 14px; }
+    header img { height: 40px; width: auto; display: block; }
+    header nav { display: flex; align-items: center; gap: 26px; font-size: 15px; flex-wrap: wrap; justify-content: flex-end; }
+    header nav a { color: var(--text); }
+    header nav a.cta { background: var(--blue); color: #fff; padding: 10px 18px; border-radius: 8px; font-weight: 500; }
+
+    .hero { padding: clamp(56px, 8vw, 110px) 0 clamp(48px, 7vw, 90px); }
+    .eyebrow { font-size: 15px; font-weight: 500; color: var(--blue); margin-bottom: 18px; }
+    h1 { font-size: clamp(42px, 6.4vw, 84px); line-height: .98; font-weight: 600; letter-spacing: -.035em; max-width: 900px; text-wrap: balance; }
+    .hero p.lead { font-size: clamp(18px, 1.6vw, 21px); line-height: 1.5; color: var(--text); max-width: 620px; margin-top: 24px; text-wrap: pretty; }
+    .hero .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+    .hero .note { font-size: 14px; color: var(--muted); margin-top: 14px; }
+
+    section { padding: clamp(64px, 8vw, 110px) 0; }
+    section.white { background: #fff; border-top: 1px solid #E1E8EE; border-bottom: 1px solid #E1E8EE; }
+    h2 { font-size: clamp(32px, 4vw, 52px); line-height: 1.04; font-weight: 600; letter-spacing: -.03em; max-width: 760px; text-wrap: balance; }
+    .sub { font-size: 18px; line-height: 1.55; color: var(--text); max-width: 640px; margin-top: 16px; text-wrap: pretty; }
+
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: clamp(20px, 3vw, 36px); margin-top: 44px; }
+    .step .n { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 14px; color: var(--blue); }
+    .step h3 { font-size: 22px; font-weight: 600; margin-top: 10px; letter-spacing: -.01em; }
+    .step p { font-size: 16px; line-height: 1.55; color: var(--muted); margin-top: 8px; }
+
+    .included { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 0; margin-top: 44px; border-top: 1px solid var(--line); border-left: 1px solid var(--line); background: #fff; border-radius: 16px; overflow: hidden; }
+    .included > div { padding: 26px 26px 30px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .included h3 { font-size: 19px; font-weight: 600; }
+    .included p { font-size: 15px; line-height: 1.55; color: var(--muted); margin-top: 8px; }
+
+    .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: clamp(20px, 3vw, 36px); margin-top: 40px; }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: clamp(24px, 3vw, 34px); }
+    .panel h3 { font-size: 21px; font-weight: 600; }
+    .panel ul { margin: 14px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .panel li { font-size: 16px; line-height: 1.5; color: var(--text); padding-left: 26px; position: relative; }
+    .panel li::before { content: ""; position: absolute; left: 0; top: 7px; width: 14px; height: 8px; border-left: 2.4px solid var(--blue); border-bottom: 2.4px solid var(--blue); transform: rotate(-45deg); }
+    .panel.no li::before { width: 12px; height: 0; top: 12px; border-left: 0; border-bottom: 2.4px solid #9FB0BE; transform: none; }
+
+    .price { background: var(--navy); color: #fff; }
+    .price h2 { color: #fff; }
+    .price .sub { color: #C9DCEA; }
+    .price-card { margin-top: 40px; background: #164A75; border-radius: 18px; padding: clamp(28px, 4vw, 44px); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: clamp(24px, 4vw, 48px); align-items: start; }
+    .amount { font-size: clamp(56px, 8vw, 96px); font-weight: 600; letter-spacing: -.04em; line-height: 1; }
+    .amount small { font-size: 18px; font-weight: 400; letter-spacing: 0; color: #C9DCEA; margin-left: 8px; }
+    .price-card ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 16px; color: #C9DCEA; }
+    .price-card li { padding-left: 28px; position: relative; line-height: 1.45; }
+    .price-card li::before { content: ""; position: absolute; left: 0; top: 6px; width: 14px; height: 8px; border-left: 2.4px solid var(--sky); border-bottom: 2.4px solid var(--sky); transform: rotate(-45deg); }
+    .price-card .btn { background: var(--sky); color: var(--navy); font-weight: 600; margin-top: 26px; }
+    .price-card .fine { font-size: 14px; color: #9FB6C8; margin-top: 14px; line-height: 1.5; max-width: 360px; }
+
+    .faq { margin-top: 36px; border-top: 1px solid var(--line); max-width: 860px; }
+    details { border-bottom: 1px solid var(--line); }
+    summary { list-style: none; cursor: pointer; padding: 22px 0; display: flex; justify-content: space-between; gap: 20px; font-size: 19px; font-weight: 500; }
+    summary::-webkit-details-marker { display: none; }
+    summary span { color: var(--blue); font-size: 24px; line-height: 1; transition: transform .2s; flex: none; }
+    details[open] summary span { transform: rotate(45deg); }
+    details p { padding: 0 40px 24px 0; font-size: 16px; line-height: 1.6; color: var(--muted); }
+
+    .final { background: var(--navy); color: #fff; padding: clamp(80px, 10vw, 140px) 0 0; }
+    .final h2 { color: #fff; font-size: clamp(40px, 6vw, 80px); line-height: .98; }
+    .final h2 em { font-style: normal; color: var(--sky); }
+    .final p { font-size: 19px; color: #C9DCEA; max-width: 500px; line-height: 1.5; margin-top: 22px; }
+    .final .btn { background: var(--sky); color: var(--navy); font-weight: 600; margin-top: 28px; }
+    footer { border-top: 1px solid rgba(255,255,255,.12); margin-top: clamp(64px, 8vw, 110px); }
+    footer .bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; padding-top: 28px; padding-bottom: 28px; font-size: 14px; color: #9FB6C8; }
+    footer img { height: 32px; width: auto; display: block; opacity: .9; }
+    footer a { color: #C9DCEA; margin-left: 20px; }
+    @media (max-width: 640px) {
+      header nav a:not(.cta) { display: none; }
+      header img { height: 32px; }
+    }
+  </style>
+</head>
+<body id="top">
+
+<header>
+  <div class="wrap bar">
+    <a href="/" aria-label="PinPoint by Avalanche Creative"><img src="/img/pinpoint-logo.png" alt="PinPoint by Avalanche Creative" width="573" height="140"></a>
+    <nav>
+      <a href="#how">How it works</a>
+      <a href="#included">What you get</a>
+      <a href="#price">Price</a>
+      <a href="#faq">Questions</a>
+      <a class="cta" href="#book">Book a fit call</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div class="eyebrow">PinPoint Setup</div>
+    <h1>Run your website by pointing at it.</h1>
+    <p class="lead">We connect your site to PinPoint and an AI coding assistant. After that, a change is a click and a sentence: you point at what you want different, the assistant makes it on a staging copy, and you push it live when it looks right.</p>
+    <div class="actions">
+      <a class="btn" href="#book">Book a free fit call</a>
+      <a class="btn-quiet" href="#included">See what you get</a>
+    </div>
+    <div class="note">One-time setup, $497. No monthly fee from us.</div>
+  </div>
+
+  <section class="white" id="how">
+    <div class="wrap">
+      <h2>A content system asks you to learn it. This asks you to point.</h2>
+      <p class="sub">Most website edits are small: a sentence, a photo, a button. You shouldn't need a login, a training session and a page builder for that.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="n">01</div>
+          <h3>Click what you want changed</h3>
+          <p>Open your site, click the headline, photo or section, and type what you want. PinPoint records the exact element, the page and the screen size.</p>
+        </div>
+        <div class="step">
+          <div class="n">02</div>
+          <h3>Your assistant makes the change</h3>
+          <p>Claude Code or Codex reads the request straight from PinPoint, edits the staging copy of your site, and replies on the item with what it did.</p>
+        </div>
+        <div class="step">
+          <div class="n">03</div>
+          <h3>Review it, then push it live</h3>
+          <p>Look at the change on staging. If it's right, publish. If it isn't, say so on the same item and it goes again.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="included">
+    <div class="wrap">
+      <h2>What the setup includes.</h2>
+      <p class="sub">We don't hand you logins and a document. The setup is finished when you have made three real changes to your own site yourself.</p>
+      <div class="included">
+        <div><h3>PinPoint on your site</h3><p>Your project, the overlay on staging and live, your people invited, and a manager who can run the list.</p></div>
+        <div><h3>Your assistant, connected</h3><p>Claude Code or Codex, your choice, wired to PinPoint so it can read requests, reply and close them.</p></div>
+        <div><h3>House rules for the AI</h3><p>A short rules file written for your site: how it's built, what the assistant may touch, and what is off-limits.</p></div>
+        <div><h3>A safe path to live</h3><p>A staging copy where your host supports one, a documented way to publish, and a backup you've watched us restore.</p></div>
+        <div><h3>A working session</h3><p>We sit with you while you make your first three changes, recorded so you can rewatch it.</p></div>
+        <div><h3>A one-page runbook</h3><p>Request, review, publish, undo. Plus a check-in call 30 days later.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="white" id="fit">
+    <div class="wrap">
+      <h2>Is your site a fit?</h2>
+      <p class="sub">The 20-minute fit call is free and ends in a yes, a no, or a quote for whatever gap we find. Here is how to guess in advance.</p>
+      <div class="two">
+        <div class="panel">
+          <h3>A good fit</h3>
+          <ul>
+            <li>WordPress, or any site where we can reach the files</li>
+            <li>You have the hosting login, or can get it</li>
+            <li>You make small changes often and wait too long for them</li>
+            <li>You're willing to follow a short checklist, even if you've never used a coding assistant</li>
+          </ul>
+        </div>
+        <div class="panel no">
+          <h3>Not a fit, yet</h3>
+          <ul>
+            <li>Squarespace, Wix and Webflow sites. There are no files for an assistant to edit. We can quote a move.</li>
+            <li>Sites where nobody knows who holds the hosting account</li>
+            <li>You'd rather not touch it at all. Ask us about hosting and support instead.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="price" id="price">
+    <div class="wrap">
+      <h2>One price. One time.</h2>
+      <p class="sub">You keep everything we set up: the site, the repository if you use one, the accounts and the rules file.</p>
+      <div class="price-card">
+        <div>
+          <div class="amount">$497<small>once</small></div>
+          <a class="btn" href="#book">Book a free fit call</a>
+          <p class="fine">Your AI assistant's own subscription and PinPoint's plan, if you need more than the free one, are billed by them, not by us.</p>
+        </div>
+        <ul>
+          <li>PinPoint installed and configured on your site</li>
+          <li>Claude Code or Codex connected to your feedback</li>
+          <li>A rules file written for your site</li>
+          <li>Staging, publishing and restore, set up or confirmed</li>
+          <li>A recorded working session: your first three changes</li>
+          <li>A one-page runbook and a 30-day check-in</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <h2>Questions people ask first.</h2>
+      <div class="faq">
+        <details>
+          <summary>Do I need to be technical?<span>+</span></summary>
+          <p>No. If you can follow a one-page checklist, you can run this. You will open one application and paste one instruction. We practice it together until it's boring.</p>
+        </details>
+        <details>
+          <summary>Which AI assistant do you set up?<span>+</span></summary>
+          <p>Claude Code or ChatGPT Codex. Both can read PinPoint requests and edit a site. If you already pay for one, we use that. If you don't, we'll help you pick on the fit call.</p>
+        </details>
+        <details>
+          <summary>What if I don't have a staging site?<span>+</span></summary>
+          <p>We recommend every change happens on a staging copy first. Many hosts offer one at no cost, and turning it on is part of the setup. If yours doesn't, we'll tell you on the fit call what your options are before you pay anything.</p>
+        </details>
+        <details>
+          <summary>Does my site need to be in GitHub?<span>+</span></summary>
+          <p>No. A repository makes undo easier and we'll set one up if you want it, in your name. Without one, your host's backups are the way back, and we make sure they work before we hand over.</p>
+        </details>
+        <details>
+          <summary>What happens if the AI makes a bad change?<span>+</span></summary>
+          <p>It happens on staging, where nobody sees it, and you can undo it. We show you how before we finish. After the setup, reviewing and publishing changes is yours. If you would rather have us on call for that, ask about hosting and support.</p>
+        </details>
+        <details>
+          <summary>Can you just make the changes for me?<span>+</span></summary>
+          <p>Yes. We offer hosting and support where you make requests in PinPoint and we get them live. Tell us on the fit call and we'll skip straight to that.</p>
+        </details>
+        <details>
+          <summary>What should I have ready for the call?<span>+</span></summary>
+          <p>Your site's address, who hosts it, whether you have the login, and a rough idea of what you change most often. That's enough for us to tell you whether it's a fit.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="final" id="book">
+    <div class="wrap">
+      <h2>Point at it. <em>We'll set up the rest.</em></h2>
+      <p>The fit call is 20 minutes and free. You'll leave knowing whether this works for your site and what it costs.</p>
+      <a class="btn" href="mailto:projects@avalanchegr.com?subject=PinPoint%20Setup%20fit%20call&body=My%20site%3A%20%0AWho%20hosts%20it%3A%20%0ADo%20I%20have%20a%20staging%20copy%3A%20%0AWhat%20I%20change%20most%20often%3A%20%0AGood%20times%20for%20a%2020-minute%20call%3A%20">Book a free fit call</a>
+    </div>
+    <footer>
+      <div class="wrap bar">
+        <a href="https://avalanchegr.com/?utm_source=pinpoint&utm_medium=landing&utm_campaign=setup" style="margin:0"><img src="/img/pinpoint-logo-white.png" alt="PinPoint by Avalanche Creative" width="573" height="140"></a>
+        <span>© 2026 Avalanche Creative. PinPoint is a trademark of Avalanche Creative.</span>
+        <div><a href="/">PinPoint</a><a href="/app/terms.html">Terms</a><a href="/app/privacy.html">Privacy</a><a href="mailto:projects@avalanchegr.com">Contact</a></div>
+      </div>
+    </footer>
+  </section>
+</main>
+
+<!-- PinPoint: open this page with ?markup=pinpoint-setup to comment on it. -->
+<script defer src="https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/markup.js" data-project="pinpoint-setup"></script>
+</body>
+</html>
