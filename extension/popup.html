@@ -28,18 +28,22 @@
   <header><img src="icons/icon48.png" alt=""><b>PinPoint Anywhere</b></header>
   <main>
     <section id="signin">
-      <div class="hint">Sign in with the same email you use for PinPoint. We’ll send a code.</div>
-      <div style="height:8px"></div>
-      <label for="email">Email</label>
-      <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
-      <div style="height:8px"></div>
-      <button class="btn" id="send">Email me a code</button>
-      <div id="codeWrap" class="hidden">
-        <div style="height:10px"></div>
+      <div id="emailStep">
+        <div class="hint">Sign in with the same email you use for PinPoint. We’ll send a code.</div>
+        <div style="height:8px"></div>
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+        <div style="height:8px"></div>
+        <button class="btn" id="send">Email me a code</button>
+      </div>
+      <div id="codeStep" class="hidden">
+        <div class="hint">We sent a 6-digit code to <b id="sentTo"></b>. It’s fine to close this and come back; your place is saved.</div>
+        <div style="height:8px"></div>
         <label for="code">6-digit code</label>
-        <input id="code" inputmode="numeric" placeholder="123456">
+        <input id="code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456">
         <div style="height:8px"></div>
         <button class="btn" id="verify">Sign in</button>
+        <div class="who" style="margin-top:8px"><a id="resend">Resend code</a><a id="change">Use a different email</a></div>
       </div>
       <div class="err" id="err1"></div>
     </section>
