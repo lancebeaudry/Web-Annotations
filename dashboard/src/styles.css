@@ -206,6 +206,7 @@ button.chip:hover { border-color: var(--blue); color: var(--blue); }
 .tpill.empty { opacity: .55; }
 .digest { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
 .digest label.check { white-space: nowrap; align-items: center; }
+label.check.mgr { margin: 0; align-items: center; font-size: 13px; color: var(--muted); white-space: nowrap; }
 .tri-row { display: flex; gap: 18px; flex-wrap: wrap; margin: 4px 0 14px; }
 .tri-row label.check { align-items: center; }
 .board { display: grid; grid-template-columns: repeat(5, minmax(160px, 1fr)); gap: 10px; overflow-x: auto; }

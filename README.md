@@ -125,3 +125,8 @@ Owner/operator Markdown exports end with an "For AI coding assistants" block: ea
 - **Storage**: a `comments` row with `kind = 'reference'`, `page_path = ''` (not on any page yet) and `source` jsonb `{url, host, title, selector, element_tag, text, styles, size, screenshot, captured_at}`; the screenshot is also in `attachments`. Migration `supabase/v24.sql`. RLS is unchanged: the extension uses the user's own session (emailed code) and REST.
 - **Attach**: in the overlay sidebar, references sit under "References from other sites" with an **Attach** button → comment mode → click an element → the row gets `page_path`/selector/position and becomes a pin (purple ring). Exports list unattached references in their own section with the source lines; the MCP `list_feedback` returns `kind` and `source`.
 - **Build / install**: `npm run build:ext` → `dist/extension/`. Chrome → `chrome://extensions` → Developer mode → Load unpacked → pick that folder. Sign in from the toolbar button; pick with the button or `Alt+Shift+P`. Not on the Web Store yet (team use).
+
+## 2.5: project managers
+
+- `project_members.manager` marks a collaborator as a manager of that project (`set_member_manager(project, email, bool)`, owner/operator only; checkbox in the dashboard's Collaborators list). `is_project_manager(uuid)` is in the comments UPDATE and DELETE policies, `list_assignees`, `revoke_approval`, and the digest function's caller check.
+- `my_project_role` returns `manager: true`; the overlay sets `app.canManage` (run the feedback) for owners, staff and managers, and `app.isOwner` for the owner-only things (Invite, the AI key in exports). Managers never get settings, invites, site secret, AI key, integrations, billing or project deletion. Migration `supabase/v25.sql`.

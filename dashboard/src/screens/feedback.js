@@ -18,9 +18,11 @@ const DEVICE = { mobile: 'Mobile', tablet: 'Tablet', desktop: 'Desktop' };
 export async function feedbackScreen({ id, user, acct, query }) {
   const p = await getProject(id);
   if (!p) return card('Not found', h('p', {}, 'This project doesn’t exist or you don’t have access.'), h('a', { class: 'btn', href: '#/projects' }, 'Back'));
-  const canManage = acct.is_operator || p.owner_id === user.id;
+  const isOwner = acct.is_operator || p.owner_id === user.id;
   const me = (user.email || '').toLowerCase();
-  const [rows, people, access] = await Promise.all([listComments(id), canManage ? listAssignees(id).catch(() => []) : Promise.resolve([]), projectAccess(id).catch(() => ({}))]);
+  const access = await projectAccess(id).catch(() => ({}));
+  const canManage = isOwner || access.manager === true;
+  const [rows, people] = await Promise.all([listComments(id), canManage ? listAssignees(id).catch(() => []) : Promise.resolve([])]);
   const roots = rows.filter((r) => !r.parent_id);
   const repliesOf = (rid) => rows.filter((r) => r.parent_id === rid);
   const link = (c) => `${c.page_url}?markup=${encodeURIComponent(p.token)}&pp_comment=${c.id}`;

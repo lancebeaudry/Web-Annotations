@@ -143,7 +143,7 @@ export function createClient() {
         case 'my_project_role': {
           const r = roleOn(pid);
           const cnt = store.comments.filter((c) => c.project_id === pid).length;
-          return ok({ role: r, writable: r !== 'none' && !(atLimit && r === 'owner' && pid !== 'mock-project-1'), plan: isOperator() ? 'agency' : 'free', auto_screenshot: false,
+          return ok({ role: r, manager: r === 'collaborator' && new URLSearchParams(location.search).get('mockManager') === '1', writable: r !== 'none' && !(atLimit && r === 'owner' && pid !== 'mock-project-1'), plan: isOperator() ? 'agency' : 'free', auto_screenshot: false,
             comment_limit: isOperator() ? null : 50, comment_count: cnt, image_limit: isOperator() ? null : 10, image_count: 0,
             features: isOperator() ? ['integrations', 'approvals'] : [], approved_pages: store.approvals.filter((a) => a.project_id === pid) });
         }

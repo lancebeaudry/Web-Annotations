@@ -255,7 +255,10 @@ async function start(app) {
   app.access = access;
   app.role = access.role;
   app.writable = access.writable;
-  app.canManage = app.role === 'operator' || app.role === 'owner';
+  // isOwner: the owner's controls (invites, AI key). canManage: run the
+  // feedback (resolve, assign, label, delete) — owners, staff and managers.
+  app.isOwner = app.role === 'operator' || app.role === 'owner';
+  app.canManage = app.isOwner || !!(access && access.manager);
   app.allowed = app.role !== 'none';
   if (!app.allowed) {
     renderBlockedCard(app, email || 'this guest session');
@@ -645,7 +648,8 @@ function renderToolbar(app) {
       { class: 'fab fab-secondary', onclick: () => toggleExportMenu(app) },
       'Export'
     );
-    toolbar.append(inviteBtn, exportBtn);
+    if (app.isOwner) toolbar.append(inviteBtn);
+    toolbar.append(exportBtn);
   }
 
   // Exit ends the whole session — only meaningful on the top page, not
@@ -806,7 +810,7 @@ function renderBlockedCard(app, email) {
 // Owners/operators get the AI-assistant block in Markdown exports (the
 // per-project agent key + endpoint). Anyone else exports plain Markdown.
 async function agentInfo(app) {
-  if (!app.canManage || !app.project) return null;
+  if (!app.isOwner || !app.project) return null;
   const { key } = await getAgentKey(app.supabase, app.project.id);
   return key ? { key, endpoint: `${FUNCTIONS_URL}/agent` } : null;
 }

@@ -1,6 +1,6 @@
 import { h, field, toast, copyBox } from '../ui/dom.js';
 import { card, anchored, pageHead } from '../ui/shell.js';
-import { getProject, updateSettings, saveTriage, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, agentPersona, saveAgentPersona, assignees as listAssignees, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments } from '../api.js';
+import { getProject, updateSettings, saveTriage, setManager, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, agentPersona, saveAgentPersona, assignees as listAssignees, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments } from '../api.js';
 import { BUNDLE_URL, PLUGIN_ZIP_URL, FUNCTIONS_URL, MCP_URL } from '../config.js';
 import { go } from '../router.js';
 
@@ -93,12 +93,21 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
               await revoke(id, r.email).catch((e) => toast(e.message));
               refreshInvites();
             });
-            return h('div', { class: 'row' }, h('div', {}, h('div', { class: 'row-title' }, r.email), r.note ? h('div', { class: 'hint' }, r.note) : null), rm);
+            const mgr = h('input', { type: 'checkbox' });
+            mgr.checked = !!r.manager;
+            mgr.addEventListener('change', async () => {
+              mgr.disabled = true;
+              try { await setManager(id, r.email, mgr.checked); toast(mgr.checked ? `${r.email} is now a manager` : `${r.email} is no longer a manager`); }
+              catch (e) { mgr.checked = !mgr.checked; toast(e.message); }
+              mgr.disabled = false;
+            });
+            const mgrLabel = h('label', { class: 'check mgr', title: 'Managers can resolve, assign, label and delete any feedback on this project. They cannot change settings, invites, keys or billing.' }, mgr, h('span', {}, 'Manager'));
+            return h('div', { class: 'row' }, h('div', {}, h('div', { class: 'row-title' }, r.email), r.note ? h('div', { class: 'hint' }, r.note) : null), h('div', { class: 'row-meta' }, mgrLabel, rm));
           })
         : [h('p', { class: 'hint' }, 'No collaborators yet. You always have access as the owner.')])
     );
   }
-  const inviteForm = h('form', {}, h('div', { class: 'inline' }, inviteEmail, inviteNote, inviteBtn));
+  const inviteForm = h('form', {}, h('div', { class: 'inline' }, inviteEmail, inviteNote, inviteBtn), h('p', { class: 'hint', style: 'margin:8px 0 12px' }, 'Collaborators can comment, reply and approve pages. Tick Manager to let someone run the feedback on this project: resolve, assign, label and delete any item. Settings, invites, keys and billing stay with you.'));
   inviteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!inviteEmail.value.trim()) return;

@@ -122,7 +122,10 @@ Deno.serve(async (req) => {
   const project = projects[0];
   if (!project) return json(404, { error: "project not found" }, cors);
   const ops = await db<any[]>(`operators?user_id=eq.${caller.id}&select=user_id&limit=1`);
-  if (project.owner_id !== caller.id && !ops.length) return json(403, { error: "not the project owner" }, cors);
+  if (project.owner_id !== caller.id && !ops.length) {
+    const mgr = await db<any[]>(`project_members?project_id=eq.${pid}&email=ilike.${encodeURIComponent(caller.email)}&manager=eq.true&select=email&limit=1`);
+    if (!mgr.length) return json(403, { error: "only the project owner or a manager can send this" }, cors);
+  }
   const only = Array.isArray(body.to) ? body.to.map(String) : undefined;
   return json(200, await sendDigest(project, only), cors);
 });
