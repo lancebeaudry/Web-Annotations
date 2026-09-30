@@ -130,3 +130,7 @@ Owner/operator Markdown exports end with an "For AI coding assistants" block: ea
 
 - `project_members.manager` marks a collaborator as a manager of that project (`set_member_manager(project, email, bool)`, owner/operator only; checkbox in the dashboard's Collaborators list). `is_project_manager(uuid)` is in the comments UPDATE and DELETE policies, `list_assignees`, `revoke_approval`, and the digest function's caller check.
 - `my_project_role` returns `manager: true`; the overlay sets `app.canManage` (run the feedback) for owners, staff and managers, and `app.isOwner` for the owner-only things (Invite, the AI key in exports). Managers never get settings, invites, site secret, AI key, integrations, billing or project deletion. Migration `supabase/v25.sql`.
+
+## 2.6: daily roundup by default
+
+- `projects.notify_mode` = `daily` (default) | `instant`. On `daily`, `notify` skips the project's notify list on new comments (mentions and "needs your decision" still go instantly). `functions/roundup` (pg_cron `pinpoint-roundup-daily`, 12:00 UTC) emails each recipient the comments and replies since `projects.notify_last_roundup`, grouped by page with deep links, leaving out their own; nothing is sent when it was quiet. `update_notify_mode(project, mode)` (owner/operator) and a radio in the dashboard's Email notifications card. Migration `supabase/v26.sql`.

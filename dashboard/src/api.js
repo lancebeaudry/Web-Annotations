@@ -35,6 +35,7 @@ export const invite = async (id, email, note) => unwrap(await supabase.rpc('invi
 export const revoke = async (id, email) => unwrap(await supabase.rpc('revoke_invite', { p_project: id, p_email: email }));
 
 export const listNotify = async (id) => unwrap(await supabase.rpc('list_notify_recipients', { p_project: id })) || [];
+export const setNotifyMode = async (id, mode) => unwrap(await supabase.rpc('update_notify_mode', { p_project: id, p_mode: mode }));
 export const setNotify = async (id, emails) => unwrap(await supabase.rpc('set_notify_recipients', { p_project: id, p_emails: emails }));
 
 export const bridgeSecret = async (id) => unwrap(await supabase.rpc('get_bridge_secret', { p_project: id }));

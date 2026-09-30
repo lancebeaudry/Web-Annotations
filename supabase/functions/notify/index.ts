@@ -54,8 +54,8 @@ Deno.serve(async (req) => {
   const author = (record.author_email || "").toLowerCase();
   const isReply = !!record.parent_id;
 
-  const projects = await db<{ name: string; site_url: string; token: string }[]>(
-    `projects?id=eq.${record.project_id}&select=name,site_url,token`,
+  const projects = await db<{ name: string; site_url: string; token: string; notify_mode?: string }[]>(
+    `projects?id=eq.${record.project_id}&select=name,site_url,token,notify_mode`,
   );
   const project = projects[0];
   if (!project) return json(200, { skipped: "unknown project" });
@@ -91,10 +91,14 @@ Deno.serve(async (req) => {
     const e = (raw || "").toLowerCase().trim();
     if (e && e !== author) recipients.set(e, "mention");
   }
-  const list = await db<{ email: string }[]>(`notify_recipients?project_id=eq.${record.project_id}&select=email`);
-  for (const r of list) {
-    const e = (r.email || "").toLowerCase().trim();
-    if (e && e !== author && !recipients.has(e)) recipients.set(e, "team");
+  // The notify list gets a daily roundup unless the project chose instant.
+  // Mentions are addressed to one person, so they always go now.
+  if ((project.notify_mode ?? "daily") === "instant") {
+    const list = await db<{ email: string }[]>(`notify_recipients?project_id=eq.${record.project_id}&select=email`);
+    for (const r of list) {
+      const e = (r.email || "").toLowerCase().trim();
+      if (e && e !== author && !recipients.has(e)) recipients.set(e, "team");
+    }
   }
   if (recipients.size === 0) return json(200, { sent: 0 });
 

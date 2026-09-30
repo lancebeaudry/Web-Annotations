@@ -1,6 +1,6 @@
 import { h, field, toast, copyBox } from '../ui/dom.js';
 import { card, anchored, pageHead } from '../ui/shell.js';
-import { getProject, updateSettings, saveTriage, setManager, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, agentPersona, saveAgentPersona, assignees as listAssignees, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments } from '../api.js';
+import { getProject, updateSettings, saveTriage, setManager, setNotifyMode, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, agentPersona, saveAgentPersona, assignees as listAssignees, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments } from '../api.js';
 import { BUNDLE_URL, PLUGIN_ZIP_URL, FUNCTIONS_URL, MCP_URL } from '../config.js';
 import { go } from '../router.js';
 
@@ -129,7 +129,20 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
   const notify = h('textarea', { rows: '4', class: 'code', placeholder: 'you@example.com\nteammate@example.com' });
   const notifySave = h('button', { class: 'btn', type: 'submit' }, 'Save recipients');
   listNotify(id).then((rows) => (notify.value = rows.join('\n'))).catch(() => {});
-  const notifyForm = h('form', {}, h('p', { class: 'hint' }, 'Emailed on every new comment or reply, one address per line. @mentions always notify the person tagged.'), notify, h('div', { class: 'btn-row' }, notifySave));
+  // Daily roundup (default) or an email per comment.
+  const modeDaily = h('input', { type: 'radio', name: 'nmode', value: 'daily' });
+  const modeInstant = h('input', { type: 'radio', name: 'nmode', value: 'instant' });
+  (access.notify_mode === 'instant' ? modeInstant : modeDaily).checked = true;
+  const onMode = async (mode) => {
+    try { await setNotifyMode(id, mode); toast(mode === 'daily' ? 'Daily roundup' : 'Instant emails'); }
+    catch (err) { toast(err.message); (mode === 'daily' ? modeInstant : modeDaily).checked = true; }
+  };
+  modeDaily.addEventListener('change', () => onMode('daily'));
+  modeInstant.addEventListener('change', () => onMode('instant'));
+  const modeRow = h('div', { class: 'mode-row' },
+    h('label', { class: 'check' }, modeDaily, h('span', {}, h('b', {}, 'Daily roundup'), h('span', { class: 'hint' }, ' One email each morning listing everything new. Nothing if it was quiet.'))),
+    h('label', { class: 'check' }, modeInstant, h('span', {}, h('b', {}, 'As comments come in'), h('span', { class: 'hint' }, ' An email for every new comment and reply.'))));
+  const notifyForm = h('form', {}, h('p', { class: 'hint' }, 'Who hears about new feedback, one address per line. @mentions and “needs your decision” notes always go straight to the person concerned.'), notify, h('div', { class: 'btn-row' }, notifySave), h('h4', {}, 'How often'), modeRow);
   notifyForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     notifySave.disabled = true;
