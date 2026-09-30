@@ -74,7 +74,7 @@ async function saveReference(p, sender) {
     comment_text: p.note, author_email: email, author_name: name,
     mentions: [], labels: p.labels || [],
     attachments: [{ url: shotUrl, name: `Reference from ${p.source.host}`, type: 'image/png', reference: true }],
-    source: { ...p.source, screenshot: shotUrl, captured_at: new Date().toISOString() },
+    source: { ...p.source, ...(p.for_page ? { for_page: p.for_page } : {}), screenshot: shotUrl, captured_at: new Date().toISOString() },
     viewport_w: p.viewport_w,
   };
   const inserted = await api('/rest/v1/comments', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(row) });
@@ -121,8 +121,16 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
         const email = encodeURIComponent((s.user.email || '').toLowerCase());
         const rows = await api(`/rest/v1/comments?kind=eq.reference&author_email=eq.${email}&select=id,project_id,comment_text,source,page_path,created_at,projects(name)&order=created_at.desc&limit=6`);
         return { items: rows.map((r) => ({ id: r.id, note: r.comment_text, project: r.projects ? r.projects.name : '', attached: !!r.page_path, created_at: r.created_at,
-          host: r.source && r.source.host, url: r.source && r.source.url, shot: r.source && r.source.screenshot,
+          host: r.source && r.source.host, url: r.source && r.source.url, shot: r.source && r.source.screenshot, forPage: r.page_path || (r.source && r.source.for_page) || '',
           inbox: `${DASHBOARD_URL}#/projects/${r.project_id}/feedback?kind=reference` })) };
+      }
+      case 'pages': {
+        // Pages of this project that already have feedback, plus pages
+        // earlier references were saved for.
+        const rows = await api(`/rest/v1/comments?project_id=eq.${msg.project_id}&parent_id=is.null&select=page_path,source&limit=2000`);
+        const set = new Set();
+        for (const r of rows) { if (r.page_path) set.add(r.page_path); if (r.source && r.source.for_page) set.add(r.source.for_page); }
+        return { pages: [...set].sort() };
       }
       case 'projects': {
         const list = await api('/rest/v1/projects?select=id,name,site_url&order=name.asc');

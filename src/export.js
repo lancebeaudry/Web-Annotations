@@ -128,6 +128,7 @@ export function buildMarkdown(app, scope, agent = null) {
 // Where a reference came from, for a developer or an assistant to imitate.
 function sourceLines(s) {
   const out = [];
+  if (s.for_page) out.push(`   - For page: ${s.for_page}`);
   if (s.url) out.push(`   - Reference: ${s.url}`);
   if (s.screenshot) out.push(`   - Reference screenshot: ${s.screenshot}`);
   if (s.text) out.push(`   - Reference text: "${String(s.text).slice(0, 200)}"`);

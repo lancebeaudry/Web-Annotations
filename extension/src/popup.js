@@ -116,7 +116,7 @@ async function loadFeed() {
     const m = document.createElement('div'); m.className = 'm';
     const proj = document.createElement('a'); proj.textContent = it.project || 'PinPoint'; proj.href = it.inbox; proj.target = '_blank'; proj.rel = 'noopener'; proj.title = 'Open this project’s references in PinPoint';
     proj.addEventListener('click', (e) => e.stopPropagation());
-    m.append(proj, ` · ${it.host || ''} · ${ago(it.created_at)}${it.attached ? ' · attached' : ''}`);
+    m.append(proj, `${it.forPage ? ' ' + it.forPage : ''} · ${it.host || ''} · ${ago(it.created_at)}${it.attached ? ' · attached' : ''}`);
     body.append(t, m); row.append(img, body); feed.appendChild(row);
   }
 }

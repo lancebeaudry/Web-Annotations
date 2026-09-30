@@ -150,6 +150,26 @@ if (!window.__ppPicker) {
     body.append(labelled('Note', note));
     const proj = document.createElement('select'); proj.appendChild(new Option('Loading your projects…', ''));
     body.append(labelled('Project', proj));
+    const page = document.createElement('input'); page.type = 'text'; page.placeholder = 'Optional, e.g. / or /services'; page.setAttribute('list', 'pp-pages'); page.autocomplete = 'off';
+    const pages = document.createElement('datalist'); pages.id = 'pp-pages';
+    const pageWrap = labelled('Page on that site (optional)', page); pageWrap.appendChild(pages);
+    body.append(pageWrap);
+    // Turn whatever was typed or pasted into a site path: "/services".
+    const pagePath = () => {
+      let v = page.value.trim();
+      if (!v) return '';
+      try { if (/^https?:/i.test(v)) v = new URL(v).pathname; } catch { /* keep as typed */ }
+      v = v.split(/[?#]/)[0];
+      if (!v.startsWith('/')) v = '/' + v;
+      return v.length > 1 ? v.replace(/\/+$/, '') : v;
+    };
+    const loadPages = async () => {
+      pages.replaceChildren();
+      if (!proj.value) return;
+      const r = await send({ type: 'pages', project_id: proj.value });
+      if (r && r.ok) for (const p of r.pages) { const o = document.createElement('option'); o.value = p; pages.appendChild(o); }
+    };
+    proj.addEventListener('change', () => { page.value = ''; loadPages(); });
     const chips = el('div', 'chips'); const on = new Set(['design']);
     for (const [k, t] of LABELS) { const c = el('button', 'chip' + (on.has(k) ? ' on' : ''), t); c.type = 'button'; c.addEventListener('click', () => { on.has(k) ? on.delete(k) : on.add(k); c.classList.toggle('on', on.has(k)); }); chips.appendChild(c); }
     body.append(labelled('Labels', chips));
@@ -169,6 +189,7 @@ if (!window.__ppPicker) {
       if (!r.projects.length) { err.textContent = 'You have no projects yet. Create one in the PinPoint dashboard.'; }
       for (const p of r.projects) proj.appendChild(new Option(p.name, p.id));
       if (r.last && r.projects.some((p) => p.id === r.last)) proj.value = r.last;
+      loadPages();
     });
 
     save.addEventListener('click', async () => {
@@ -176,7 +197,7 @@ if (!window.__ppPicker) {
       if (!text) { err.textContent = 'Add a short note so your team knows why this matters.'; note.focus(); return; }
       if (!proj.value) { err.textContent = 'Pick a project.'; return; }
       save.disabled = true; save.textContent = 'Saving…'; err.textContent = '';
-      const r = await send({ type: 'save', payload: { project_id: proj.value, note: text, labels: [...on], screenshot: shot, source, viewport_w: window.innerWidth } });
+      const r = await send({ type: 'save', payload: { project_id: proj.value, note: text, labels: [...on], screenshot: shot, source, for_page: pagePath(), viewport_w: window.innerWidth } });
       if (!r || !r.ok) { err.textContent = (r && r.error) || 'Save failed'; save.disabled = false; save.textContent = 'Save reference'; return; }
       panel.remove(); panel = null;
       const ok = el('div', 'ok', `Saved to ${r.project}. Attach it to an element from the PinPoint sidebar on your site.`);

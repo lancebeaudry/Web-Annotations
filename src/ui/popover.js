@@ -257,6 +257,7 @@ function entry(app, comment) {
     const styles = Object.entries(s.styles || {}).filter(([k]) => ['fontFamily', 'fontSize', 'fontWeight', 'color', 'backgroundColor', 'borderRadius', 'padding'].includes(k)).map(([k, v]) => `${k.replace(/([A-Z])/g, ' $1').toLowerCase()}: ${v}`).join(' · ');
     parts.push(h('div', { class: 'ref-source' },
       h('a', { href: s.url, target: '_blank', rel: 'noopener' }, `From ${s.host || 'another site'}${s.element_tag ? ' · <' + s.element_tag + '>' : ''}`),
+      !comment.page_path && s.for_page ? h('div', { class: 'ref-text' }, `For ${s.for_page}`) : null,
       s.text ? h('div', { class: 'ref-text' }, `“${String(s.text).slice(0, 140)}”`) : null,
       styles ? h('div', { class: 'ref-styles' }, styles) : null));
   }

@@ -28,7 +28,8 @@ export async function feedbackScreen({ id, user, acct, query }) {
   const link = (c) => `${c.page_url}?markup=${encodeURIComponent(p.token)}&pp_comment=${c.id}`;
 
   const f = { status: query.status || 'open', page: '', assignee: '', label: query.label || '', device: '', kind: query.kind || '', q: '', view: query.view || 'list' };
-  const pages = [...new Set(roots.map((r) => r.page_path))].sort();
+  const forPage = (c) => (c.kind === 'reference' && !c.page_path && c.source && c.source.for_page) || '';
+  const pages = [...new Set(roots.flatMap((r) => [r.page_path, forPage(r)]).filter(Boolean))].sort();
 
   const statusSel = h('select', {}, h('option', { value: 'open' }, 'All open'), ...ORDER.map((s) => h('option', { value: s }, STATUS[s])), h('option', { value: 'all' }, 'Everything'));
   statusSel.value = f.status;
@@ -48,7 +49,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
 
   function matches(c, ignoreStatus = false) {
     if (!ignoreStatus && (f.status === 'open' ? !isOpen(c.status) : f.status !== 'all' && c.status !== f.status)) return false;
-    if (f.page && c.page_path !== f.page) return false;
+    if (f.page && c.page_path !== f.page && forPage(c) !== f.page) return false;
     if (f.assignee === '__none' ? c.assignee_email : f.assignee && c.assignee_email !== f.assignee) return false;
     const labels = c.labels || [];
     if (f.label === '__none' ? labels.length : f.label && !labels.includes(f.label)) return false;
@@ -111,7 +112,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
     const ctx = c.context || {};
     const isRef = c.kind === 'reference';
     const sub = [
-      isRef ? (c.page_path ? `${c.page_path} (reference)` : 'Reference, not yet attached') : c.page_path,
+      isRef ? (c.page_path ? `${c.page_path} (reference)` : forPage(c) ? `Reference for ${forPage(c)}, not yet attached` : 'Reference, not yet attached') : c.page_path,
       `<${c.element_tag || 'page'}>`,
       deviceOf(c.viewport_w) && deviceOf(c.viewport_w) !== 'desktop' ? `${DEVICE[deviceOf(c.viewport_w)]} (${c.viewport_w}px)` : '',
       `${c.author_name || c.author_email} · ${fmtDate(c.created_at)}`,
