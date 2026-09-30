@@ -7,3 +7,5 @@ dist/*
 .deploy/
 .demo.env
 .claude/settings.local.json
+# Internal briefing for new sessions; keep out of the public repo
+PINPOINT-MASTER.md
