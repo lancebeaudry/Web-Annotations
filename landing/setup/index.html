@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PinPoint Setup — Run your website by pointing at it</title>
-  <meta name="description" content="We set up PinPoint and an AI coding assistant on your website, so making a change is a click and a sentence. One-time setup, $497.">
+  <meta name="description" content="We set up PinPoint and an AI coding assistant on your website, so making a change is a click and a sentence. One-time setup, $497. Answer seven questions to see if your site fits.">
   <meta property="og:title" content="PinPoint Setup — Run your website by pointing at it">
   <meta property="og:description" content="A one-time setup that connects your site, PinPoint and Claude Code or Codex. Click what you want changed, review it on staging, push it live. $497.">
   <meta property="og:image" content="https://pinpoint.avalanchegr.com/img/hero-overlay.jpg">
@@ -20,80 +20,163 @@
     a { color: var(--blue); text-decoration: none; }
     a:hover { color: var(--blue-dark); }
     h1, h2, h3, p { margin: 0; }
-    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 48px); }
-    .btn { display: inline-block; background: var(--blue); color: #fff; padding: 16px 26px; border-radius: 10px; font-size: 17px; font-weight: 500; }
+    button { font: inherit; cursor: pointer; }
+    .wrap { max-width: 1240px; margin: 0 auto; padding-left: clamp(20px, 5vw, 80px); padding-right: clamp(20px, 5vw, 80px); }
+    .btn { display: inline-block; background: var(--blue); color: #fff; padding: 17px 28px; border-radius: 10px; font-size: 17px; font-weight: 500; border: 0; }
     .btn:hover { background: var(--blue-dark); color: #fff; }
-    .btn-quiet { display: inline-block; padding: 16px 22px; border-radius: 10px; font-size: 17px; font-weight: 500; color: var(--blue-dark); border: 1px solid #C9D6E0; background: #fff; }
-    .btn-quiet:hover { border-color: var(--blue); }
+    .btn.sky { background: var(--sky); color: var(--navy); font-weight: 600; }
+    .btn.sky:hover { background: #7fd3ee; color: var(--navy); }
+    .aside { font-size: 15px; color: var(--muted); }
+    .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
 
     header { position: sticky; top: 0; z-index: 20; background: rgba(247,249,251,.9); backdrop-filter: blur(10px); border-bottom: 1px solid #E1E8EE; }
     header .bar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-top: 14px; padding-bottom: 14px; }
     header img { height: 40px; width: auto; display: block; }
-    header nav { display: flex; align-items: center; gap: 26px; font-size: 15px; flex-wrap: wrap; justify-content: flex-end; }
+    header nav { display: flex; align-items: center; gap: 28px; font-size: 15px; }
     header nav a { color: var(--text); }
-    header nav a.cta { background: var(--blue); color: #fff; padding: 10px 18px; border-radius: 8px; font-weight: 500; }
+    header nav button { background: var(--blue); color: #fff; padding: 11px 20px; border-radius: 8px; font-weight: 500; border: 0; font-size: 15px; }
 
-    .hero { padding-top: clamp(56px, 8vw, 110px); padding-bottom: clamp(48px, 7vw, 90px); }
-    .eyebrow { font-size: 15px; font-weight: 500; color: var(--blue); margin-bottom: 18px; }
-    h1 { font-size: clamp(42px, 6.4vw, 84px); line-height: .98; font-weight: 600; letter-spacing: -.035em; max-width: 900px; text-wrap: balance; }
-    .hero p.lead { font-size: clamp(18px, 1.6vw, 21px); line-height: 1.5; color: var(--text); max-width: 620px; margin-top: 24px; text-wrap: pretty; }
-    .hero .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
-    .hero .note { font-size: 14px; color: var(--muted); margin-top: 14px; }
+    .hero { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(28px, 4vw, 56px); align-items: center; padding-top: clamp(48px, 7vw, 88px); padding-bottom: clamp(56px, 7vw, 96px); }
+    .hero .copy { display: flex; flex-direction: column; gap: 24px; }
+    .eyebrow { font-size: 15px; font-weight: 500; color: var(--blue); }
+    h1 { font-size: clamp(42px, 5.8vw, 80px); line-height: .98; font-weight: 600; letter-spacing: -.035em; text-wrap: balance; }
+    .lead { font-size: clamp(18px, 1.5vw, 20px); line-height: 1.5; color: var(--text); max-width: 520px; text-wrap: pretty; }
+    .hero .actions { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; }
+    .facts { display: flex; flex-wrap: wrap; gap: 8px 28px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 15px; color: var(--text); }
+    .facts b { font-weight: 600; color: var(--navy); }
 
-    section { padding: clamp(64px, 8vw, 110px) 0; }
-    section.white { background: #fff; border-top: 1px solid #E1E8EE; border-bottom: 1px solid #E1E8EE; }
-    h2 { font-size: clamp(32px, 4vw, 52px); line-height: 1.04; font-weight: 600; letter-spacing: -.03em; max-width: 760px; text-wrap: balance; }
+    /* hero visual: a staging page with a pin, and the comment that changes it */
+    .scene { position: relative; min-height: 470px; }
+    .browser { position: absolute; left: 0; top: 10px; width: 88%; background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 30px 70px -30px rgba(16,40,61,.35); overflow: hidden; }
+    .browser .chrome { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #E8EEF3; background: var(--page); }
+    .browser .chrome i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: block; }
+    .browser .url { flex: 1; margin-left: 8px; background: #fff; border: 1px solid #E8EEF3; border-radius: 6px; padding: 5px 12px; font-size: 12px; color: var(--muted); }
+    .site { background: #24523A; padding: 40px 36px 44px; position: relative; color: #CFE3D6; }
+    .site .k { font-size: 13px; }
+    .site .h { font-size: clamp(28px, 3vw, 42px); line-height: 1.02; font-weight: 600; color: #fff; letter-spacing: -.02em; outline: 2px solid var(--sky); outline-offset: 8px; border-radius: 2px; max-width: 380px; margin: 16px 0 22px; }
+    .site .p { font-size: 15px; max-width: 340px; }
+    .site .b { display: inline-block; background: #fff; color: #24523A; font-weight: 600; font-size: 14px; padding: 11px 18px; border-radius: 8px; margin-top: 18px; }
+    .site .pin { position: absolute; left: min(410px, 78%); top: 44px; width: 30px; height: 30px; border-radius: 50% 50% 50% 4px; background: var(--blue); color: #fff; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 3px #fff; }
+    .thread { position: absolute; right: 0; top: 150px; width: min(300px, 56%); background: #fff; border-radius: 12px; box-shadow: 0 24px 60px -20px rgba(16,40,61,.45); overflow: hidden; }
+    .thread .head { background: var(--navy); color: #fff; padding: 11px 14px; font-size: 13px; font-weight: 600; }
+    .thread .body { padding: 14px; display: flex; flex-direction: column; gap: 9px; }
+    .thread .who { font-size: 12px; color: var(--muted); }
+    .thread .say { font-size: 15px; line-height: 1.4; }
+    .thread .sep { border-top: 1px solid #E8EEF3; padding-top: 10px; }
+    .thread .ok { align-self: flex-end; background: #13A89E; color: #fff; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 7px; }
+
+    section { padding-top: clamp(64px, 7.5vw, 96px); padding-bottom: clamp(64px, 7.5vw, 96px); }
+    .band { background: #fff; border-top: 1px solid #E1E8EE; border-bottom: 1px solid #E1E8EE; }
+    h2 { font-size: clamp(32px, 4vw, 52px); line-height: 1.04; font-weight: 600; letter-spacing: -.03em; max-width: 820px; text-wrap: balance; }
     .sub { font-size: 18px; line-height: 1.55; color: var(--text); max-width: 640px; margin-top: 16px; text-wrap: pretty; }
 
-    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: clamp(20px, 3vw, 36px); margin-top: 44px; }
-    .step .n { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 14px; color: var(--blue); }
-    .step h3 { font-size: 22px; font-weight: 600; margin-top: 10px; letter-spacing: -.01em; }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: clamp(24px, 3vw, 40px); margin-top: 48px; }
+    .step .n { font-size: 14px; color: var(--blue); }
+    .step h3 { font-size: 24px; font-weight: 600; margin-top: 10px; letter-spacing: -.01em; }
     .step p { font-size: 16px; line-height: 1.55; color: var(--muted); margin-top: 8px; }
 
-    .included { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 0; margin-top: 44px; border-top: 1px solid var(--line); border-left: 1px solid var(--line); background: #fff; border-radius: 16px; overflow: hidden; }
-    .included > div { padding: 26px 26px 30px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-    .included h3 { font-size: 19px; font-weight: 600; }
+    .versus { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: clamp(20px, 3vw, 40px); }
+    .versus > div { border-radius: 16px; padding: clamp(26px, 3vw, 36px); display: flex; flex-direction: column; gap: 18px; min-height: 340px; }
+    .versus .old { background: #fff; border: 1px solid var(--line); }
+    .versus .new { background: var(--navy); color: #fff; }
+    .versus .t { font-size: 15px; color: var(--muted); }
+    .versus .new .t { color: #9FB6C8; }
+    .versus ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 17px; color: var(--text); }
+    .versus .new ol { color: #C9DCEA; }
+    .versus .time { margin-top: auto; font-size: 28px; font-weight: 600; letter-spacing: -.02em; color: var(--muted); }
+    .versus .new .time { color: var(--sky); }
+
+    .included { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); margin-top: 44px; border-top: 1px solid var(--line); border-left: 1px solid var(--line); background: #fff; border-radius: 16px; overflow: hidden; }
+    .included > div { padding: 30px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .included h3 { font-size: 20px; font-weight: 600; }
     .included p { font-size: 15px; line-height: 1.55; color: var(--muted); margin-top: 8px; }
 
-    .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: clamp(20px, 3vw, 36px); margin-top: 40px; }
-    .panel { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: clamp(24px, 3vw, 34px); }
-    .panel h3 { font-size: 21px; font-weight: 600; }
-    .panel ul { margin: 14px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
-    .panel li { font-size: 16px; line-height: 1.5; color: var(--text); padding-left: 26px; position: relative; }
-    .panel li::before { content: ""; position: absolute; left: 0; top: 7px; width: 14px; height: 8px; border-left: 2.4px solid var(--blue); border-bottom: 2.4px solid var(--blue); transform: rotate(-45deg); }
-    .panel.no li::before { width: 12px; height: 0; top: 12px; border-left: 0; border-bottom: 2.4px solid #9FB0BE; transform: none; }
+    .meta { background: var(--blue-dark); color: #fff; }
+    .meta .grid, .fit .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: clamp(28px, 4vw, 56px); align-items: center; }
+    .meta h2 { color: #fff; font-size: clamp(30px, 3.4vw, 44px); }
+    .meta .sub { color: #C9DCEA; }
+    .log { background: var(--navy); border-radius: 14px; padding: 22px; font-size: 13px; line-height: 1.8; color: #C3D3E0; }
+    .log .dim { color: #7F97AA; display: block; margin-top: 10px; }
+    .log .dim:first-child { margin-top: 0; }
+    .log .hi { color: #fff; }
+    .log .done { color: var(--sky); }
+
+    .fit .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 20px; }
+    .fit .card { border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 10px; background: #fff; }
+    .fit .card.no { background: var(--page); }
+    .fit .card h3 { font-size: 19px; font-weight: 600; }
+    .fit .card p { font-size: 15px; line-height: 1.5; color: var(--text); }
+    .fit .actions { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin-top: 26px; }
 
     .price { background: var(--navy); color: #fff; }
     .price h2 { color: #fff; }
     .price .sub { color: #C9DCEA; }
-    .price-card { margin-top: 40px; background: #164A75; border-radius: 18px; padding: clamp(28px, 4vw, 44px); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: clamp(24px, 4vw, 48px); align-items: start; }
-    .amount { font-size: clamp(56px, 8vw, 96px); font-weight: 600; letter-spacing: -.04em; line-height: 1; }
-    .amount small { font-size: 18px; font-weight: 400; letter-spacing: 0; color: #C9DCEA; margin-left: 8px; }
-    .price-card ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 16px; color: #C9DCEA; }
-    .price-card li { padding-left: 28px; position: relative; line-height: 1.45; }
-    .price-card li::before { content: ""; position: absolute; left: 0; top: 6px; width: 14px; height: 8px; border-left: 2.4px solid var(--sky); border-bottom: 2.4px solid var(--sky); transform: rotate(-45deg); }
-    .price-card .btn { background: var(--sky); color: var(--navy); font-weight: 600; margin-top: 26px; }
-    .price-card .fine { font-size: 14px; color: #9FB6C8; margin-top: 14px; line-height: 1.5; max-width: 360px; }
+    .price-card { margin-top: 40px; background: var(--blue-dark); border-radius: 18px; padding: clamp(28px, 4vw, 44px); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: clamp(24px, 4vw, 48px); align-items: start; }
+    .amount { font-size: clamp(64px, 8vw, 104px); font-weight: 600; letter-spacing: -.04em; line-height: 1; }
+    .amount small { font-size: 18px; font-weight: 400; letter-spacing: 0; color: #C9DCEA; margin-left: 10px; }
+    .price-card .btn { margin-top: 22px; }
+    .price-card .fine { font-size: 14px; color: #9FB6C8; margin-top: 16px; line-height: 1.5; max-width: 360px; }
+    .price-card ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; font-size: 17px; color: #C9DCEA; }
+    .price-card li { padding-left: 28px; position: relative; line-height: 1.4; }
+    .price-card li::before { content: ""; position: absolute; left: 0; top: 7px; width: 14px; height: 8px; border-left: 2.4px solid var(--sky); border-bottom: 2.4px solid var(--sky); transform: rotate(-45deg); }
 
-    .faq { margin-top: 36px; border-top: 1px solid var(--line); max-width: 860px; }
-    details { border-bottom: 1px solid var(--line); }
-    summary { list-style: none; cursor: pointer; padding: 22px 0; display: flex; justify-content: space-between; gap: 20px; font-size: 19px; font-weight: 500; }
-    summary::-webkit-details-marker { display: none; }
-    summary span { color: var(--blue); font-size: 24px; line-height: 1; transition: transform .2s; flex: none; }
-    details[open] summary span { transform: rotate(45deg); }
-    details p { padding: 0 40px 24px 0; font-size: 16px; line-height: 1.6; color: var(--muted); }
+    .faq { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 0 56px; margin-top: 32px; }
+    .faq > div { padding: 24px 0; border-top: 1px solid var(--line); }
+    .faq h3 { font-size: 19px; font-weight: 500; }
+    .faq p { font-size: 16px; line-height: 1.6; color: var(--muted); margin-top: 8px; }
 
-    .final { background: var(--navy); color: #fff; padding: clamp(80px, 10vw, 140px) 0 0; }
-    .final h2 { color: #fff; font-size: clamp(40px, 6vw, 80px); line-height: .98; }
-    .final h2 em { font-style: normal; color: var(--sky); }
-    .final p { font-size: 19px; color: #C9DCEA; max-width: 500px; line-height: 1.5; margin-top: 22px; }
-    .final .btn { background: var(--sky); color: var(--navy); font-weight: 600; margin-top: 28px; }
-    footer { border-top: 1px solid rgba(255,255,255,.12); margin-top: clamp(64px, 8vw, 110px); }
+    .final { background: var(--navy); color: #fff; padding-bottom: 0; }
+    .final h2 { color: #fff; font-size: clamp(44px, 6.4vw, 84px); line-height: .98; letter-spacing: -.035em; max-width: 900px; }
+    .final h2 span { color: var(--sky); }
+    .final p { font-size: 19px; color: #C9DCEA; max-width: 500px; line-height: 1.5; margin: 24px 0 28px; }
+    footer { border-top: 1px solid rgba(255,255,255,.12); margin-top: clamp(64px, 8vw, 104px); }
     footer .bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; padding-top: 28px; padding-bottom: 28px; font-size: 14px; color: #9FB6C8; }
     footer img { height: 32px; width: auto; display: block; opacity: .9; }
-    footer a { color: #C9DCEA; margin-left: 20px; }
+    footer .links { display: flex; gap: 20px; }
+    footer .links a { color: #C9DCEA; }
+
+    /* questionnaire */
+    .q-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(16,40,61,.55); display: none; align-items: center; justify-content: center; padding: 20px; overflow: auto; }
+    .q-overlay.open { display: flex; }
+    .q-card { width: min(680px, 100%); background: #fff; border-radius: 18px; padding: clamp(24px, 4vw, 40px); display: flex; flex-direction: column; gap: 22px; box-shadow: 0 40px 90px -30px rgba(16,40,61,.6); min-height: min(640px, calc(100vh - 40px)); position: relative; margin: auto; }
+    .q-close { position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: transparent; color: var(--muted); font-size: 20px; }
+    .q-close:hover { background: var(--tint); color: var(--navy); }
+    .q-progress { display: flex; flex-direction: column; gap: 10px; padding-right: 40px; }
+    .q-progress .row { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); }
+    .q-bar { height: 6px; border-radius: 3px; background: var(--tint); overflow: hidden; }
+    .q-bar i { display: block; height: 6px; border-radius: 3px; background: var(--blue); transition: width .25s; }
+    .q-card h3 { font-size: clamp(26px, 3.4vw, 34px); line-height: 1.1; font-weight: 600; letter-spacing: -.02em; }
+    .q-help { font-size: 16px; line-height: 1.5; color: var(--muted); margin-top: 8px; }
+    .q-opts { display: flex; flex-direction: column; gap: 10px; }
+    .q-opt { text-align: left; font-size: 17px; font-weight: 500; color: var(--navy); padding: 16px 18px; border-radius: 12px; border: 1px solid var(--line); background: #fff; min-height: 54px; }
+    .q-opt:hover { border-color: var(--blue); }
+    .q-opt.on { border-color: var(--blue); background: var(--tint); }
+    .q-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .q-back { background: transparent; border: 0; font-size: 15px; color: var(--muted); padding: 12px 0; min-height: 44px; }
+    .q-back:hover { color: var(--navy); }
+    .q-fields { display: flex; flex-direction: column; gap: 14px; }
+    .q-fields label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; }
+    .q-fields input { font: inherit; font-size: 17px; font-weight: 400; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; color: var(--navy); }
+    .q-fields input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,95,150,.15); }
+    .q-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+    .q-err { font-size: 14px; color: #B32D2E; min-height: 1.2em; }
+    .q-kicker { font-size: 15px; font-weight: 500; }
+    .q-result h3 { font-size: clamp(32px, 4.6vw, 44px); line-height: 1.04; letter-spacing: -.03em; margin-top: 12px; }
+    .q-result .body { font-size: 18px; line-height: 1.55; color: var(--text); margin-top: 18px; }
+    .q-next { background: var(--page); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-top: 20px; }
+    .q-next small { font-size: 14px; color: var(--muted); display: block; margin-bottom: 6px; }
+    .q-next div { font-size: 17px; line-height: 1.5; }
+    .q-result, .q-step, .q-contact { display: flex; flex-direction: column; gap: 22px; flex: 1; }
+    .q-result { gap: 0; }
+    [hidden] { display: none !important; }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: minmax(0, 1fr); }
+      .scene { min-height: 0; display: flex; flex-direction: column; gap: 16px; }
+      .browser, .thread { position: static; width: 100%; }
+    }
     @media (max-width: 640px) {
-      header nav a:not(.cta) { display: none; }
+      header nav a { display: none; }
       header img { height: 32px; }
     }
   </style>
@@ -107,41 +190,69 @@
       <a href="#how">How it works</a>
       <a href="#included">What you get</a>
       <a href="#price">Price</a>
-      <a href="#faq">Questions</a>
-      <a class="cta" href="#book">Book a fit call</a>
+      <button type="button" data-fit>See if your site fits</button>
     </nav>
   </div>
 </header>
 
 <main>
   <div class="wrap hero">
-    <div class="eyebrow">PinPoint Setup</div>
-    <h1>Run your website by pointing at it.</h1>
-    <p class="lead">We connect your site to PinPoint and an AI coding assistant. After that, a change is a click and a sentence: you point at what you want different, the assistant makes it on a staging copy, and you push it live when it looks right.</p>
-    <div class="actions">
-      <a class="btn" href="#book">Book a free fit call</a>
-      <a class="btn-quiet" href="#included">See what you get</a>
+    <div class="copy">
+      <div class="eyebrow">PinPoint Setup</div>
+      <h1>Run your website by pointing at it.</h1>
+      <p class="lead">We connect your site to PinPoint and an AI coding assistant. After that, a change is a click and a sentence.</p>
+      <div class="actions">
+        <button type="button" class="btn" data-fit>See if your site fits</button>
+        <span class="aside">Seven questions, about two minutes.</span>
+      </div>
+      <div class="facts">
+        <span><b>$497</b> one time</span>
+        <span>No monthly fee from us</span>
+        <span>Claude Code or Codex</span>
+      </div>
     </div>
-    <div class="note">One-time setup, $497. No monthly fee from us.</div>
+
+    <div class="scene" aria-hidden="true">
+      <div class="browser">
+        <div class="chrome"><i></i><i></i><i></i><div class="url mono">staging.yoursite.com</div></div>
+        <div class="site">
+          <div class="k">Design. Build. Maintain.</div>
+          <div class="h">Outdoor spaces you'll actually use.</div>
+          <div class="p">Patios, plantings and lawns for homes across the North Shore.</div>
+          <div class="b">Schedule a consultation</div>
+          <div class="pin">1</div>
+        </div>
+      </div>
+      <div class="thread">
+        <div class="head">Comment on the headline</div>
+        <div class="body">
+          <div class="who">You</div>
+          <div class="say">Change this to “Backyards you'll actually use.”</div>
+          <div class="who sep">Your assistant, 40 seconds later</div>
+          <div class="say">Done on staging. Have a look, then publish.</div>
+          <div class="ok">Looks right, publish</div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <section class="white" id="how">
+  <section class="band" id="how">
     <div class="wrap">
       <h2>A content system asks you to learn it. This asks you to point.</h2>
       <p class="sub">Most website edits are small: a sentence, a photo, a button. You shouldn't need a login, a training session and a page builder for that.</p>
       <div class="steps">
         <div class="step">
-          <div class="n">01</div>
+          <div class="n mono">01</div>
           <h3>Click what you want changed</h3>
           <p>Open your site, click the headline, photo or section, and type what you want. PinPoint records the exact element, the page and the screen size.</p>
         </div>
         <div class="step">
-          <div class="n">02</div>
+          <div class="n mono">02</div>
           <h3>Your assistant makes the change</h3>
           <p>Claude Code or Codex reads the request straight from PinPoint, edits the staging copy of your site, and replies on the item with what it did.</p>
         </div>
         <div class="step">
-          <div class="n">03</div>
+          <div class="n mono">03</div>
           <h3>Review it, then push it live</h3>
           <p>Look at the change on staging. If it's right, publish. If it isn't, say so on the same item and it goes again.</p>
         </div>
@@ -149,7 +260,33 @@
     </div>
   </section>
 
-  <section id="included">
+  <section>
+    <div class="wrap versus">
+      <div class="old">
+        <div class="t">Changing a headline, the usual way</div>
+        <ol>
+          <li>Find the login you haven't used since spring</li>
+          <li>Work out which of nine menus holds the home page</li>
+          <li>Edit, preview, wonder why the spacing moved</li>
+          <li>Email your developer anyway</li>
+          <li>Wait</li>
+        </ol>
+        <div class="time">Days</div>
+      </div>
+      <div class="new">
+        <div class="t">The same change, after setup</div>
+        <ol>
+          <li>Click the headline</li>
+          <li>Type what it should say</li>
+          <li>Look at it on staging</li>
+          <li>Publish</li>
+        </ol>
+        <div class="time">Minutes</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="included" style="padding-top:0">
     <div class="wrap">
       <h2>What the setup includes.</h2>
       <p class="sub">We don't hand you logins and a document. The setup is finished when you have made three real changes to your own site yourself.</p>
@@ -159,32 +296,50 @@
         <div><h3>House rules for the AI</h3><p>A short rules file written for your site: how it's built, what the assistant may touch, and what is off-limits.</p></div>
         <div><h3>A safe path to live</h3><p>A staging copy where your host supports one, a documented way to publish, and a backup you've watched us restore.</p></div>
         <div><h3>A working session</h3><p>We sit with you while you make your first three changes, recorded so you can rewatch it.</p></div>
-        <div><h3>A one-page runbook</h3><p>Request, review, publish, undo. Plus a check-in call 30 days later.</p></div>
+        <div><h3>A one-page runbook</h3><p>Request, review, publish, undo. Plus a check-in 30 days later.</p></div>
       </div>
     </div>
   </section>
 
-  <section class="white" id="fit">
-    <div class="wrap">
-      <h2>Is your site a fit?</h2>
-      <p class="sub">The 20-minute fit call is free and ends in a yes, a no, or a quote for whatever gap we find. Here is how to guess in advance.</p>
-      <div class="two">
-        <div class="panel">
-          <h3>A good fit</h3>
-          <ul>
-            <li>WordPress, or any site where we can reach the files</li>
-            <li>You have the hosting login, or can get it</li>
-            <li>You make small changes often and wait too long for them</li>
-            <li>You're willing to follow a short checklist, even if you've never used a coding assistant</li>
-          </ul>
+  <section class="meta">
+    <div class="wrap grid">
+      <div>
+        <h2>This page is edited the same way.</h2>
+        <p class="sub">Every sentence here was changed by clicking it and typing what it should say. We use the setup we sell, on the page that sells it.</p>
+      </div>
+      <div class="log mono" aria-hidden="true">
+        <span class="dim">request  /setup  h1</span>
+        <span class="hi">"Make the promise plainer."</span>
+        <span class="dim">assistant</span>
+        <span>Changed the headline on staging.</span>
+        <span class="dim">status</span>
+        <span class="done">resolved, published</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="band fit" id="fit">
+    <div class="wrap grid">
+      <div>
+        <h2>Find out if your site fits before you talk to anyone.</h2>
+        <p class="sub">Seven questions about where your site lives and how you like to work. You get the answer on the spot: a yes, a not yet, or a better option.</p>
+        <div class="actions">
+          <button type="button" class="btn" data-fit>Start the questions</button>
+          <span class="aside">No call needed.</span>
         </div>
-        <div class="panel no">
-          <h3>Not a fit, yet</h3>
-          <ul>
-            <li>Squarespace, Wix and Webflow sites. There are no files for an assistant to edit. We can quote a move.</li>
-            <li>Sites where nobody knows who holds the hosting account</li>
-            <li>You'd rather not touch it at all. Ask us about hosting and support instead.</li>
-          </ul>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3>A good fit</h3>
+          <p>WordPress, or any site where we can reach the files</p>
+          <p>You have the hosting login, or can get it</p>
+          <p>You make small changes often</p>
+        </div>
+        <div class="card no">
+          <h3>Not yet</h3>
+          <p>Squarespace, Wix and Webflow. There are no files to edit.</p>
+          <p>Nobody knows who holds the hosting account</p>
+          <p>You'd rather not touch it. Ask about hosting and support.</p>
         </div>
       </div>
     </div>
@@ -197,7 +352,7 @@
       <div class="price-card">
         <div>
           <div class="amount">$497<small>once</small></div>
-          <a class="btn" href="#book">Book a free fit call</a>
+          <button type="button" class="btn sky" data-fit>See if your site fits</button>
           <p class="fine">Your AI assistant's own subscription and PinPoint's plan, if you need more than the free one, are billed by them, not by us.</p>
         </div>
         <ul>
@@ -216,53 +371,181 @@
     <div class="wrap">
       <h2>Questions people ask first.</h2>
       <div class="faq">
-        <details>
-          <summary>Do I need to be technical?<span>+</span></summary>
-          <p>No. If you can follow a one-page checklist, you can run this. You will open one application and paste one instruction. We practice it together until it's boring.</p>
-        </details>
-        <details>
-          <summary>Which AI assistant do you set up?<span>+</span></summary>
-          <p>Claude Code or ChatGPT Codex. Both can read PinPoint requests and edit a site. If you already pay for one, we use that. If you don't, we'll help you pick on the fit call.</p>
-        </details>
-        <details>
-          <summary>What if I don't have a staging site?<span>+</span></summary>
-          <p>We recommend every change happens on a staging copy first. Many hosts offer one at no cost, and turning it on is part of the setup. If yours doesn't, we'll tell you on the fit call what your options are before you pay anything.</p>
-        </details>
-        <details>
-          <summary>Does my site need to be in GitHub?<span>+</span></summary>
-          <p>No. A repository makes undo easier and we'll set one up if you want it, in your name. Without one, your host's backups are the way back, and we make sure they work before we hand over.</p>
-        </details>
-        <details>
-          <summary>What happens if the AI makes a bad change?<span>+</span></summary>
-          <p>It happens on staging, where nobody sees it, and you can undo it. We show you how before we finish. After the setup, reviewing and publishing changes is yours. If you would rather have us on call for that, ask about hosting and support.</p>
-        </details>
-        <details>
-          <summary>Can you just make the changes for me?<span>+</span></summary>
-          <p>Yes. We offer hosting and support where you make requests in PinPoint and we get them live. Tell us on the fit call and we'll skip straight to that.</p>
-        </details>
-        <details>
-          <summary>What should I have ready for the call?<span>+</span></summary>
-          <p>Your site's address, who hosts it, whether you have the login, and a rough idea of what you change most often. That's enough for us to tell you whether it's a fit.</p>
-        </details>
+        <div><h3>Do I need to be technical?</h3><p>No. If you can follow a one-page checklist, you can run this. We practice it together until it's boring.</p></div>
+        <div><h3>Which AI assistant do you set up?</h3><p>Claude Code or ChatGPT Codex. If you already pay for one, we use that.</p></div>
+        <div><h3>What if I don't have a staging site?</h3><p>Many hosts offer one at no cost, and turning it on is part of the setup. If yours doesn't, the questionnaire tells you before you pay anything.</p></div>
+        <div><h3>Does my site need to be in GitHub?</h3><p>No. A repository makes undo easier and we'll set one up in your name if you want it. Without one, your host's backups are the way back.</p></div>
+        <div><h3>What happens if the AI makes a bad change?</h3><p>It happens on staging, where nobody sees it, and you can undo it. After the setup, reviewing and publishing changes is yours.</p></div>
+        <div><h3>Can you just make the changes for me?</h3><p>Yes. With hosting and support you make requests in PinPoint and we get them live. Say so in the questionnaire.</p></div>
       </div>
     </div>
   </section>
 
-  <section class="final" id="book">
+  <section class="final">
     <div class="wrap">
-      <h2>Point at it. <em>We'll set up the rest.</em></h2>
-      <p>The fit call is 20 minutes and free. You'll leave knowing whether this works for your site and what it costs.</p>
-      <a class="btn" href="mailto:projects@avalanchegr.com?subject=PinPoint%20Setup%20fit%20call&body=My%20site%3A%20%0AWho%20hosts%20it%3A%20%0ADo%20I%20have%20a%20staging%20copy%3A%20%0AWhat%20I%20change%20most%20often%3A%20%0AGood%20times%20for%20a%2020-minute%20call%3A%20">Book a free fit call</a>
+      <h2>Point at it. <span>We'll set up the rest.</span></h2>
+      <p>Seven questions, about two minutes. You'll know whether this works for your site before you spend anything.</p>
+      <button type="button" class="btn sky" data-fit>See if your site fits</button>
     </div>
     <footer>
       <div class="wrap bar">
-        <a href="https://avalanchegr.com/?utm_source=pinpoint&utm_medium=landing&utm_campaign=setup" style="margin:0"><img src="/img/pinpoint-logo-white.png" alt="PinPoint by Avalanche Creative" width="573" height="140"></a>
+        <a href="https://avalanchegr.com/?utm_source=pinpoint&utm_medium=landing&utm_campaign=setup"><img src="/img/pinpoint-logo-white.png" alt="PinPoint by Avalanche Creative" width="573" height="140"></a>
         <span>© 2026 Avalanche Creative. PinPoint is a trademark of Avalanche Creative.</span>
-        <div><a href="/">PinPoint</a><a href="/app/terms.html">Terms</a><a href="/app/privacy.html">Privacy</a><a href="mailto:projects@avalanchegr.com">Contact</a></div>
+        <div class="links"><a href="/">PinPoint</a><a href="/app/terms.html">Terms</a><a href="/app/privacy.html">Privacy</a><a href="mailto:projects@avalanchegr.com">Contact</a></div>
       </div>
     </footer>
   </section>
 </main>
+
+<!-- Fit questionnaire -->
+<div class="q-overlay" id="q" role="dialog" aria-modal="true" aria-labelledby="q-title">
+  <div class="q-card">
+    <button type="button" class="q-close" id="q-close" aria-label="Close">✕</button>
+
+    <div class="q-progress" id="q-progress">
+      <div class="row"><span id="q-count">Question 1 of 6</span><span>About two minutes</span></div>
+      <div class="q-bar"><i id="q-fill" style="width:0%"></i></div>
+    </div>
+
+    <div class="q-step" id="q-step">
+      <div>
+        <h3 id="q-title">What is your site built on?</h3>
+        <div class="q-help" id="q-help"></div>
+      </div>
+      <div class="q-opts" id="q-opts"></div>
+      <div class="q-foot">
+        <button type="button" class="q-back" id="q-back">Back</button>
+        <span class="aside">Pick one to continue</span>
+      </div>
+    </div>
+
+    <form class="q-contact" id="q-contact" hidden novalidate>
+      <div>
+        <h3>Where should we send your answer?</h3>
+        <div class="q-help">You'll see the result on the next screen too. We only use this to follow up about your site.</div>
+      </div>
+      <div class="q-fields">
+        <label>Your name<input type="text" id="q-name" autocomplete="name" placeholder="Jamie Rivera"></label>
+        <label>Email<input type="email" id="q-email" autocomplete="email" placeholder="you@yourcompany.com"></label>
+        <label>Your site's address<input type="text" id="q-site" autocomplete="url" placeholder="yourcompany.com"></label>
+        <label class="q-hp" aria-hidden="true">Company<input type="text" id="q-company" tabindex="-1" autocomplete="off"></label>
+      </div>
+      <div class="q-err" id="q-err" role="alert"></div>
+      <div class="q-foot">
+        <button type="button" class="q-back" id="q-back2">Back</button>
+        <button type="submit" class="btn" id="q-submit">Show my result</button>
+      </div>
+    </form>
+
+    <div class="q-result" id="q-result" hidden>
+      <div class="q-kicker" id="r-kicker"></div>
+      <h3 id="r-title"></h3>
+      <div class="body" id="r-body"></div>
+      <div class="q-next"><small>What happens next</small><div id="r-next"></div></div>
+      <div class="q-err" id="r-err" role="status" style="margin-top:12px"></div>
+      <div class="q-foot">
+        <button type="button" class="q-back" id="q-restart">Start over</button>
+        <button type="button" class="btn" id="q-done">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var ENDPOINT = 'https://vaculezzigjtgbysnajf.supabase.co/functions/v1/setup-intake';
+  var QS = [
+    { key: 'platform', q: 'What is your site built on?', help: 'If you are not sure, pick the last one and we will look it up.', opts: [['wordpress', 'WordPress'], ['shopify', 'Shopify'], ['code', 'Custom code or plain files'], ['builder', 'Squarespace, Wix or Webflow'], ['unknown', 'Not sure']] },
+    { key: 'hosting', q: 'Do you have the login for where it is hosted?', help: 'The account at the company that keeps your site online.', opts: [['yes', 'Yes, I have it'], ['can', 'I can get it'], ['unknown', 'I do not know who has it']] },
+    { key: 'staging', q: 'Is there a staging copy of your site?', help: 'A private duplicate where changes are tried before they go live.', opts: [['yes', 'Yes'], ['no', 'No'], ['unknown', 'Not sure']] },
+    { key: 'ai', q: 'How do you use AI today?', help: 'There is no wrong answer. It tells us how much to practice together.', opts: [['none', 'I do not'], ['chat', 'Chat tools like ChatGPT or Claude'], ['code', 'I have used a coding assistant']] },
+    { key: 'changes', q: 'What do you change most often?', help: 'Pick the closest.', opts: [['copy', 'Text and photos'], ['layout', 'Layout and new sections'], ['build', 'New pages and features']] },
+    { key: 'run', q: 'Who should make the changes day to day?', help: 'Either works. One is a setup, the other is a service.', opts: [['self', 'Me, or someone on my team'], ['avalanche', 'I would rather Avalanche did it']] }
+  ];
+  var RESULTS = {
+    support: { kicker: 'A better option for you', color: '#1D5F96', title: 'Hosting and support is the better fit.', body: 'You would rather not run it yourself, and that is fine. You make requests in PinPoint and we get them live.', next: 'We will email you what that includes and what it costs.' },
+    move: { kicker: 'Not yet', color: '#8A5A00', title: 'Your site needs a move first.', body: 'Squarespace, Wix and Webflow keep your site inside their editor, so there are no files for an assistant to change.', next: 'We will email you a quote for moving the site somewhere this works.' },
+    hosting: { kicker: 'One thing first', color: '#8A5A00', title: 'We need to find your hosting account.', body: 'Everything else looks fine. We cannot set anything up until someone can sign in where the site is hosted.', next: 'We will email you how to track it down. It usually takes a day.' },
+    fit: { kicker: 'Good news', color: '#1F6B45', title: 'Your site is a fit.', body: 'Setup is $497, one time. It ends when you have made three real changes to your own site yourself.', next: 'We will email you a link to pay and pick a setup day.' }
+  };
+  var $ = function (id) { return document.getElementById(id); };
+  var overlay = $('q'), step = 0, answers = {}, lastFocus = null;
+
+  function verdict() {
+    if (answers.run === 'avalanche') return 'support';
+    if (answers.platform === 'builder') return 'move';
+    if (answers.hosting === 'unknown') return 'hosting';
+    return 'fit';
+  }
+  function show(which) {
+    $('q-step').hidden = which !== 'step';
+    $('q-contact').hidden = which !== 'contact';
+    $('q-result').hidden = which !== 'result';
+    $('q-progress').hidden = which === 'result';
+  }
+  function render() {
+    if (step < QS.length) {
+      var cur = QS[step];
+      show('step');
+      $('q-count').textContent = 'Question ' + (step + 1) + ' of ' + QS.length;
+      $('q-fill').style.width = Math.round((step / (QS.length + 1)) * 100) + '%';
+      $('q-title').textContent = cur.q;
+      $('q-help').textContent = cur.help;
+      var box = $('q-opts'); box.replaceChildren();
+      cur.opts.forEach(function (o) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'q-opt' + (answers[cur.key] === o[0] ? ' on' : ''); b.textContent = o[1];
+        b.addEventListener('click', function () { answers[cur.key] = o[0]; step += 1; render(); });
+        box.appendChild(b);
+      });
+      $('q-back').style.visibility = step === 0 ? 'hidden' : 'visible';
+      var first = box.querySelector('.q-opt'); if (first) first.focus();
+    } else if (step === QS.length) {
+      show('contact');
+      $('q-count').textContent = 'Last step';
+      $('q-fill').style.width = Math.round(((QS.length + 0.5) / (QS.length + 1)) * 100) + '%';
+      $('q-name').focus();
+    } else {
+      var r = RESULTS[verdict()];
+      show('result');
+      $('r-kicker').textContent = r.kicker; $('r-kicker').style.color = r.color;
+      $('r-title').textContent = r.title; $('r-body').textContent = r.body; $('r-next').textContent = r.next;
+      $('q-done').focus();
+    }
+  }
+  function open() { lastFocus = document.activeElement; overlay.classList.add('open'); document.body.style.overflow = 'hidden'; render(); }
+  function close() { overlay.classList.remove('open'); document.body.style.overflow = ''; if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+
+  document.querySelectorAll('[data-fit]').forEach(function (b) { b.addEventListener('click', open); });
+  $('q-close').addEventListener('click', close);
+  $('q-done').addEventListener('click', close);
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+  overlay.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+  $('q-back').addEventListener('click', function () { if (step > 0) { step -= 1; render(); } });
+  $('q-back2').addEventListener('click', function () { step = QS.length - 1; render(); });
+  $('q-restart').addEventListener('click', function () { step = 0; answers = {}; $('r-err').textContent = ''; render(); });
+
+  $('q-contact').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('q-name').value.trim(), email = $('q-email').value.trim(), site = $('q-site').value.trim();
+    if (!name) { $('q-err').textContent = 'Add your name.'; return $('q-name').focus(); }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { $('q-err').textContent = 'That email does not look right.'; return $('q-email').focus(); }
+    if (!site) { $('q-err').textContent = 'Add your site’s address.'; return $('q-site').focus(); }
+    $('q-err').textContent = '';
+    var btn = $('q-submit'); btn.disabled = true; btn.textContent = 'One moment…';
+    var payload = { name: name, email: email, site: site, answers: answers, result: verdict(), company: $('q-company').value };
+    fetch(ENDPOINT, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .catch(function () { return { ok: false, j: {} }; })
+      .then(function (res) {
+        btn.disabled = false; btn.textContent = 'Show my result';
+        step = QS.length + 1; render();
+        if (!res.ok) $('r-err').textContent = (res.j && res.j.error) || 'We could not save your answers. Email projects@avalanchegr.com and mention this result.';
+      });
+  });
+  if (location.hash === '#fit-check') open();
+})();
+</script>
 
 <!-- PinPoint: open this page with ?markup=pinpoint-setup to comment on it. -->
 <script defer src="https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/markup.js" data-project="pinpoint-setup"></script>

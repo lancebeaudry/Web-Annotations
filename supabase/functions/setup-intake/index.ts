@@ -1,0 +1,68 @@
+// PinPoint Setup — fit questionnaire intake.
+//
+// POST { name, email, site, answers, result, company? }   (public, no auth)
+// Stores the lead in setup_leads and emails the team. `company` is a
+// honeypot: real people never see it, so anything in it is dropped quietly.
+// A caller is limited to a handful of submissions an hour by a salted hash
+// of their address (we never store the address itself).
+// Deploy: supabase functions deploy setup-intake --no-verify-jwt --use-api
+
+import { db, json } from "../_shared/db.ts";
+import { corsHeaders, preflight } from "../_shared/cors.ts";
+import { sendEmail, mailerConfigured, FOOTER_HTML, FOOTER_TEXT } from "../_shared/email.ts";
+
+const TEAM = Deno.env.get("SETUP_LEADS_TO") ?? "projects@avalanchegr.com";
+const SALT = Deno.env.get("NOTIFY_SECRET") ?? "pinpoint";
+const esc = (s: string) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const clip = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
+
+const LABELS: Record<string, Record<string, string>> = {
+  platform: { wordpress: "WordPress", shopify: "Shopify", code: "Custom code or plain files", builder: "Squarespace, Wix or Webflow", unknown: "Not sure" },
+  hosting: { yes: "Has the login", can: "Can get it", unknown: "Doesn't know who has it" },
+  staging: { yes: "Yes", no: "No", unknown: "Not sure" },
+  ai: { none: "Doesn't use AI", chat: "Chat tools", code: "Has used a coding assistant" },
+  changes: { copy: "Text and photos", layout: "Layout and new sections", build: "New pages and features" },
+  run: { self: "Will run it themselves", avalanche: "Wants Avalanche to do it" },
+};
+const QUESTION: Record<string, string> = { platform: "Built on", hosting: "Hosting login", staging: "Staging copy", ai: "AI today", changes: "Changes most", run: "Who runs it" };
+const RESULT: Record<string, string> = { fit: "Fit for the $497 setup", support: "Hosting and support lead", move: "Needs a platform move first", hosting: "Needs to find the hosting account" };
+
+async function hash(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${SALT}:${s}`));
+  return [...new Uint8Array(buf)].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+Deno.serve(async (req) => {
+  const pf = preflight(req);
+  if (pf) return pf;
+  const cors = corsHeaders(req);
+  if (req.method !== "POST") return json(405, { error: "POST only" }, cors);
+  let b: any;
+  try { b = await req.json(); } catch { return json(400, { error: "bad JSON" }, cors); }
+  if (clip(b.company, 200)) return json(200, { ok: true }, cors); // honeypot
+
+  const name = clip(b.name, 120), email = clip(b.email, 200).toLowerCase(), site = clip(b.site, 300);
+  if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !site) return json(400, { error: "Name, a valid email and your site are required." }, cors);
+  const answers: Record<string, string> = {};
+  for (const k of Object.keys(LABELS)) { const v = clip(b.answers?.[k], 40); if (LABELS[k][v]) answers[k] = v; }
+  const result = RESULT[clip(b.result, 20)] ? clip(b.result, 20) : "fit";
+
+  const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+  const who = await hash(ip);
+  const since = new Date(Date.now() - 3600_000).toISOString();
+  const recent = await db<any[]>(`setup_leads?ip_hash=eq.${who}&created_at=gte.${since}&select=id`);
+  if (recent.length >= 5) return json(429, { error: "Too many submissions. Email projects@avalanchegr.com instead." }, cors);
+
+  await db("setup_leads", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ name, email, site, answers, result, ip_hash: who, user_agent: clip(req.headers.get("user-agent"), 300) }) });
+
+  if (mailerConfigured()) {
+    const rows = Object.keys(QUESTION).map((k) => [QUESTION[k], LABELS[k][answers[k]] ?? "—"]);
+    const text = `${name} <${email}>\nSite: ${site}\nResult: ${RESULT[result]}\n\n${rows.map(([q, a]) => `${q}: ${a}`).join("\n")}\n${FOOTER_TEXT}`;
+    const html = `<p><b>${esc(name)}</b> &lt;<a href="mailto:${esc(email)}">${esc(email)}</a>&gt;<br>Site: ${esc(site)}</p>` +
+      `<p style="font-size:16px"><b>${esc(RESULT[result])}</b></p>` +
+      `<table cellpadding="6" style="border-collapse:collapse;font-size:14px">${rows.map(([q, a]) => `<tr><td style="color:#555;border-bottom:1px solid #eee">${esc(q)}</td><td style="border-bottom:1px solid #eee">${esc(a)}</td></tr>`).join("")}</table>` + FOOTER_HTML;
+    try { await sendEmail({ to: TEAM, subject: `Setup questionnaire: ${name} — ${RESULT[result]}`, text, html }); }
+    catch (e) { console.error("setup lead email failed", e); }
+  }
+  return json(200, { ok: true }, cors);
+});
