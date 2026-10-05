@@ -61,7 +61,7 @@ async function callTool(project: Project, name: string, args: Record<string, any
     case "set_status": return text(await actOn(project, { comment_id: args.id, status: args.status, reply: args.reply }, args.agent_name || "AI assistant"));
     case "assign": return text(await actOn(project, { comment_id: args.id, assignee: args.email ?? "" }, "AI assistant"));
     case "triage": return text(await actOn(project, { comment_id: args.id, labels: args.labels, effort: args.effort }, "AI assistant"));
-    case "project_info": return text({ name: project.name, site_url: project.site_url, share_link: `${project.site_url.replace(/\/$/, "")}/?markup=${project.token}` });
+    case "project_info": return text({ name: project.name, site_url: project.site_url, share_link: `${project.site_url.replace(/\/$/, "")}/?pinpoint=${project.token}` });
     default: return errorResult(`unknown tool ${name}`);
   }
 }

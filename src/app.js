@@ -844,6 +844,7 @@ function confirmExit(app) {
       /* nothing stored */
     }
     const url = new URL(location.href);
+    url.searchParams.delete('pinpoint');
     url.searchParams.delete('markup');
     location.href = url.toString();
   });

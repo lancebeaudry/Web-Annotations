@@ -33,7 +33,7 @@ export function projectNewScreen({ query }) {
     {},
     field('Project name', name, 'Shown in exports and notification emails.'),
     field('Site URL', site, 'The site you\'ll be reviewing. Just the origin, e.g. https://staging.acme.com'),
-    field('Token', token, 'Short, lowercase, unique. Your share link becomes  site/?markup=TOKEN'),
+    field('Token', token, 'Short, lowercase, unique. Your share link becomes  site/?pinpoint=TOKEN'),
     limitCard,
     h('div', { class: 'btn-row' }, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'Cancel'), submit)
   );

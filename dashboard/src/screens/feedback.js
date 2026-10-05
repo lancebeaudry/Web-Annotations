@@ -25,7 +25,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
   const [rows, people] = await Promise.all([listComments(id), canManage ? listAssignees(id).catch(() => []) : Promise.resolve([])]);
   const roots = rows.filter((r) => !r.parent_id);
   const repliesOf = (rid) => rows.filter((r) => r.parent_id === rid);
-  const link = (c) => `${c.page_url}?markup=${encodeURIComponent(p.token)}&pp_comment=${c.id}`;
+  const link = (c) => `${c.page_url}?pinpoint=${encodeURIComponent(p.token)}&pp_comment=${c.id}`;
 
   const f = { status: query.status || 'open', page: '', assignee: '', label: query.label || '', device: '', kind: query.kind || '', q: '', view: query.view || 'list' };
   const forPage = (c) => (c.kind === 'reference' && !c.page_path && c.source && c.source.for_page) || '';
@@ -220,7 +220,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
   return h(
     'div',
     {},
-    pageHead(p.name, p.site_url, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'All projects'), h('a', { class: 'btn', href: `${p.site_url.replace(/\/$/, '')}/?markup=${p.token}`, target: '_blank', rel: 'noopener' }, 'Open site in PinPoint')),
+    pageHead(p.name, p.site_url, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'All projects'), h('a', { class: 'btn', href: `${p.site_url.replace(/\/$/, '')}/?pinpoint=${p.token}`, target: '_blank', rel: 'noopener' }, 'Open site in PinPoint')),
     h('div', { class: 'tabs' }, h('a', { href: `#/projects/${id}` }, 'Settings'), h('a', { class: 'on', href: `#/projects/${id}/feedback` }, `Feedback (${openCount} open)`)),
     card(null, summary, h('div', { class: 'filters' }, on('status') ? statusSel : null, pageSel, on('labels') ? labelSel : null, kindSel, deviceSel, canManage && on('assignee') ? assigneeSel : null, search, viewSeg), body, on('status') ? digestCard : null)
   );

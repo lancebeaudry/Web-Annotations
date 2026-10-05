@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: PinPoint by Avalanche
- * Description: Click-to-comment website feedback, by Avalanche Creative. Paste the site's project token under Settings → PinPoint. The overlay only appears for visits with ?markup=TOKEN in the URL — normal visitors never see anything.
- * Version: 2.5.1
+ * Description: Click-to-comment website feedback, by Avalanche Creative. Paste the site's project token under Settings → PinPoint. The overlay only appears for visits with ?pinpoint=TOKEN in the URL — normal visitors never see anything.
+ * Version: 2.6.0
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  * Update URI: https://pinpoint.avalanchegr.com/
@@ -41,7 +41,7 @@ function avmk_bridge_headers() {
 
 // A fresh install gets a random token so share links aren't guessable. The
 // project itself is registered the first time the owner opens
-// ?markup=TOKEN while signed in (or from the dashboard).
+// ?pinpoint=TOKEN while signed in (or from the dashboard).
 register_activation_hook( __FILE__, function () {
 	if ( ! get_option( AVMK_OPTION, '' ) ) {
 		add_option( AVMK_OPTION, strtolower( wp_generate_password( 20, false ) ) );
@@ -109,7 +109,7 @@ add_action( 'admin_menu', function () {
 } );
 
 // Admin-bar shortcut for logged-in users: one click to enter feedback
-// mode on the page you're viewing (adds ?markup=TOKEN). Only shown when a
+// mode on the page you're viewing (adds ?pinpoint=TOKEN). Only shown when a
 // token is configured. On a wp-admin screen it links to the site home.
 add_action( 'admin_bar_menu', function ( $bar ) {
 	$token = get_option( AVMK_OPTION, '' );
@@ -117,8 +117,8 @@ add_action( 'admin_bar_menu', function ( $bar ) {
 		return;
 	}
 	$href = is_admin()
-		? home_url( '/?markup=' . rawurlencode( $token ) )
-		: esc_url_raw( add_query_arg( 'markup', $token ) );
+		? home_url( '/?pinpoint=' . rawurlencode( $token ) )
+		: esc_url_raw( add_query_arg( 'pinpoint', $token ) );
 	$bar->add_node( [
 		'id'    => 'avalanche-markup',
 		'title' => '<span class="ab-icon"></span>PinPoint',
@@ -301,7 +301,7 @@ function avmk_sanitize_emails( $raw ) {
 }
 
 // The token is only what the page sends. Registration happens when the
-// owner first opens ?markup=TOKEN signed in (the overlay creates the project,
+// owner first opens ?pinpoint=TOKEN signed in (the overlay creates the project,
 // owned by them) or from the dashboard — so there is nothing to sync here,
 // and no backend key is needed on this server.
 
@@ -406,7 +406,7 @@ function avmk_settings_page() {
 	?>
 	<div class="wrap">
 			<h1>PinPoint <small style="font-weight:400;color:#646970">by Avalanche Creative</small></h1>
-			<p>Feedback mode activates only for visits with <code>?markup=TOKEN</code> in the URL — regular visitors never see anything. The first time you open that link while signed in, the site is registered to your account.</p>
+			<p>Feedback mode activates only for visits with <code>?pinpoint=TOKEN</code> in the URL — regular visitors never see anything. The first time you open that link while signed in, the site is registered to your account.</p>
 			<p class="description">
 				Bridge secret:
 				<?php if ( avmk_project_secret() ) : ?>
@@ -442,7 +442,7 @@ function avmk_settings_page() {
 		</form>
 		<?php if ( $token ) : ?>
 			<p>
-				Share link for this site: <code><?php echo esc_html( home_url( '/?markup=' . $token ) ); ?></code>
+				Share link for this site: <code><?php echo esc_html( home_url( '/?pinpoint=' . $token ) ); ?></code>
 				<?php if ( $open ) : ?>
 					<br><span class="description">Open feedback is <strong>on</strong> — send this link to anyone and they can start marking up right away.</span>
 				<?php endif; ?>

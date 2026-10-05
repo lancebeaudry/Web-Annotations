@@ -134,3 +134,7 @@ Owner/operator Markdown exports end with an "For AI coding assistants" block: ea
 ## 2.6: daily roundup by default
 
 - `projects.notify_mode` = `daily` (default) | `instant`. On `daily`, `notify` skips the project's notify list on new comments (mentions and "needs your decision" still go instantly). `functions/roundup` (pg_cron `pinpoint-roundup-daily`, 12:00 UTC) emails each recipient the comments and replies since `projects.notify_last_roundup`, grouped by page with deep links, leaving out their own; nothing is sent when it was quiet. `update_notify_mode(project, mode)` (owner/operator) and a radio in the dashboard's Email notifications card. Migration `supabase/v26.sql`.
+
+## 2.6.0: `?pinpoint=` share links
+
+New links everywhere (dashboard, inbox, emails, Slack/ClickUp, MCP, the plugin's admin bar and settings page) use `?pinpoint=TOKEN`. The overlay accepts `?pinpoint=` first and `?markup=` second, so every link sent before the rename keeps working. Internal identifiers are unchanged (see the top of this file).

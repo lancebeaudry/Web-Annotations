@@ -95,7 +95,7 @@ export function collectContext(app) {
     viewport: [window.innerWidth, window.innerHeight],
     dpr: window.devicePixelRatio || 1,
     lang: navigator.language,
-    url: location.href.split('#')[0].replace(/([?&])markup=[^&]*/, '$1').replace(/[?&]$/, ''),
+    url: location.href.split('#')[0].replace(/([?&])(pinpoint|markup)=[^&]*/g, '$1').replace(/[?&]$/, ''),
     errors: (app.errorLog || []).slice(-10),
   };
 }

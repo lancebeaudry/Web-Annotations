@@ -8,7 +8,7 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
   const p = await getProject(id);
   if (!p) return card('Not found', h('p', {}, 'This project doesn’t exist or you don’t have access.'), h('a', { class: 'btn', href: '#/projects' }, 'Back'));
   const canManage = acct.is_operator || p.owner_id === user.id;
-  const shareLink = `${p.site_url.replace(/\/$/, '')}/?markup=${p.token}`;
+  const shareLink = `${p.site_url.replace(/\/$/, '')}/?pinpoint=${p.token}`;
   const access = await projectAccess(id).catch(() => ({}));
   const hasFeature = (f) => acct.is_operator || (access.features || []).includes(f);
   const openCount = (await listComments(id).catch(() => [])).filter((c) => !c.parent_id && (c.status === 'open' || c.status === 'in_progress' || c.status === 'waiting')).length;

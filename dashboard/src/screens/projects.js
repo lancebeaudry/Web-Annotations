@@ -95,7 +95,7 @@ export async function projectsScreen({ user }) {
             h('td', { class: 'hint' }, fmtDate(p.created_at)),
             h('td', { class: 'acts' },
               h('a', { class: 'btn btn-ghost btn-sm', href: `#/projects/${p.id}/feedback` }, 'Feedback'),
-              h('a', { class: 'btn btn-ghost btn-sm', href: `${p.site_url.replace(/\/$/, '')}/?markup=${p.token}`, target: '_blank', rel: 'noopener' }, 'Open site')));
+              h('a', { class: 'btn btn-ghost btn-sm', href: `${p.site_url.replace(/\/$/, '')}/?pinpoint=${p.token}`, target: '_blank', rel: 'noopener' }, 'Open site')));
           const go = () => { location.hash = `#/projects/${p.id}`; };
           tr.addEventListener('click', (e) => { if (!e.target.closest('a')) go(); });
           tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.target.closest('a')) go(); });

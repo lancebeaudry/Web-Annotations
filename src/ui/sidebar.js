@@ -329,7 +329,7 @@ function jumpTo(app, comment, onThisPage) {
       try { path = new URL(comment.page_url).pathname; } catch { path = '/'; }
     }
     const url = new URL(path, location.origin);
-    if (app.token) url.searchParams.set('markup', app.token);
+    if (app.token) url.searchParams.set('pinpoint', app.token);
     location.href = url.toString();
     return;
   }

@@ -13,7 +13,7 @@ const esc = (s: string) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;"
 
 export function deepLink(project: Project, record: Row) {
   const id = record.parent_id || record.id;
-  return `${record.page_url}?markup=${encodeURIComponent(project.token)}&pp_comment=${id}`;
+  return `${record.page_url}?pinpoint=${encodeURIComponent(project.token)}&pp_comment=${id}`;
 }
 
 export async function dispatchIntegrations(event: "insert" | "update", record: Row, old: Row | null, project: Project) {

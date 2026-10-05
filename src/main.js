@@ -6,7 +6,7 @@ import { MARKUP_VERSION } from './config.js';
 window.__avalancheMarkupVersion = MARKUP_VERSION;
 
 // Activation gate: real visitors short-circuit here. The script runs
-// when the URL carries ?markup=TOKEN (data-project on the script tag
+// when the URL carries ?pinpoint=TOKEN, or the older ?markup=TOKEN (data-project on the script tag
 // is the fallback token when ?markup is present but empty). Once
 // activated, the token is kept in sessionStorage so feedback mode
 // survives navigating between pages — it ends when the tab closes or
@@ -20,9 +20,11 @@ const params = new URLSearchParams(location.search);
 // synchronous pass.
 const openAccess = !!(script && script.dataset.open);
 
+// ?pinpoint=TOKEN is the share link; ?markup=TOKEN still works for links
+// sent out before the rename.
 let token = null;
-if (params.has('markup')) {
-  token = params.get('markup') || (script && script.dataset.project) || '';
+if (params.has('pinpoint') || params.has('markup')) {
+  token = params.get('pinpoint') || params.get('markup') || (script && script.dataset.project) || '';
   try {
     if (token) sessionStorage.setItem('markup_token', token);
   } catch {
