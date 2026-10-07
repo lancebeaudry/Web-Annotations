@@ -35,7 +35,9 @@ footer .ver { margin-left: 12px; opacity: .6; }
 .page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 22px; }
 .page-head h1 { font-size: 28px; font-weight: 600; }
 .page-head .sub { color: var(--muted); margin-top: 4px; font-size: 14px; }
-.page-head .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.page-head .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.psearch { width: 240px; padding: 9px 12px 9px 34px; font-size: 14px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235A6F80' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E") no-repeat 11px center; }
+@media (max-width: 640px) { .psearch { width: 100%; } }
 
 /* cards */
 .card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 18px; overflow: hidden; scroll-margin-top: 84px; }

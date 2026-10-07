@@ -106,18 +106,32 @@ export async function projectsScreen({ user }) {
 
   const seg = h('div', { class: 'seg' });
   const body = h('div', {});
+  // Search by name, host or token. Matches as you type; Esc clears.
+  const search = h('input', { type: 'search', class: 'psearch', placeholder: 'Search projects…', 'aria-label': 'Search projects' });
+  let needle = '';
+  const matches = (p) => !needle || `${p.name} ${hostOf(p.site_url)} ${p.token || ''}`.toLowerCase().includes(needle);
+  search.addEventListener('input', () => { needle = search.value.trim().toLowerCase(); draw(); });
+  search.addEventListener('keydown', (e) => { if (e.key === 'Escape') { search.value = ''; needle = ''; draw(); } });
   function draw() {
     seg.replaceChildren(...[['table', 'Table'], ['cards', 'Cards']].map(([v, label]) => {
       const b = h('button', { type: 'button', class: v === view ? 'on' : '' }, label);
       b.addEventListener('click', () => { view = v; try { localStorage.setItem(VIEW_KEY, v); } catch {} draw(); });
       return b;
     }));
-    const parts = [mine.length ? render(mine) : h('div', { class: 'empty' }, 'No projects yet. Create one to get your share link and install instructions.')];
-    if (shared.length) parts.push(h('h3', { class: 'section-title' }, acct.is_operator ? 'All customer projects' : 'Shared with you'), render(shared));
+    const mineHit = mine.filter(matches), sharedHit = shared.filter(matches);
+    const parts = [];
+    if (mine.length) parts.push(mineHit.length ? render(mineHit) : needle ? h('div', { class: 'empty' }, `None of your projects match “${search.value.trim()}”.`) : null);
+    else parts.push(h('div', { class: 'empty' }, 'No projects yet. Create one to get your share link and install instructions.'));
+    if (shared.length && (sharedHit.length || !needle)) parts.push(h('h3', { class: 'section-title' }, acct.is_operator ? 'All customer projects' : 'Shared with you'), render(sharedHit));
+    if (needle && !mineHit.length && !sharedHit.length && (mine.length || shared.length)) parts.splice(0, parts.length, h('div', { class: 'empty' }, `No projects match “${search.value.trim()}”.`));
     body.replaceChildren(...parts);
   }
   draw();
 
   const create = h('a', { class: `btn ${canCreate ? '' : 'btn-disabled'}`, href: canCreate ? '#/projects/new' : '#/account' }, canCreate ? 'New project' : 'Upgrade to add projects');
-  return h('div', {}, pageHead('Projects', planLine, seg, create), body);
+  const page = h('div', {}, pageHead('Projects', planLine, search, seg, create), body);
+  // Keyboard: "/" focuses the search from anywhere on this screen.
+  page.addEventListener('keydown', (e) => { if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); search.focus(); } });
+  if (projects.length > 1) setTimeout(() => search.focus(), 0);
+  return page;
 }
