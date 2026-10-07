@@ -2,7 +2,7 @@
 /**
  * Plugin Name: PinPoint by Avalanche
  * Description: Click-to-comment website feedback, by Avalanche Creative. Paste the site's project token under Settings → PinPoint. The overlay only appears for visits with ?pinpoint=TOKEN in the URL — normal visitors never see anything.
- * Version: 2.6.0
+ * Version: 2.6.1
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  * Update URI: https://pinpoint.avalanchegr.com/
@@ -158,6 +158,16 @@ function avmk_update_manifest() {
 	set_transient( 'avmk_update_manifest', $data ?: 0, $data ? HOUR_IN_SECONDS : 5 * MINUTE_IN_SECONDS );
 	return $data;
 }
+
+// Keep every site current without anyone clicking Update: WordPress's own
+// auto-updater (wp-cron, twice a day) installs our manifest's version. Site
+// admins can still turn it off from the Plugins screen.
+add_filter( 'auto_update_plugin', function ( $update, $item ) {
+	if ( isset( $item->plugin ) && plugin_basename( __FILE__ ) === $item->plugin ) {
+		return true;
+	}
+	return $update;
+}, 10, 2 );
 
 // Inject our update into the list WordPress shows on the Plugins screen.
 add_filter( 'site_transient_update_plugins', function ( $transient ) {
