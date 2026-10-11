@@ -336,6 +336,27 @@ async function start(app) {
     }
     if (q.get('mockSidebar') === '1') toggleSidebar(app);
     if (q.get('mockDevice') && !IN_FRAME) setDevice(app, q.get('mockDevice'));
+    // ?mockStyle=<selector>|<value>: open Style change on that element and run Check.
+    const style = q.get('mockStyle');
+    if (style) {
+      const [sel, val] = style.split('|');
+      const el = document.querySelector(sel);
+      if (el) {
+        el.scrollIntoView({ block: 'center' });
+        const r = el.getBoundingClientRect();
+        openCommentBox(app, el, { clientX: r.left + 14, clientY: r.top + r.height / 2 });
+        const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+        (async () => {
+          const box = app.ui.layer.querySelector('.popover');
+          box.querySelectorAll('.mode-tab')[1].click();
+          for (let i = 0; i < 20 && !box.querySelector('.ds-value'); i++) await wait(50);
+          const v = box.querySelector('.ds-value');
+          v.value = val || '';
+          v.dispatchEvent(new Event('input'));
+          [...box.querySelectorAll('.ds-panel button')].find((b) => /Check/.test(b.textContent)).click();
+        })();
+      }
+    }
   }
 
   // If we got here from a cross-page comment click, reopen the sidebar
