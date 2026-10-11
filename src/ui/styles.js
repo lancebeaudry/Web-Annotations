@@ -459,7 +459,10 @@ export const CSS = `
   width: 300px;
   z-index: 40;
 }
-.auth-card .hint { font-size: 12px; color: #6b7a85; margin-bottom: 10px; }
+.auth-card .hint { font-size: 12px; color: #6b7a85; margin: 0 0 12px; }
+/* Sign-in cards read top to bottom: everything left-aligned, main button first. */
+.auth-card .btn-row { justify-content: flex-start; margin-top: 14px; }
+.auth-card .auth-foot { margin: 12px 0 0; }
 
 /* ---- comment box + thread popover ---- */
 .popover {

@@ -46,7 +46,7 @@ export function renderAuthCard(app) {
     h('div', { class: 'btn-row' }, submit),
     h(
       'p',
-      { class: 'hint' },
+      { class: 'hint auth-foot' },
       'New here? ',
       h('a', { href: DASHBOARD_URL, target: '_blank', rel: 'noopener' }, 'Create a free account')
     )
@@ -103,7 +103,7 @@ function renderCodeStep(app, body, email) {
     {},
     h('p', {}, 'We emailed a code to ', h('b', {}, email), '. Enter it below — or just click the link in that email.'),
     h('div', { class: 'field' }, h('label', {}, 'Sign-in code'), codeInput),
-    h('div', { class: 'btn-row' }, back, verify)
+    h('div', { class: 'btn-row' }, verify, back)
   );
 
   back.addEventListener('click', () => {
@@ -151,7 +151,7 @@ export function renderGuestCard(app) {
     {},
     h('p', { class: 'hint' }, 'Add your name so the team knows whose feedback is whose, then click anywhere on the page to comment.'),
     h('div', { class: 'field' }, h('label', {}, 'Your name'), nameInput),
-    h('div', { class: 'btn-row' }, accountLink, submit)
+    h('div', { class: 'btn-row' }, submit, accountLink)
   );
 
   const card = h(
