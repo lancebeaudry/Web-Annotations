@@ -146,7 +146,7 @@ if (!window.__ppPicker) {
     body.appendChild(src);
     const err = el('div', 'err', error || ''); body.appendChild(err);
 
-    const note = document.createElement('textarea'); note.placeholder = 'What do you like about this, and for which page? e.g. “This hero layout for the Gordon Water homepage”';
+    const note = document.createElement('textarea'); note.placeholder = 'What do you like about this, and for which page? e.g. “This hero layout for the Acme homepage”';
     body.append(labelled('Note', note));
     const proj = document.createElement('select'); proj.appendChild(new Option('Loading your projects…', ''));
     body.append(labelled('Project', proj));

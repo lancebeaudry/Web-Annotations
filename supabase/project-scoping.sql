@@ -22,14 +22,10 @@ create policy "read own membership" on project_members
   for select using (lower(email) = lower(auth.jwt()->>'email'));
 
 -- 2. Migrate existing access -----------------------------------------
--- The only non-team invitees are the @gordonwater.com reviewers, who all
--- belong to the Gordon Water Systems project. Team emails need no rows.
-insert into project_members (project_id, email, note)
-select p.id, lower(ae.email), 'migrated from allow-list'
-  from allowed_emails ae
-  cross join lateral (select id from projects where token = 'gordon-water-ba00dbf5') p
- where lower(ae.email) like '%@gordonwater.com'
-on conflict (project_id, email) do nothing;
+-- Historical, one-time and already applied: the reviewers on the old
+-- allow-list were copied into project_members for the one client project
+-- they belonged to. Kept out of this file on purpose (no client data in
+-- the repo). Invite reviewers from the dashboard instead.
 
 -- 3. Project-scoped comment policies ---------------------------------
 -- Shared predicate: caller is team, or a member of the row's project.
