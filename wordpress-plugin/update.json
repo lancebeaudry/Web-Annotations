@@ -1,11 +1,11 @@
 {
   "name": "PinPoint by Avalanche",
   "slug": "avalanche-markup",
-  "version": "2.7.0",
-  "download_url": "https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/avalanche-markup-2.7.0.zip",
+  "version": "2.7.1",
+  "download_url": "https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/avalanche-markup-2.7.1.zip",
   "homepage": "https://pinpoint.avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "2.7.0 — Design rules (optional, Agency): a Style change option that checks color, size and style changes against the project's design system, with approvals, previews and a design system page."
+  "changelog": "2.7.1 — Cleaner sign-in card: left-aligned buttons and even spacing."
 }
