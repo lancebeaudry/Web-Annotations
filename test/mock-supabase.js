@@ -11,6 +11,8 @@
 // The seeded project has token 'test-token'; an UNSEEDED token exercises
 // the auto-register path (owner/operator succeed; a free owner who already
 // has one project hits PROJECT_LIMIT_REACHED via ?mockLimit=1).
+import { mockDesign } from './mock-design.js';
+
 export function createClient() {
   const params = new URLSearchParams(location.search);
   const role = params.get('mockRole') || 'operator';
@@ -115,7 +117,16 @@ export function createClient() {
     };
   }
 
+  const designRules = params.get('mockDesignRules') === '1';
+  const design = designRules ? mockDesign({ store, user, roleOn }) : null;
+
   return {
+    functions: {
+      invoke: async (name, { body } = {}) => {
+        if (name === 'design-rules' && design) return design(body);
+        return { data: null, error: { message: 'not mocked', context: { json: async () => ({ error: `Function ${name} isn't available in the mock.` }) } } };
+      },
+    },
     auth: {
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
       getSession: () => Promise.resolve({ data: { session: noAuth ? null : session } }),
@@ -145,7 +156,8 @@ export function createClient() {
           const cnt = store.comments.filter((c) => c.project_id === pid).length;
           return ok({ role: r, manager: r === 'collaborator' && new URLSearchParams(location.search).get('mockManager') === '1', writable: r !== 'none' && !(atLimit && r === 'owner' && pid !== 'mock-project-1'), plan: isOperator() ? 'agency' : 'free', auto_screenshot: false,
             comment_limit: isOperator() ? null : 50, comment_count: cnt, image_limit: isOperator() ? null : 10, image_count: 0,
-            features: isOperator() ? ['integrations', 'approvals'] : [], approved_pages: store.approvals.filter((a) => a.project_id === pid) });
+            features: isOperator() ? ['integrations', 'approvals', 'design_rules'] : [], approved_pages: store.approvals.filter((a) => a.project_id === pid),
+            design_rules: design && ['operator', 'owner', 'collaborator'].includes(r) ? design.access(pid) : { enabled: false } });
         }
         case 'approve_page': { const a = { project_id: pid, page_path: args.p_page, approved_by_name: user.email, approved_by_email: user.email, by: user.email, email: user.email, created_at: new Date().toISOString() }; store.approvals.push(a); return ok(a); }
         case 'revoke_approval': { store.approvals = store.approvals.filter((a) => !(a.project_id === pid && a.page_path === args.p_page)); return ok(null); }

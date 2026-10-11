@@ -1,6 +1,7 @@
 import { h, field, toast, copyBox } from '../ui/dom.js';
 import { card, anchored, pageHead } from '../ui/shell.js';
-import { getProject, updateSettings, saveTriage, setManager, setNotifyMode, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, agentPersona, saveAgentPersona, assignees as listAssignees, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments } from '../api.js';
+import { getProject, updateSettings, saveTriage, setManager, setNotifyMode, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, agentPersona, saveAgentPersona, assignees as listAssignees, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments, designSettings, setDesignRules, setDesignKey, designKeyStatus, saveDesignTokens, setDesignShare, designSystem, designFn } from '../api.js';
+import { bumpVersion } from '../../../supabase/functions/_shared/designEngine.ts';
 import { BUNDLE_URL, PLUGIN_ZIP_URL, FUNCTIONS_URL, MCP_URL } from '../config.js';
 import { go } from '../router.js';
 
@@ -12,7 +13,8 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
   const access = await projectAccess(id).catch(() => ({}));
   const hasFeature = (f) => acct.is_operator || (access.features || []).includes(f);
   const openCount = (await listComments(id).catch(() => [])).filter((c) => !c.parent_id && (c.status === 'open' || c.status === 'in_progress' || c.status === 'waiting')).length;
-  const tabs = h('div', { class: 'tabs' }, h('a', { class: 'on', href: `#/projects/${id}` }, 'Settings'), h('a', { href: `#/projects/${id}/feedback` }, `Feedback (${openCount} open)`));
+  const dsOn = !!(access.design_rules && access.design_rules.enabled);
+  const tabs = h('div', { class: 'tabs' }, h('a', { class: 'on', href: `#/projects/${id}` }, 'Settings'), h('a', { href: `#/projects/${id}/feedback` }, `Feedback (${openCount} open)`), dsOn ? h('a', { href: `#/projects/${id}/design` }, 'Design system') : null);
   const head = pageHead(p.name, p.site_url, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'All projects'), h('a', { class: 'btn', href: shareLink, target: '_blank', rel: 'noopener' }, 'Open site in PinPoint'));
 
   // --- Share + install
@@ -358,6 +360,8 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
     }
   });
 
+  const designCard = hasFeature('design_rules') ? await designRulesCard(id, user) : card('Design rules', h('div', { class: 'upsell' }, 'Check every style change against the site’s design system, with approvals and a shareable style guide. ', h('a', { href: '#/account' }, 'Part of the Agency plan.')));
+
   const sections = [
     ['install', 'Share & install', install],
     ['settings', 'Settings', card('Settings', settingsForm)],
@@ -367,6 +371,7 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
     ['ai', 'AI assistant', agentCard],
     ['approvals', 'Page approvals', approvalsCard],
     ['integrations', 'Integrations', integrationsCard],
+    ['design', 'Design rules', designCard],
     ['danger', 'Delete project', card('Danger zone', h('p', { class: 'hint' }, 'Deleting a project removes all of its comments and images. This cannot be undone.'), h('div', { class: 'inline' }, confirmName, del))],
   ];
   const nav = h('nav', { class: 'side-nav' },
@@ -395,4 +400,111 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
   const page = h('div', {}, head, tabs, h('div', { class: 'two-col' }, nav, content));
   if (query.to) setTimeout(() => document.getElementById(query.to)?.scrollIntoView({ block: 'start' }), 50);
   return page;
+}
+
+// Design rules: optional, off by default. PinPoint keeps the design system
+// and runs the checks; a site connector is optional and adds apply, preview
+// and affected pages on staging. Keys are write-only.
+async function designRulesCard(id, user) {
+  const [cfg, ds, keys, members] = await Promise.all([
+    designSettings(id).catch(() => ({})), designSystem(id).catch(() => null),
+    designKeyStatus(id).catch(() => ({})), listInvites(id).catch(() => []),
+  ]);
+  const conn = cfg.connector || {};
+  const enabled = h('input', { type: 'checkbox' });
+  enabled.checked = !!cfg.enabled;
+  const approver = h('select', {}, h('option', { value: '' }, 'The project owner'), ...members.map((m) => h('option', { value: m.email }, m.email)));
+  approver.value = cfg.approver_email && members.some((m) => m.email === cfg.approver_email) ? cfg.approver_email : '';
+  const who = (v) => { const sel = h('select', {}, h('option', { value: 'managers' }, 'Owner and managers'), h('option', { value: 'collaborators' }, 'Any collaborator')); sel.value = v === 'collaborators' ? 'collaborators' : 'managers'; return sel; };
+  const approve = who(cfg.approve), exceptions = who(cfg.exceptions);
+  const saveBtn = h('button', { class: 'btn', type: 'button' }, 'Save');
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.disabled = true;
+    try {
+      await setDesignRules(id, { enabled: enabled.checked, approver_email: approver.value || '', approve: approve.value, exceptions: exceptions.value });
+      toast(enabled.checked ? 'Design rules on' : 'Design rules off');
+    } catch (e) { toast(e.message); }
+    saveBtn.disabled = false;
+  });
+
+  // The design system itself, as JSON.
+  const tokens = h('textarea', { class: 'code', rows: '14', spellcheck: 'false', placeholder: '{\n  "name": "Brand",\n  "version": "1.0.0",\n  "color": { "primary": { "value": "#24523a", "label": "Primary" } },\n  "buttons": { "primary": { "label": "Primary", "bg": "primary", "text": "white" } }\n}' });
+  const original = ds && ds.tokens && ds.tokens.color ? JSON.stringify(ds.tokens, null, 2) : '';
+  tokens.value = original;
+  const status = h('p', { class: 'hint' }, ds && ds.tokens && ds.tokens.color ? `Version ${ds.version}, ${Object.keys(ds.tokens.color || {}).length} colors, ${Object.keys(ds.tokens.buttons || {}).length} button styles${ds.source === 'connector' ? ', imported from the site' : ''}.` : 'No design system yet. Paste one below, or connect the site and import it.');
+  const saveTokens = h('button', { class: 'btn', type: 'button' }, 'Save design system');
+  saveTokens.addEventListener('click', async () => {
+    let t;
+    try { t = JSON.parse(tokens.value); } catch (e) { return toast(`That isn’t valid JSON: ${e.message}`); }
+    if (!t || typeof t !== 'object' || !t.color) return toast('The design system needs at least a "color" section');
+    // Any edit gets a new version, so open checks know the rules moved.
+    if (original && tokens.value.trim() !== original.trim() && ds && String(t.version || '') === String(ds.version)) t.version = bumpVersion(ds.version);
+    saveTokens.disabled = true;
+    try { const r = await saveDesignTokens(id, t, 'Design system edited in the dashboard'); toast(`Saved as v${r.version}`); location.reload(); }
+    catch (e) { toast(e.message); saveTokens.disabled = false; }
+  });
+
+  // Optional site connector.
+  const base = h('input', { type: 'url', placeholder: 'https://staging.example.com/wp-json/…/v1/', value: conn.base_url || '' });
+  const key = h('input', { type: 'password', autocomplete: 'off', placeholder: keys.key_set ? 'Key saved. Paste to replace.' : 'Paste the site key' });
+  const preview = h('input', { type: 'text', placeholder: 'pp_preview', value: conn.preview_param || '' });
+  const keyHeader = h('input', { type: 'text', placeholder: 'X-PinPoint-Key', value: conn.key_header || '' });
+  const prodUrl = h('input', { type: 'url', placeholder: 'https://www.example.com/wp-json/…/v1/ (optional)', value: conn.prod_url || '' });
+  const prodKey = h('input', { type: 'password', autocomplete: 'off', placeholder: keys.prod_key_set ? 'Key saved. Paste to replace.' : 'Production key (optional)' });
+  const saveConn = h('button', { class: 'btn', type: 'button' }, 'Save connection');
+  const test = h('button', { class: 'btn btn-ghost', type: 'button' }, 'Test');
+  const pull = h('button', { class: 'btn btn-ghost', type: 'button' }, 'Import from site');
+  saveConn.addEventListener('click', async () => {
+    saveConn.disabled = true;
+    try {
+      await setDesignRules(id, { connector: { base_url: base.value.trim(), prod_url: prodUrl.value.trim(), preview_param: preview.value.trim(), key_header: keyHeader.value.trim() } });
+      if (key.value.trim()) await setDesignKey(id, key.value.trim(), false);
+      if (prodKey.value.trim()) await setDesignKey(id, prodKey.value.trim(), true);
+      key.value = ''; prodKey.value = '';
+      toast('Connection saved');
+    } catch (e) { toast(e.message); }
+    saveConn.disabled = false;
+  });
+  const run = (btn, action, done) => btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try { const r = await designFn({ project_id: id, action }); toast(done(r)); if (action === 'import') location.reload(); }
+    catch (e) { toast(e.message); }
+    btn.disabled = false;
+  });
+  run(test, 'test', (r) => `Connected. v${r.version}: ${r.colors} colors, ${r.buttons} buttons, ${r.rules} rules`);
+  run(pull, 'import', (r) => `Imported v${r.version}`);
+
+  // Share link + the design system page.
+  const share = h('input', { type: 'checkbox' });
+  share.checked = !!(ds && ds.share_token);
+  share.addEventListener('change', async () => {
+    share.disabled = true;
+    try { await setDesignShare(id, share.checked); toast(share.checked ? 'Share link on' : 'Share link off'); }
+    catch (e) { share.checked = !share.checked; toast(e.message); }
+    share.disabled = false;
+  });
+
+  return card('Design rules',
+    h('p', { class: 'hint' }, 'Optional. When it’s on, members get a “Style change” option on the site: PinPoint checks the change against your design system and offers the closest approved style, a logged exception, or a rule change for the approver.'),
+    h('label', { class: 'check' }, enabled, ' Turn on design rules for this project'),
+    h('div', { class: 'grid-2' },
+      h('div', { class: 'field' }, h('label', {}, 'Approver'), approver, h('div', { class: 'hint' }, 'Gets rule changes and exception requests to approve.')),
+      h('div', { class: 'field' }, h('label', {}, 'Who can approve'), approve),
+      h('div', { class: 'field' }, h('label', {}, 'Who can make exceptions'), exceptions)),
+    h('div', { class: 'btn-row' }, saveBtn),
+    h('h4', {}, 'Design system'),
+    status,
+    tokens,
+    h('div', { class: 'btn-row' }, h('a', { class: 'btn btn-ghost', href: `#/projects/${id}/design` }, 'View design system page'), saveTokens),
+    h('label', { class: 'check' }, share, ' Shareable view-only link to the design system page'),
+    h('h4', {}, 'Site connection (optional)'),
+    h('p', { class: 'hint' }, 'Connect a site that serves the design rules API to apply changes on staging, preview rule changes and list the pages they affect. Without it, choices become ready-to-do tasks.'),
+    h('div', { class: 'grid-2' },
+      h('div', { class: 'field' }, h('label', {}, 'Staging rules API'), base),
+      h('div', { class: 'field' }, h('label', {}, 'Staging key'), key),
+      h('div', { class: 'field' }, h('label', {}, 'Production rules API'), prodUrl),
+      h('div', { class: 'field' }, h('label', {}, 'Production key'), prodKey),
+      h('div', { class: 'field' }, h('label', {}, 'Preview parameter'), preview, h('div', { class: 'hint' }, 'The query parameter the site uses for previews. Default pp_preview.')),
+      h('div', { class: 'field' }, h('label', {}, 'Key header'), keyHeader, h('div', { class: 'hint' }, 'Only if the site expects the key under its own header name. It’s always sent as X-PinPoint-Key too.'))),
+    h('div', { class: 'btn-row' }, test, pull, saveConn));
 }

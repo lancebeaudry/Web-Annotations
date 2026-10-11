@@ -5,9 +5,12 @@ import { isOpenStatus } from '../status.js';
 
 // Top-level pins for the current page, in creation order (their index
 // is the pin number shown to users and in the export).
+// A comment left on a design preview (?pp_preview=<id>) only pins on that
+// preview; ordinary comments never pin on a preview.
+export const samePreview = (app, c) => (c.preview_id || null) === (app.previewId || null);
 export function pagePins(app) {
   return [...app.comments.values()]
-    .filter((c) => !c.parent_id && c.page_path === app.pagePath)
+    .filter((c) => !c.parent_id && c.page_path === app.pagePath && samePreview(app, c))
     .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
 }
 

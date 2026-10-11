@@ -52,7 +52,7 @@ export const projectAccess = async (id) => unwrap(await supabase.rpc('my_project
 
 // Feedback inbox (ordinary RLS: owner / collaborator / operator can read).
 export const listComments = async (id) =>
-  unwrap(await supabase.from('comments').select('id,parent_id,page_path,page_url,element_tag,selector,current_text,comment_text,author_email,author_name,author_role,status,assignee_email,labels,effort,viewport_w,kind,source,created_at,attachments,context,external_ref').eq('project_id', id).order('created_at')) || [];
+  unwrap(await supabase.from('comments').select('id,parent_id,page_path,page_url,element_tag,selector,current_text,comment_text,author_email,author_name,author_role,status,assignee_email,labels,effort,viewport_w,kind,source,created_at,attachments,context,external_ref,design_check,preview_id').eq('project_id', id).order('created_at')) || [];
 export const patchComment = async (id, patch) => unwrap(await supabase.from('comments').update(patch).eq('id', id).select('id,status,assignee_email,labels,effort').single());
 export const sendDigest = async (id, to) => callFn('digest', { project_id: id, to });
 export const setManager = async (id, email, manager) => unwrap(await supabase.rpc('set_member_manager', { p_project: id, p_email: email, p_manager: !!manager }));
@@ -85,3 +85,19 @@ export async function callFn(name, body) {
   if (!r.ok) throw new Error(d.error || `${name} failed (${r.status})`);
   return d;
 }
+
+// Design rules (Agency, optional per project). Owner RPCs write; members
+// read the design system tables through RLS. Decisions go through the
+// design-rules edge function.
+export const designSettings = async (id) => (unwrap(await supabase.from('projects').select('design_rules').eq('id', id).maybeSingle()) || {}).design_rules || {};
+export const setDesignRules = async (id, settings) => unwrap(await supabase.rpc('set_design_rules', { p_project: id, p_settings: settings }));
+export const setDesignKey = async (id, key, prod = false) => unwrap(await supabase.rpc('set_design_connector_key', { p_project: id, p_key: key, p_prod: !!prod }));
+export const designKeyStatus = async (id) => unwrap(await supabase.rpc('design_connector_status', { p_project: id })) || {};
+export const saveDesignTokens = async (id, tokens, summary) => unwrap(await supabase.rpc('save_design_tokens', { p_project: id, p_tokens: tokens, p_summary: summary || null }));
+export const setDesignShare = async (id, on) => unwrap(await supabase.rpc('set_design_share', { p_project: id, p_on: !!on }));
+export const sharedDesign = async (token) => unwrap(await supabase.rpc('get_shared_design_system', { p_token: token }));
+export const designSystem = async (id) => unwrap(await supabase.from('design_systems').select('tokens,version,updated_at,updated_by,source,share_token').eq('project_id', id).maybeSingle());
+export const designExceptions = async (id) => unwrap(await supabase.from('design_exceptions').select('id,comment_id,page_path,selector,property,value,reason,created_by,active,created_at').eq('project_id', id).eq('active', true).order('created_at', { ascending: false }).limit(100)) || [];
+export const designProposals = async (id) => unwrap(await supabase.from('design_proposals').select('id,comment_id,summary,status,requested_by,decided_by,decided_at,version_from,version_to,affected,created_at').eq('project_id', id).order('created_at', { ascending: false }).limit(50)) || [];
+export const designChangelog = async (id) => unwrap(await supabase.from('design_changelog').select('id,version,kind,summary,by,at').eq('project_id', id).order('at', { ascending: false }).limit(50)) || [];
+export const designFn = (body) => callFn('design-rules', body);

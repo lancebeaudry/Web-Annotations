@@ -259,6 +259,15 @@ async function start(app) {
   // feedback (resolve, assign, label, delete) — owners, staff and managers.
   app.isOwner = app.role === 'operator' || app.role === 'owner';
   app.canManage = app.isOwner || !!(access && access.manager);
+  // Design previews: ?pp_preview=<id> (or the connector's own param) marks
+  // this page view as a preview; comments made here only pin here.
+  const dr = access.design_rules || {};
+  app.previewParam = /^[a-z0-9_]{1,40}$/i.test(dr.preview_param || '') ? dr.preview_param : 'pp_preview';
+  {
+    const q = new URLSearchParams(location.search);
+    const pv = (q.get(app.previewParam) || q.get('pp_preview') || '').trim();
+    app.previewId = /^[A-Za-z0-9_-]{1,80}$/.test(pv) ? pv : null;
+  }
   app.allowed = app.role !== 'none';
   if (!app.allowed) {
     renderBlockedCard(app, email || 'this guest session');

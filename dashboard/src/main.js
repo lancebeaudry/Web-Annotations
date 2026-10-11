@@ -9,6 +9,7 @@ import { projectNewScreen } from './screens/projectNew.js';
 import { projectDetailScreen } from './screens/projectDetail.js';
 import { accountScreen } from './screens/account.js';
 import { feedbackScreen } from './screens/feedback.js';
+import { designScreen, sharedDesignScreen } from './screens/designSystem.js';
 
 const root = document.getElementById('app');
 let rendering = 0;
@@ -23,6 +24,14 @@ async function render() {
   if (route.name === 'signout') {
     await supabase.auth.signOut();
     go('#/signin');
+    return;
+  }
+
+  // A shared design system link is public: no sign-in needed.
+  if (route.name === 'sharedDesign') {
+    root.replaceChildren(shell(h('p', { class: 'hint' }, 'Loading…'), {}));
+    const content = await sharedDesignScreen(route.token);
+    if (seq === rendering) root.replaceChildren(shell(content, { wide: true }));
     return;
   }
 
@@ -45,11 +54,12 @@ async function render() {
       case 'projectNew': content = projectNewScreen({ query, user, acct }); break;
       case 'projectDetail': content = await projectDetailScreen({ id: route.id, user, acct, query }); break;
       case 'feedback': content = await feedbackScreen({ id: route.id, user, acct, query }); break;
+      case 'design': content = await designScreen({ id: route.id, user, acct, query }); break;
       case 'account': content = await accountScreen({ user, acct, query }); break;
       default: content = await projectsScreen({ user, acct, query });
     }
     if (seq !== rendering) return; // a newer render superseded this one
-    root.replaceChildren(shell(content, { user, active: ['projectNew', 'projectDetail', 'feedback'].includes(route.name) ? 'projects' : route.name, wide: ['projectDetail', 'feedback', 'projects'].includes(route.name) }));
+    root.replaceChildren(shell(content, { user, active: ['projectNew', 'projectDetail', 'feedback', 'design'].includes(route.name) ? 'projects' : route.name, wide: ['projectDetail', 'feedback', 'projects', 'design'].includes(route.name) }));
   } catch (err) {
     root.replaceChildren(shell(h('div', { class: 'card' }, h('div', { class: 'card-body' }, h('p', {}, 'Something went wrong: ', err.message), h('a', { class: 'btn', href: '#/projects' }, 'Back'))), { user }));
   }

@@ -13,10 +13,11 @@
 // request is authenticated by the key, so no session ids are issued.
 // Deploy: supabase functions deploy mcp --no-verify-jwt --use-api
 
-import { resolveProject, listFeedback, listPages, getFeedback, actOn, STATUSES, LABELS, EFFORTS, type Project } from "../_shared/feedback.ts";
+import { resolveProject, listFeedback, listPages, getFeedback, actOn, designFor, DESIGN_GUIDE, STATUSES, LABELS, EFFORTS, type Project } from "../_shared/feedback.ts";
+import { check as designCheck } from "../_shared/designEngine.ts";
 
 const PROTOCOL = "2025-03-26";
-const VERSION = "2.3.0";
+const VERSION = "2.7.0";
 
 const TOOLS = [
   {
@@ -49,6 +50,26 @@ const TOOLS = [
   { name: "project_info", description: "The project's name and site URL.", inputSchema: { type: "object", properties: {} } },
 ];
 
+// Listed only when the project has design rules on.
+const DESIGN_TOOLS = [
+  { name: "design_rules", description: "The project's design system: colors, fonts, type sizes, radius, spacing, button and section styles, module variants and rules.", inputSchema: { type: "object", properties: {} } },
+  {
+    name: "design_check",
+    description: "Check a style change against the design system before making it. Returns allowed, needs_decision or blocked, the rule involved, and the closest approved option.",
+    inputSchema: {
+      type: "object", required: ["element", "property", "value"],
+      properties: {
+        element: { type: "string", enum: ["button", "heading", "display", "text", "section", "logo", "form"] },
+        property: { type: "string", description: "CSS property: background-color, color, border-color, border-radius, font-size, padding, or variant" },
+        value: { type: "string", description: "The new value, e.g. #1a7f37 or 18px" },
+        page_path: { type: "string" }, selector: { type: "string" },
+        context: { type: "object", description: "Optional: surface or button style key, or the measured background and text colors", properties: { surface: { type: "string" }, button: { type: "string" }, background: { type: "string" }, text: { type: "string" }, current: { type: "string" } } },
+        viewport_w: { type: "number" },
+      },
+    },
+  },
+];
+
 const text = (v: unknown) => ({ content: [{ type: "text", text: typeof v === "string" ? v : JSON.stringify(v, null, 2) }] });
 const errorResult = (msg: string) => ({ content: [{ type: "text", text: msg }], isError: true });
 
@@ -61,6 +82,18 @@ async function callTool(project: Project, name: string, args: Record<string, any
     case "set_status": return text(await actOn(project, { comment_id: args.id, status: args.status, reply: args.reply }, args.agent_name || "AI assistant"));
     case "assign": return text(await actOn(project, { comment_id: args.id, assignee: args.email ?? "" }, "AI assistant"));
     case "triage": return text(await actOn(project, { comment_id: args.id, labels: args.labels, effort: args.effort }, "AI assistant"));
+    case "design_rules": case "design_check": {
+      const ds = await designFor(project);
+      if (!ds) return errorResult("Design rules aren't switched on for this project.");
+      if (name === "design_rules") return text({ version: ds.version, tokens: ds.tokens });
+      const ctx = args.context && typeof args.context === "object" ? args.context : {};
+      return text(designCheck(ds.tokens, {
+        element: String(args.element || ""), property: String(args.property || ""), value: String(args.value || "").slice(0, 100),
+        context: { surface: ctx.surface, button: ctx.button, background: ctx.background, text: ctx.text, current: ctx.current },
+        target: { page_path: String(args.page_path || ""), selector: String(args.selector || "").slice(0, 300) },
+        viewport_w: Number(args.viewport_w) || undefined,
+      } as any));
+    }
     case "project_info": return text({ name: project.name, site_url: project.site_url, share_link: `${project.site_url.replace(/\/$/, "")}/?pinpoint=${project.token}` });
     default: return errorResult(`unknown tool ${name}`);
   }
@@ -90,11 +123,17 @@ Deno.serve(async (req) => {
     if (m.id === undefined) continue; // notification (e.g. notifications/initialized): nothing to answer
     try {
       switch (m.method) {
-        case "initialize":
-          out.push(rpc(m.id, { protocolVersion: PROTOCOL, capabilities: { tools: { listChanged: false } }, serverInfo: { name: "pinpoint", version: VERSION }, instructions: `Feedback for the website project "${project.name}". First pass: triage every open item that has no labels — set labels and effort, set_status waiting (with a reply saying what you need) on anything the client must decide or supply, and assign photo/content requests to the client contact if one is known. Then work through what you own, quick items first; when a change is made, set_status resolved with a short reply. Never resolve what you did not complete; if blocked, reply with why and leave it open. Before finishing, list_feedback again to confirm nothing you handled is still open.` }));
+        case "initialize": {
+          const design = await designFor(project).catch(() => null);
+          out.push(rpc(m.id, { protocolVersion: PROTOCOL, capabilities: { tools: { listChanged: false } }, serverInfo: { name: "pinpoint", version: VERSION }, instructions: (design ? DESIGN_GUIDE + " " : "") + `Feedback for the website project "${project.name}". First pass: triage every open item that has no labels — set labels and effort, set_status waiting (with a reply saying what you need) on anything the client must decide or supply, and assign photo/content requests to the client contact if one is known. Then work through what you own, quick items first; when a change is made, set_status resolved with a short reply. Never resolve what you did not complete; if blocked, reply with why and leave it open. Before finishing, list_feedback again to confirm nothing you handled is still open.` }));
           break;
+        }
         case "ping": out.push(rpc(m.id, {})); break;
-        case "tools/list": out.push(rpc(m.id, { tools: TOOLS })); break;
+        case "tools/list": {
+          const design = await designFor(project).catch(() => null);
+          out.push(rpc(m.id, { tools: design ? [...TOOLS, ...DESIGN_TOOLS] : TOOLS }));
+          break;
+        }
         case "tools/call": {
           const name = m.params?.name; const args = m.params?.arguments ?? {};
           out.push(rpc(m.id, await callTool(project, name, args)));

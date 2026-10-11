@@ -11,7 +11,7 @@ export const LABELS = ["bug", "copy", "design", "content", "photo", "decision"] 
 export const EFFORTS = ["quick", "medium", "large"] as const;
 export type Status = typeof STATUSES[number];
 const KEY_RE = /^pp_[0-9a-f]{40}$/;
-export const SELECT = "id,project_id,parent_id,page_url,page_path,element_tag,selector,current_text,computed_styles,x_pct,y_pct,viewport_w,comment_text,author_name,author_role,status,assignee_email,labels,effort,kind,source,created_at,attachments,context";
+export const SELECT = "id,project_id,parent_id,page_url,page_path,element_tag,selector,current_text,computed_styles,x_pct,y_pct,viewport_w,comment_text,author_name,author_role,status,assignee_email,labels,effort,kind,source,created_at,attachments,context,design_check,preview_id";
 
 // Key from x-pinpoint-agent-key or Authorization: Bearer pp_…
 export function keyFrom(req: Request): string {
@@ -31,6 +31,18 @@ export async function resolveProject(req: Request): Promise<Project | null> {
   const p = await db<Project[]>(`projects?id=eq.${pid}&select=id,name,site_url,token&limit=1`);
   return p[0] ?? null;
 }
+
+// Design rules, when the project has them on (and its plan includes them).
+// Read and check only: decisions stay with people in the overlay.
+export async function designFor(project: Project): Promise<{ tokens: any; version: string } | null> {
+  const p = (await db<any[]>(`projects?id=eq.${project.id}&select=owner_id,design_rules&limit=1`))[0];
+  if (!p?.design_rules?.enabled) return null;
+  const ok = await db<boolean>("rpc/plan_has", { method: "POST", body: JSON.stringify({ p_user: p.owner_id, p_feature: "design_rules" }) }).catch(() => false);
+  if (ok !== true) return null;
+  const ds = (await db<any[]>(`design_systems?project_id=eq.${project.id}&select=tokens,version&limit=1`))[0];
+  return ds?.tokens?.color ? { tokens: ds.tokens, version: ds.version } : null;
+}
+export const DESIGN_GUIDE = "This project has design rules. Before changing a color, button, type size, radius or spacing, run design_check. Make the change only if it comes back allowed, or use its closest approved option. Anything else goes back to the people on the project: reply with the check's message and leave the item open. Items with a design_check field already have a decision recorded; follow its task text.";
 
 // Who a reply written through the agent key is signed as. Projects default
 // to the owner; they can name a collaborator or opt in to the AI label.

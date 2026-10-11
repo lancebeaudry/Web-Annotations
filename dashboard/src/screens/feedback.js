@@ -12,6 +12,12 @@ const isOpen = (s) => s === 'open' || s === 'in_progress' || s === 'waiting';
 const LABEL = { bug: 'Bug', copy: 'Copy', design: 'Design', content: 'Content needed', photo: 'Photo needed', decision: 'Decision' };
 const LABELS = Object.keys(LABEL);
 const EFFORT = { quick: 'Quick', medium: 'Medium', large: 'Large' };
+const DESIGN_STATE = {
+  applied: 'Style change applied on staging', task: 'Style change ready to do', exception_applied: 'Exception applied',
+  exception_logged: 'Exception logged, ready to do', exception_requested: 'Exception waiting on approval', exception_rejected: 'Exception not approved',
+  proposal_pending: 'Rule change waiting on approval', approved_applied: 'Rule change approved and applied', approved_task: 'Rule change approved, ready to do',
+  rejected: 'Rule change not approved', sent_to_team: 'Style change sent to the team', reverted: 'Style change undone',
+};
 const deviceOf = (w) => (!Number(w) ? null : Number(w) < 600 ? 'mobile' : Number(w) < 1024 ? 'tablet' : 'desktop');
 const DEVICE = { mobile: 'Mobile', tablet: 'Tablet', desktop: 'Desktop' };
 
@@ -21,11 +27,13 @@ export async function feedbackScreen({ id, user, acct, query }) {
   const isOwner = acct.is_operator || p.owner_id === user.id;
   const me = (user.email || '').toLowerCase();
   const access = await projectAccess(id).catch(() => ({}));
+  // Preview comments open on the same preview they were left on.
+  const pvParam = (access.design_rules && access.design_rules.preview_param) || 'pp_preview';
+  const link = (c) => `${c.page_url}?pinpoint=${encodeURIComponent(p.token)}&pp_comment=${c.id}${c.preview_id ? `&${pvParam}=${encodeURIComponent(c.preview_id)}` : ''}`;
   const canManage = isOwner || access.manager === true;
   const [rows, people] = await Promise.all([listComments(id), canManage ? listAssignees(id).catch(() => []) : Promise.resolve([])]);
   const roots = rows.filter((r) => !r.parent_id);
   const repliesOf = (rid) => rows.filter((r) => r.parent_id === rid);
-  const link = (c) => `${c.page_url}?pinpoint=${encodeURIComponent(p.token)}&pp_comment=${c.id}`;
 
   const f = { status: query.status || 'open', page: '', assignee: '', label: query.label || '', device: '', kind: query.kind || '', q: '', view: query.view || 'list' };
   const forPage = (c) => (c.kind === 'reference' && !c.page_path && c.source && c.source.for_page) || '';
@@ -107,6 +115,15 @@ export async function feedbackScreen({ id, user, acct, query }) {
     return wrap;
   };
 
+  // Design rules outcome, one line: what was asked and where it stands.
+  function designLine(dc) {
+    const r = dc.request || {};
+    const state = DESIGN_STATE[dc.state] || dc.state;
+    const parts = [h('b', {}, state), ` · ${r.property || 'style'} → ${r.value || ''}`];
+    if (dc.task) parts.push(h('div', { class: 'hint' }, dc.task));
+    return h('div', { class: `dsline ds-${dc.state}` }, ...parts);
+  }
+
   function item(c) {
     const n = repliesOf(c.id).length;
     const ctx = c.context || {};
@@ -114,6 +131,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
     const sub = [
       isRef ? (c.page_path ? `${c.page_path} (reference)` : forPage(c) ? `Reference for ${forPage(c)}, not yet attached` : 'Reference, not yet attached') : c.page_path,
       `<${c.element_tag || 'page'}>`,
+      c.preview_id ? 'on a preview' : '',
       deviceOf(c.viewport_w) && deviceOf(c.viewport_w) !== 'desktop' ? `${DEVICE[deviceOf(c.viewport_w)]} (${c.viewport_w}px)` : '',
       `${c.author_name || c.author_email} · ${fmtDate(c.created_at)}`,
       n ? `${n} repl${n === 1 ? 'y' : 'ies'}` : '',
@@ -129,6 +147,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
       h('a', { class: 'btn btn-ghost btn-sm', href: link(c), target: '_blank', rel: 'noopener' }, 'Open on site'),
       c.external_ref?.clickup_url ? h('a', { class: 'btn btn-ghost btn-sm', href: c.external_ref.clickup_url, target: '_blank', rel: 'noopener' }, 'ClickUp') : null);
     const main = h('div', {}, h('div', { class: 'txt' }, c.comment_text), h('div', { class: 'sub' }, sub));
+    if (c.design_check && c.design_check.state) main.appendChild(designLine(c.design_check));
     if (isRef && c.source) main.appendChild(h('div', { class: 'refbox' }, c.source.screenshot ? h('img', { src: c.source.screenshot, alt: '' }) : null, h('a', { href: c.source.url, target: '_blank', rel: 'noopener' }, `From ${c.source.host || 'another site'}`)));
     if (on('labels') && (editable || (c.labels || []).length)) main.appendChild(labelChips(c, editable));
     return h('div', { class: `fb ${isOpen(c.status) ? '' : 'closed'}${c.status === 'waiting' ? ' waiting' : ''}` }, main, ctl);

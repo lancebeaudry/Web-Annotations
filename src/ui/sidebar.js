@@ -26,9 +26,12 @@ function groupedItems(app) {
     .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
 
   const groups = new Map();
+  // Comments on a design preview group separately from the live page,
+  // with their own pin numbers (matching what the preview shows).
   for (const c of roots) {
-    if (!groups.has(c.page_path)) groups.set(c.page_path, []);
-    groups.get(c.page_path).push(c);
+    const key = c.preview_id ? `${c.page_path}\u0000${c.preview_id}` : c.page_path;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(c);
   }
 
   // Order the page groups by the active sort so "Latest first" actually
@@ -52,7 +55,7 @@ function groupedItems(app) {
 
   const result = [];
   for (const path of order) {
-    if (thisPageOnly && path !== app.pagePath) continue;
+    if (thisPageOnly && path !== hereKey(app)) continue;
     const list = groups.get(path);
     if (!list) continue;
     let items = list.map((comment, i) => ({ comment, number: i + 1 }));
@@ -72,6 +75,8 @@ function groupedItems(app) {
   }
   return result;
 }
+
+const hereKey = (app) => (app.previewId ? `${app.pagePath}\u0000${app.previewId}` : app.pagePath);
 
 export function openRootCount(app) {
   return [...app.comments.values()].filter((c) => !c.parent_id && isOpenStatus(c.status)).length;
@@ -196,9 +201,11 @@ function renderList(app) {
     return;
   }
 
-  for (const [path, items] of groups) {
-    const here = path === app.pagePath;
-    list.appendChild(h('div', { class: 'side-group-h' }, path === '' ? 'References from other sites' : here ? `${path} — this page` : path));
+  for (const [key, items] of groups) {
+    const here = key === hereKey(app);
+    const [path, preview] = key.split('\u0000');
+    const label = path === '' ? 'References from other sites' : `${path}${preview ? ' · on preview' : ''}${here ? ' — this page' : ''}`;
+    list.appendChild(h('div', { class: 'side-group-h' }, label));
     items.forEach(({ comment, number }) => list.appendChild(item(app, comment, number, here)));
   }
 }
@@ -281,6 +288,8 @@ function item(app, comment, number, onThisPage) {
   if (comment.effort) metaEl.append(h('span', { class: 'side-status' }, effortText(comment.effort)));
   const dev = deviceOf(comment.viewport_w);
   if (dev) metaEl.append(h('span', { class: `device-pill dev-${dev}` }, DEVICE_TEXT[dev]));
+  if (comment.preview_id) metaEl.append(h('span', { class: 'side-status st-waiting' }, 'On preview'));
+  if (comment.design_check && comment.design_check.state) metaEl.append(h('span', { class: 'side-status lb-design' }, 'Style change'));
   // On this page but left at a different width: say so, and the click
   // below switches the preview instead of scrolling to nothing.
   const here = currentDevice();
@@ -330,6 +339,8 @@ function jumpTo(app, comment, onThisPage) {
     }
     const url = new URL(path, location.origin);
     if (app.token) url.searchParams.set('pinpoint', app.token);
+    // Design previews: land on the same preview the comment was left on.
+    if (comment.preview_id) url.searchParams.set(app.previewParam || 'pp_preview', comment.preview_id);
     location.href = url.toString();
     return;
   }
@@ -365,7 +376,7 @@ export function resumeJumpAfterNav(app) {
   }
   if (!id) return;
   const comment = app.comments.get(id);
-  if (!comment || comment.page_path !== app.pagePath) return;
+  if (!comment || comment.page_path !== app.pagePath || (comment.preview_id || null) !== (app.previewId || null)) return;
   // Inside a device frame the sidebar would cover the whole page, so only
   // reopen it at the top level.
   if (!app.sidebarEl && window.self === window.top) toggleSidebar(app);

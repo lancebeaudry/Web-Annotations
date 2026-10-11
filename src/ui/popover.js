@@ -8,6 +8,8 @@ import { roleLabel, authorName } from '../roles.js';
 import { deviceLabel, deviceOf, DEVICE_TEXT } from '../capture.js';
 import { STATUS_ORDER, statusLabel, isOpenStatus, LABEL_ORDER, labelText, EFFORT_ORDER, effortText } from '../status.js';
 import { contextSummary } from '../screenshot.js';
+import { pagePins } from './pins.js';
+import { designCard } from './design.js';
 
 function fmtDate(iso) {
   return (iso || '').slice(0, 10);
@@ -43,9 +45,11 @@ export function openThread(app, rootId) {
   app.openThreadId = rootId;
 
   const thread = h('div', { class: 'thread' });
+  const card = designCard(app, root, () => openThread(app, rootId));
   const renderEntries = () => {
     thread.replaceChildren(
       entry(app, root),
+      ...(card ? [card] : []),
       ...replies(app, rootId).map((r) => entry(app, r))
     );
     thread.scrollTop = thread.scrollHeight;
@@ -98,6 +102,7 @@ export function openThread(app, rootId) {
   const rootDev = deviceOf(root.viewport_w);
   if (rootDev && rootDev !== 'desktop') headBits.push(h('span', { class: `status-tag dev-${rootDev}` }, `${DEVICE_TEXT[rootDev]} · ${root.viewport_w}px`));
   if (!canStatus && root.status && root.status !== 'open') headBits.push(h('span', { class: `status-tag st-${root.status}` }, statusLabel(root.status)));
+  if (root.preview_id) headBits.push(h('span', { class: 'status-tag st-waiting' }, 'On preview'));
   if (!canAssign && root.assignee_email) headBits.push(h('span', { class: 'status-tag' }, `→ ${root.assignee_email.split('@')[0]}`));
 
   const body = h('div', { class: 'card-body' });
@@ -233,10 +238,7 @@ export function openThread(app, rootId) {
 }
 
 function pinNumber(app, rootId) {
-  const pins = [...app.comments.values()]
-    .filter((c) => !c.parent_id && c.page_path === app.pagePath)
-    .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
-  return pins.findIndex((c) => c.id === rootId) + 1;
+  return pagePins(app).findIndex((c) => c.id === rootId) + 1;
 }
 
 function entry(app, comment) {

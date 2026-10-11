@@ -1,0 +1,51 @@
+{
+  "$schema": "pinpoint-design-tokens/1",
+  "name": "Acme Landscaping",
+  "version": "1.0.0",
+  "updated": "2026-10-11",
+  "color": {
+    "forest":   { "value": "#24523a", "label": "Forest",    "usage": "Primary buttons, dark sections" },
+    "moss":     { "value": "#3f7a52", "label": "Moss",      "usage": "Links and accents" },
+    "sun":      { "value": "#e8c25a", "label": "Sun",       "usage": "Highlight button" },
+    "bark":     { "value": "#2b2b2b", "label": "Bark",      "usage": "Headings, dark text" },
+    "soil":     { "value": "#444444", "label": "Soil",      "usage": "Body text" },
+    "stone":    { "value": "#f2f2ee", "label": "Stone",     "usage": "Light sections" },
+    "white":    { "value": "#ffffff", "label": "White",     "usage": "Page background" }
+  },
+  "font": { "family": { "value": "\"Inter\", Arial, sans-serif", "label": "Inter" }, "css": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" },
+  "type": {
+    "display": { "value": "56px", "label": "Display" },
+    "h2":      { "value": "40px", "label": "Section heading" },
+    "h3":      { "value": "26px", "label": "Card heading" },
+    "body":    { "value": "17px", "label": "Body" },
+    "small":   { "value": "14px", "label": "Small" }
+  },
+  "radius": { "tight": { "value": "4px", "label": "Tight" }, "button": { "value": "8px", "label": "Buttons" }, "card": { "value": "14px", "label": "Cards" } },
+  "space":  { "section": { "value": "88px", "label": "Section padding" }, "gutter": { "value": "24px", "label": "Gutter" }, "gap": { "value": "32px", "label": "Grid gap" } },
+  "shadow": { "card": { "value": "0 10px 26px rgba(0,0,0,.14)", "label": "Card" } },
+  "surfaces": {
+    "white":  { "label": "White",  "bg": "white",  "text": "soil",  "heading": "bark",  "accent": "moss" },
+    "stone":  { "label": "Stone",  "bg": "stone",  "text": "soil",  "heading": "bark",  "accent": "moss" },
+    "forest": { "label": "Forest", "bg": "forest", "text": "white", "heading": "white", "accent": "sun" }
+  },
+  "buttons": {
+    "primary":   { "label": "Primary (forest)", "bg": "forest", "text": "white" },
+    "highlight": { "label": "Highlight (sun)",  "bg": "sun",    "text": "bark" },
+    "light":     { "label": "Light (white)",    "bg": "white",  "text": "forest" }
+  },
+  "variants": { "hero": { "surface": ["forest", "stone"] }, "services": { "surface": ["white", "stone"] } },
+  "rules": {
+    "hard": [
+      { "id": "contrast", "label": "Text contrast", "check": "Text and buttons must meet WCAG AA (4.5:1 body, 3:1 large text).", "applies_to": ["color", "background-color"] },
+      { "id": "tracking", "label": "Forms and tracking", "check": "Form fields and tracking can't be changed from the page.", "applies_to": ["form", "tracking"] },
+      { "id": "logo", "label": "Logo", "check": "The logo artwork, colors and clear space are fixed.", "applies_to": ["logo"] }
+    ],
+    "soft": [
+      { "id": "palette", "label": "Brand colors", "check": "Colors come from the brand palette.", "applies_to": ["color", "background-color", "border-color"] },
+      { "id": "radius", "label": "Corner radius", "check": "Corners use the radius scale.", "applies_to": ["border-radius"] },
+      { "id": "spacing", "label": "Spacing", "check": "Spacing comes from the spacing scale.", "applies_to": ["padding", "margin"] },
+      { "id": "type", "label": "Type scale", "check": "Text sizes come from the type scale.", "applies_to": ["font-size"] },
+      { "id": "variants", "label": "Variants", "check": "Sections use their approved variants.", "applies_to": ["variant"] }
+    ]
+  }
+}

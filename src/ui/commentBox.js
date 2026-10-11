@@ -7,6 +7,7 @@ import { attachMentions } from './mentions.js';
 import { attachImages, imageOnlyText } from './attach.js';
 import { authorEmail, renderCapCard } from '../app.js';
 import { captureElementScreenshot, collectContext } from '../screenshot.js';
+import { designOn, stylePanel } from './design.js';
 
 // New-comment box, opened by clicking an element in comment mode.
 // Captures the technical context invisibly; the client only sees a
@@ -39,38 +40,15 @@ export function openCommentBox(app, el, clickEvent) {
       form)
   );
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const text = input.value.trim();
-    if (images.isUploading()) return toast(app.ui, 'Image still uploading — one moment');
-    const atts = images.getAttachments();
-    if (!text && !atts.length) return toast(app.ui, 'Type a comment or attach an image');
-    save.disabled = true;
-    save.textContent = 'Saving…';
-    if (ref) {
-      const updated = await updateComment(app.supabase, ref.id, {
-        ...capture(el),
-        page_url: app.pageUrl, page_path: app.pagePath,
-        x_pct: Math.round(xPct * 100) / 100, y_pct: Math.round(yPct * 100) / 100,
-        viewport_w: window.innerWidth,
-        comment_text: text || ref.comment_text,
-        attachments: [...(ref.attachments || []), ...atts],
-      });
-      app.pendingRef = null;
-      if (!updated) { save.disabled = false; save.textContent = 'Attach here'; return toast(app.ui, 'Could not attach — try again'); }
-      app.comments.set(updated.id, updated);
-      mentions.destroy();
-      box.remove();
-      if (app.setCommentMode) app.setCommentMode(false);
-      app.refresh();
-      toast(app.ui, 'Reference attached');
-      return;
-    }
+  // Save a new root comment. Shared by the plain comment form and the
+  // Style change panel. Resolves to the saved row, or null (with a toast).
+  async function insertRoot(text, atts, mentionList) {
     const { data: row, error } = await insertCommentResult(app.supabase, {
       project_id: app.project.id,
       parent_id: null,
       page_url: app.pageUrl,
       page_path: app.pagePath,
+      preview_id: app.previewId || null,
       ...capture(el),
       x_pct: Math.round(xPct * 100) / 100,
       y_pct: Math.round(yPct * 100) / 100,
@@ -78,13 +56,11 @@ export function openCommentBox(app, el, clickEvent) {
       comment_text: text || imageOnlyText(atts.length),
       author_email: authorEmail(app),
       author_name: savedName() || null,
-      mentions: mentions.getMentions(),
+      mentions: mentionList,
       attachments: atts,
       context: collectContext(app),
     });
     if (!row) {
-      save.disabled = false;
-      save.textContent = 'Save comment';
       const msg = (error && error.message) || '';
       if (/COMMENT_LIMIT/.test(msg)) {
         mentions.destroy();
@@ -95,14 +71,13 @@ export function openCommentBox(app, el, clickEvent) {
       } else {
         toast(app.ui, 'Could not save — try again');
       }
-      return;
+      return null;
     }
     app.comments.set(row.id, row);
     if (app.access) app.access.comment_count = (app.access.comment_count || 0) + 1;
     mentions.destroy();
     box.remove();
     app.refresh();
-    toast(app.ui, 'Comment saved');
 
     // Background: automatic screenshot of the area around the element.
     const a = app.access || {};
@@ -118,7 +93,62 @@ export function openCommentBox(app, el, clickEvent) {
         }
       });
     }
+    return row;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (images.isUploading()) return toast(app.ui, 'Image still uploading — one moment');
+    const atts = images.getAttachments();
+    if (!text && !atts.length) return toast(app.ui, 'Type a comment or attach an image');
+    save.disabled = true;
+    save.textContent = 'Saving…';
+    if (ref) {
+      const updated = await updateComment(app.supabase, ref.id, {
+        ...capture(el),
+        page_url: app.pageUrl, page_path: app.pagePath, preview_id: app.previewId || null,
+        x_pct: Math.round(xPct * 100) / 100, y_pct: Math.round(yPct * 100) / 100,
+        viewport_w: window.innerWidth,
+        comment_text: text || ref.comment_text,
+        attachments: [...(ref.attachments || []), ...atts],
+      });
+      app.pendingRef = null;
+      if (!updated) { save.disabled = false; save.textContent = 'Attach here'; return toast(app.ui, 'Could not attach — try again'); }
+      app.comments.set(updated.id, updated);
+      mentions.destroy();
+      box.remove();
+      if (app.setCommentMode) app.setCommentMode(false);
+      app.refresh();
+      toast(app.ui, 'Reference attached');
+      return;
+    }
+    const row = await insertRoot(text, atts, mentions.getMentions());
+    if (!row) { save.disabled = false; save.textContent = 'Save comment'; return; }
+    toast(app.ui, 'Comment saved');
   });
+
+  // Design rules on: "Comment | Style change". The style panel loads the
+  // rules lazily the first time it's opened.
+  if (!ref && designOn(app) && app.writable) {
+    let panel = null;
+    const tabC = h('button', { type: 'button', class: 'mode-tab on' }, 'Comment');
+    const tabS = h('button', { type: 'button', class: 'mode-tab' }, 'Style change');
+    const setMode = (style) => {
+      tabC.classList.toggle('on', !style);
+      tabS.classList.toggle('on', style);
+      form.style.display = style ? 'none' : '';
+      if (style && !panel) {
+        panel = stylePanel(app, el, (text) => insertRoot(text, [], []));
+        form.after(panel.node);
+      }
+      if (panel) panel.node.style.display = style ? '' : 'none';
+      (style ? panel.focus : () => input.focus())();
+    };
+    tabC.addEventListener('click', () => setMode(false));
+    tabS.addEventListener('click', () => setMode(true));
+    form.before(h('div', { class: 'mode-tabs' }, tabC, tabS));
+  }
 
   const x = clickEvent.clientX + window.scrollX + 10;
   const y = clickEvent.clientY + window.scrollY + 10;

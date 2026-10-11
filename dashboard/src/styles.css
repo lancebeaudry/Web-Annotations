@@ -221,3 +221,43 @@ label.check.mgr { margin: 0; align-items: center; font-size: 13px; color: var(--
 .col .cardlet:hover { border-color: var(--blue); }
 .col .cardlet .sub { color: var(--muted); font-size: 11.5px; margin-top: 4px; }
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
+
+/* ---- design rules: settings grid + design system page ---- */
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 14px; }
+.pill { display: inline-block; font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--tint); color: var(--blue-dark); white-space: nowrap; }
+.pill-hard { background: #FDE8E8; color: var(--danger); }
+.ds-page .card { margin-bottom: 18px; }
+.ds-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+.ds-swatch-card { border: 1px solid var(--line-soft); border-radius: 12px; padding: 10px; background: #fff; min-width: 0; }
+.ds-chip { height: 72px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); margin-bottom: 8px; }
+.ds-sw-name { font-weight: 600; color: var(--navy); }
+.ds-sw-meta { font-size: 12px; color: var(--muted); margin: 2px 0; }
+.ds-sw-aa { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 3px 6px; margin-top: 6px; font-size: 12px; }
+.ds-aa { font-size: 11.5px; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.ds-aa.pass { background: var(--ok-bg); color: var(--ok); }
+.ds-aa.fail { background: #FDE8E8; color: var(--danger); }
+.ds-type-row { display: grid; grid-template-columns: 170px 1fr; gap: 16px; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--line-soft); min-width: 0; }
+.ds-type-row > div:last-child { overflow-wrap: anywhere; color: var(--navy); }
+.ds-type-meta { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.ds-btn-row { display: flex; align-items: center; gap: 16px; padding: 10px 0; border-top: 1px solid var(--line-soft); flex-wrap: wrap; }
+.ds-btn { display: inline-block; padding: 11px 20px; font-weight: 600; font-size: 15px; min-width: 150px; text-align: center; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+.ds-surfaces { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.ds-surface { padding: 22px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+.ds-surface-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.ds-surface-btns .ds-btn { min-width: 0; font-size: 13px; padding: 8px 14px; }
+.ds-scale { display: flex; flex-wrap: wrap; gap: 18px; margin: 8px 0 14px; }
+.ds-scale-item { text-align: center; font-size: 13px; }
+.ds-radius-box { width: 72px; height: 72px; background: var(--tint); border: 2px solid var(--blue); margin: 0 auto 6px; }
+.ds-shadow-box { width: 110px; height: 72px; background: #fff; border-radius: 10px; margin: 6px auto 10px; }
+.ds-space-row { display: flex; align-items: center; gap: 12px; margin: 6px 0; font-size: 13px; }
+.ds-space-label { width: 200px; flex: none; }
+.ds-space-bar { height: 14px; background: var(--sky); border-radius: 4px; max-width: 100%; }
+.card-body h4 { margin: 18px 0 8px; }
+@media (max-width: 640px) {
+  .ds-type-row { grid-template-columns: 1fr; gap: 4px; }
+  .ds-space-label { width: 130px; }
+}
+.dsline { margin-top: 6px; font-size: 13px; padding: 6px 10px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); }
+.dsline .hint { color: var(--ink); margin-top: 2px; }
+.dsline.ds-applied, .dsline.ds-approved_applied, .dsline.ds-exception_applied { background: var(--ok-bg); color: var(--ok); }
+.dsline.ds-rejected, .dsline.ds-exception_rejected, .dsline.ds-reverted { background: #FDE8E8; color: var(--danger); }

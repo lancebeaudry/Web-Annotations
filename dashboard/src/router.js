@@ -9,6 +9,8 @@ export function parseRoute() {
   const parts = path.split('/').filter(Boolean);
   if (parts[0] === 'projects' && parts[1] === 'new') return { name: 'projectNew', query };
   if (parts[0] === 'projects' && parts[1] && parts[2] === 'feedback') return { name: 'feedback', id: parts[1], query };
+  if (parts[0] === 'projects' && parts[1] && parts[2] === 'design') return { name: 'design', id: parts[1], query };
+  if (parts[0] === 'design' && parts[1]) return { name: 'sharedDesign', token: parts[1], query };
   if (parts[0] === 'projects' && parts[1]) return { name: 'projectDetail', id: parts[1], query };
   if (parts[0] === 'projects') return { name: 'projects', query };
   if (parts[0] === 'account') return { name: 'account', query };
