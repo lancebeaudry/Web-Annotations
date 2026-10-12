@@ -59,7 +59,7 @@ function colors(t) {
     const hex = hexOf(t, k);
     const chip = styled('div', { background: hex }, '');
     chip.className = 'ds-chip';
-    grid.appendChild(h('div', { class: 'ds-swatch-card' }, chip,
+    grid.appendChild(h('div', { class: 'ds-swatch-card', 'data-key': k }, chip,
       h('div', { class: 'ds-sw-name' }, lab(k, c)),
       h('div', { class: 'ds-sw-meta' }, h('code', {}, hex || '?'), ' · ', h('code', {}, k)),
       c && c.usage ? h('div', { class: 'hint' }, c.usage) : null,
@@ -69,7 +69,7 @@ function colors(t) {
 }
 function typeScale(t) {
   const fam = family(t);
-  const rows = bySize(t.type, true).map(([k, x]) => h('div', { class: 'ds-type-row' },
+  const rows = bySize(t.type, true).map(([k, x]) => h('div', { class: 'ds-type-row', 'data-key': k },
     h('div', { class: 'ds-type-meta' }, h('b', {}, lab(k, x)), h('code', {}, String(val(x) || ''))),
     styled('div', { 'font-size': val(x), 'font-family': fam, 'line-height': '1.2', 'font-weight': /display|h\d|head/i.test(k) ? '700' : '400' }, 'The quick brown fox jumps over the lazy dog')));
   const famRow = fam ? h('p', {}, 'Font: ', h('b', {}, lab('', t.font && t.font.family) || fam), h('span', { class: 'hint' }, ` (${fam})`)) : null;
@@ -82,7 +82,7 @@ function buttonEl(t, b) {
   return el;
 }
 function buttons(t) {
-  const rows = entries(t.buttons).map(([k, b]) => h('div', { class: 'ds-btn-row' }, buttonEl(t, b),
+  const rows = entries(t.buttons).map(([k, b]) => h('div', { class: 'ds-btn-row', 'data-key': k }, buttonEl(t, b),
     h('div', {}, h('div', {}, h('b', {}, lab(k, b)), ' ', h('code', {}, k)),
       h('div', { class: 'hint' }, `Fill ${b.bg} · text ${b.text}`, ' '), aa(hexOf(t, b.text), hexOf(t, b.bg)))));
   return rows.length ? card('Buttons', ...rows) : null;
@@ -125,11 +125,30 @@ function rules(t) {
 }
 export function renderSystem(t) {
   loadFont(t);
-  return [colors(t), typeScale(t), buttons(t), surfaces(t), scales(t), variants(t), rules(t)].filter(Boolean);
+  // Section ids let PinPoint link straight to the part a flag refers to:
+  // #/design/<token>?to=buttons&item=primary
+  const parts = [['colors', colors(t)], ['typography', typeScale(t)], ['buttons', buttons(t)], ['surfaces', surfaces(t)], ['scales', scales(t)], ['variants', variants(t)], ['rules', rules(t)]];
+  return parts.filter(([, el]) => el).map(([id, el]) => { el.id = `ds-${id}`; return el; });
+}
+// Scroll to the section named in ?to= and highlight ?item= inside it.
+function focusFrom(query = {}) {
+  const to = String(query.to || '').replace(/[^a-z]/g, '');
+  if (!to) return;
+  const item = String(query.item || '').replace(/[^A-Za-z0-9_-]/g, '');
+  setTimeout(() => {
+    const sec = document.getElementById(`ds-${to}`);
+    if (!sec) return;
+    const hit = item ? sec.querySelector(`[data-key="${item}"]`) : null;
+    const target = hit || sec;
+    target.scrollIntoView({ block: hit ? 'center' : 'start' });
+    if (!hit) window.scrollBy(0, -84);
+    target.classList.add('ds-hl');
+    setTimeout(() => target.classList.remove('ds-hl'), 4500);
+  }, 80);
 }
 
 // --------------------------------------------------------------- screens
-export async function designScreen({ id }) {
+export async function designScreen({ id, query = {} }) {
   const [p, access, ds] = await Promise.all([getProject(id), projectAccess(id).catch(() => ({})), designSystem(id).catch(() => null)]);
   if (!p) return card('Not found', h('p', {}, 'This project doesn’t exist or you don’t have access.'));
   const da = access.design_rules || {};
@@ -172,13 +191,15 @@ export async function designScreen({ id }) {
   if (log.length) extra.push(card('Changelog', h('div', { class: 'rows' }, ...log.map((l) => h('div', { class: 'row' }, h('div', {}, h('div', { class: 'row-title' }, l.summary), h('div', { class: 'hint' }, `${l.by || ''} · ${fmtDate(l.at)}`)), h('span', { class: 'pill' }, `v${l.version}`))))));
   const share = ds.share_token ? card('Share link', h('p', { class: 'hint' }, 'Anyone with this link can view the design system (colors, type, buttons, rules). Not the exceptions or changelog.'), copyBox(`${location.origin}${location.pathname}#/design/${ds.share_token}`)) : null;
 
+  focusFrom(query);
   return h('div', { class: 'ds-page' }, head, ...renderSystem(t), ...extra, share);
 }
 
-export async function sharedDesignScreen(token) {
+export async function sharedDesignScreen(token, query = {}) {
   let d = null;
   try { d = await sharedDesign(token); } catch { d = null; }
   if (!d || !d.tokens || !d.tokens.color) return card('Link not available', h('p', {}, 'This design system link was turned off, or it doesn’t exist.'));
   const head = pageHead(`${d.tokens.name || d.name} design system`, `Version ${d.version} · updated ${fmtDate(d.updated_at)}${d.exceptions ? ` · ${d.exceptions} logged exception${d.exceptions === 1 ? '' : 's'}` : ''}`);
+  focusFrom(query);
   return h('div', { class: 'ds-page' }, head, ...renderSystem(d.tokens));
 }

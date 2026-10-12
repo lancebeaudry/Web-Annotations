@@ -13,7 +13,7 @@ import { prefetchMentionables } from './ui/mentions.js';
 import { buildMarkdown, buildJson, copyToClipboard } from './export.js';
 import { FUNCTIONS_URL } from './config.js';
 import { brandLink, poweredBy } from './ui/brand.js';
-import { loadRules } from './ui/design.js';
+import { loadRules, designSystemUrl } from './ui/design.js';
 
 // True when the overlay is running inside the device-preview iframe (a
 // same-origin copy of the page). In that context we hide the device
@@ -649,7 +649,7 @@ function renderToolbar(app) {
   if (dr.enabled && dr.can_check) {
     const dsLink = h('a', { class: 'toolbar-link', href: `${DASHBOARD_URL}#/projects/${app.project.id}/design`, target: '_blank', rel: 'noopener', title: 'Open the design system in a new window' }, 'Design system');
     toolbar.appendChild(dsLink);
-    loadRules(app).then((d) => { if (d && d.share_token) dsLink.href = `${DASHBOARD_URL}#/design/${d.share_token}`; }).catch(() => {});
+    loadRules(app).then(() => { dsLink.href = designSystemUrl(app); }).catch(() => {});
   }
   // Free plan: how much of the comment allowance this project has used.
   if (app.access.comment_limit) {

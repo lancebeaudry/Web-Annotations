@@ -817,5 +817,6 @@ export const CSS = `
 .ds-flag-ok .ds-flag-h { color: #17663b; }
 .ds-flag-no { background: #fde8e8; border-color: #f3c4c4; }
 .ds-flag-no .ds-flag-h { color: #9b1c1c; }
-.ds-flag-link { margin-top: 5px; padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: #14517a; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.ds-flag-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 5px; }
+.ds-flag-link { padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: #14517a; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 `;

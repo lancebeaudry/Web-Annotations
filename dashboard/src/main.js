@@ -30,7 +30,7 @@ async function render() {
   // A shared design system link is public: no sign-in needed.
   if (route.name === 'sharedDesign') {
     root.replaceChildren(shell(h('p', { class: 'hint' }, 'Loading…'), {}));
-    const content = await sharedDesignScreen(route.token);
+    const content = await sharedDesignScreen(route.token, route.query);
     if (seq === rendering) root.replaceChildren(shell(content, { wide: true }));
     return;
   }

@@ -267,3 +267,5 @@ label.check.mgr { margin: 0; align-items: center; font-size: 13px; color: var(--
 .ds-advanced { margin-top: 22px; border-top: 1px solid var(--line-soft); padding-top: 14px; }
 .ds-advanced > summary { cursor: pointer; color: var(--blue); font-weight: 500; font-size: 14px; }
 .ds-advanced[open] > summary { margin-bottom: 4px; }
+.ds-hl { outline: 3px solid var(--sky); outline-offset: 6px; border-radius: 10px; transition: outline-color 1.2s ease; }
+.ds-page .card.ds-hl { outline-offset: 2px; }

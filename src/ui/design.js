@@ -6,6 +6,7 @@
 
 import { h, toast } from './overlay.js';
 import { buildSelector } from '../capture.js';
+import { DASHBOARD_URL } from '../config.js';
 import { hint as designHint } from '../../supabase/functions/_shared/designEngine.ts';
 
 export const designOn = (app) => !!(app.access && app.access.design_rules && app.access.design_rules.can_check);
@@ -26,6 +27,25 @@ export async function loadRules(app, force = false) {
   const data = await designCall(app, { action: 'rules' });
   app.designRules = { at: Date.now(), data };
   return data;
+}
+
+// Link to the design system page, at the section a result refers to. Uses
+// the view-only share page when the owner turned it on (no sign-in),
+// otherwise the members' page in the dashboard.
+const SECTION_FOR = { buttons: 'buttons', palette: 'colors', contrast: 'colors', type: 'typography', radius: 'scales', spacing: 'scales', variants: 'variants', logo: 'rules', tracking: 'rules', manual: 'rules' };
+export function designSystemUrl(app, to = '', item = '') {
+  const d = app.designRules && app.designRules.data;
+  const q = to ? `?to=${encodeURIComponent(to)}${item ? `&item=${encodeURIComponent(item)}` : ''}` : '';
+  return d && d.share_token ? `${DASHBOARD_URL}#/design/${d.share_token}${q}` : `${DASHBOARD_URL}#/projects/${app.project.id}/design${q}`;
+}
+export function designSystemUrlFor(app, request, res) {
+  const rid = res && res.rule ? res.rule.id : '';
+  const to = SECTION_FOR[rid] || '';
+  const ctx = (request && request.context) || {};
+  let item = '';
+  if (to === 'buttons') item = ctx.button || '';
+  else if (res && res.token && /^(type|color)\./.test(res.token)) item = res.token.split('.')[1];
+  return designSystemUrl(app, to, item);
 }
 
 // ------------------------------------------------- reading the element
@@ -336,13 +356,14 @@ export function attachFlag(app, el, input, onCheck) {
     last = { request, direction: intent.direction, result: res };
     const ok = res.status === 'allowed';
     const tone = ok ? 'ok' : res.status === 'blocked' ? 'no' : 'warn';
-    const check = h('button', { type: 'button', class: 'ds-flag-link' }, 'Check it as a style change');
+    const check = h('button', { type: 'button', class: 'ds-flag-link' }, 'Request style change');
     check.addEventListener('click', () => onCheck({ element: request.element, property, value: intent.value || (res.value || '') }));
+    const view = h('a', { class: 'ds-flag-link', href: designSystemUrlFor(app, request, res), target: '_blank', rel: 'noopener' }, 'View in design system');
     node.className = `ds-flag ds-flag-${tone}`;
     node.replaceChildren(
       h('div', { class: 'ds-flag-h' }, h('b', {}, ok ? 'Fits the design system' : res.status === 'blocked' ? 'Not allowed by the design system' : 'Goes against the design system'), h('span', {}, ` · ${res.rule.label}`)),
       h('div', {}, res.message),
-      ok && !res.value ? null : check,
+      h('div', { class: 'ds-flag-links' }, ok && !res.value ? null : check, view),
     );
     node.hidden = false;
   }
@@ -425,6 +446,9 @@ export function designCard(app, comment, reopen) {
     const u = h('button', { type: 'button', class: 'btn btn-ghost btn-sm' }, `Undo (back to ${dc.applied.previous})`);
     u.addEventListener('click', () => act('revert', u, 'Change undone'));
     actions.append(u);
+  }
+  if (dc.state === 'flagged' && dc.result) {
+    rows.push(h('div', { class: 'ds-flag-links' }, h('a', { class: 'ds-flag-link', href: designSystemUrlFor(app, r, dc.result), target: '_blank', rel: 'noopener' }, 'View in design system')));
   }
   if (actions.children.length) rows.push(actions);
   return h('div', { class: `ds-card ds-card-${tone}` }, ...rows);
