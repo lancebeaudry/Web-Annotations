@@ -261,3 +261,9 @@ label.check.mgr { margin: 0; align-items: center; font-size: 13px; color: var(--
 .dsline .hint { color: var(--ink); margin-top: 2px; }
 .dsline.ds-applied, .dsline.ds-approved_applied, .dsline.ds-exception_applied { background: var(--ok-bg); color: var(--ok); }
 .dsline.ds-rejected, .dsline.ds-exception_rejected, .dsline.ds-reverted { background: #FDE8E8; color: var(--danger); }
+.ds-status { margin: 0 0 4px; color: var(--muted); font-size: 14px; }
+.ds-status b { color: var(--navy); }
+.btn-row.ds-left { justify-content: flex-start; }
+.ds-advanced { margin-top: 22px; border-top: 1px solid var(--line-soft); padding-top: 14px; }
+.ds-advanced > summary { cursor: pointer; color: var(--blue); font-weight: 500; font-size: 14px; }
+.ds-advanced[open] > summary { margin-bottom: 4px; }

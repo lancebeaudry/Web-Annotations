@@ -379,6 +379,12 @@ export function hardRuleProblem(tokens: Tokens): string | null {
   }
   return null;
 }
+/** a > b for x.y.z versions (missing parts count as 0). */
+export function semverGt(a: string, b: string): boolean {
+  const A = String(a || "").split(".").map((n) => parseInt(n, 10) || 0), B = String(b || "").split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) if ((A[i] || 0) !== (B[i] || 0)) return (A[i] || 0) > (B[i] || 0);
+  return false;
+}
 export function bumpVersion(v: string): string {
   const p = String(v || "1.0.0").split(".").map((n) => parseInt(n, 10) || 0);
   while (p.length < 3) p.push(0);

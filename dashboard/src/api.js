@@ -96,7 +96,7 @@ export const designKeyStatus = async (id) => unwrap(await supabase.rpc('design_c
 export const saveDesignTokens = async (id, tokens, summary) => unwrap(await supabase.rpc('save_design_tokens', { p_project: id, p_tokens: tokens, p_summary: summary || null }));
 export const setDesignShare = async (id, on) => unwrap(await supabase.rpc('set_design_share', { p_project: id, p_on: !!on }));
 export const sharedDesign = async (token) => unwrap(await supabase.rpc('get_shared_design_system', { p_token: token }));
-export const designSystem = async (id) => unwrap(await supabase.from('design_systems').select('tokens,version,updated_at,updated_by,source,share_token').eq('project_id', id).maybeSingle());
+export const designSystem = async (id) => unwrap(await supabase.from('design_systems').select('tokens,version,updated_at,updated_by,source,source_url,share_token').eq('project_id', id).maybeSingle());
 export const designExceptions = async (id) => unwrap(await supabase.from('design_exceptions').select('id,comment_id,page_path,selector,property,value,reason,created_by,active,created_at').eq('project_id', id).eq('active', true).order('created_at', { ascending: false }).limit(100)) || [];
 export const designProposals = async (id) => unwrap(await supabase.from('design_proposals').select('id,comment_id,summary,status,requested_by,decided_by,decided_at,version_from,version_to,affected,created_at').eq('project_id', id).order('created_at', { ascending: false }).limit(50)) || [];
 export const designChangelog = async (id) => unwrap(await supabase.from('design_changelog').select('id,version,kind,summary,by,at').eq('project_id', id).order('at', { ascending: false }).limit(50)) || [];

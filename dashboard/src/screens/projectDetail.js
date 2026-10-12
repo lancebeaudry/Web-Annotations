@@ -431,7 +431,33 @@ async function designRulesCard(id, user) {
   const tokens = h('textarea', { class: 'code', rows: '14', spellcheck: 'false', placeholder: '{\n  "name": "Brand",\n  "version": "1.0.0",\n  "color": { "primary": { "value": "#24523a", "label": "Primary" } },\n  "buttons": { "primary": { "label": "Primary", "bg": "primary", "text": "white" } }\n}' });
   const original = ds && ds.tokens && ds.tokens.color ? JSON.stringify(ds.tokens, null, 2) : '';
   tokens.value = original;
-  const status = h('p', { class: 'hint' }, ds && ds.tokens && ds.tokens.color ? `Version ${ds.version}, ${Object.keys(ds.tokens.color || {}).length} colors, ${Object.keys(ds.tokens.buttons || {}).length} button styles${ds.source === 'connector' ? ', imported from the site' : ''}.` : 'No design system yet. Paste one below, or connect the site and import it.');
+  const hasDs = !!(ds && ds.tokens && ds.tokens.color);
+  const host = (u) => { try { return new URL(u).host; } catch { return ''; } };
+  const when = ds && ds.updated_at ? new Date(ds.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+  const status = h('p', { class: 'ds-status' }, hasDs
+    ? [h('b', {}, `${ds.tokens.name || 'Design system'} v${ds.version}`), ` · ${Object.keys(ds.tokens.color || {}).length} colors, ${Object.keys(ds.tokens.buttons || {}).length} button styles, ${Object.keys(ds.tokens.surfaces || {}).length} section styles`,
+      ds.source === 'url' && ds.source_url ? ` · imported from ${host(ds.source_url)} on ${when}` : ds.source === 'connector' ? ` · imported from the site on ${when}` : ` · updated ${when}`]
+    : 'No design system yet.');
+
+  // The simple path: the address of the site's design system page.
+  const addr = h('input', { type: 'url', placeholder: 'https://example.com/design-system/', value: '' });
+  const importBtn = h('button', { class: 'btn', type: 'button' }, hasDs ? 'Import' : 'Import design system');
+  const doImport = async (btn, url) => {
+    btn.disabled = true;
+    try {
+      const r = await designFn({ project_id: id, action: 'import_url', url });
+      if (r.unchanged) { toast(`Already up to date (v${r.version})`); btn.disabled = false; return; }
+      toast(`Imported v${r.version}: ${r.colors} colors, ${r.buttons} button styles`);
+      location.reload();
+    } catch (e) { toast(e.message); btn.disabled = false; }
+  };
+  importBtn.addEventListener('click', () => {
+    if (!addr.value.trim()) { addr.focus(); return toast('Paste the address of the design system page'); }
+    doImport(importBtn, addr.value.trim());
+  });
+  addr.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); importBtn.click(); } });
+  const reimport = hasDs && ds.source === 'url' && ds.source_url ? h('button', { class: 'btn btn-ghost', type: 'button', title: `Pull the latest from ${ds.source_url}` }, 'Re-import') : null;
+  if (reimport) reimport.addEventListener('click', () => doImport(reimport, ''));
   const saveTokens = h('button', { class: 'btn', type: 'button' }, 'Save design system');
   saveTokens.addEventListener('click', async () => {
     let t;
@@ -484,21 +510,14 @@ async function designRulesCard(id, user) {
     share.disabled = false;
   });
 
-  return card('Design rules',
-    h('p', { class: 'hint' }, 'Optional. When it’s on, members get a “Style change” option on the site: PinPoint checks the change against your design system and offers the closest approved style, a logged exception, or a rule change for the approver.'),
-    h('label', { class: 'check' }, enabled, ' Turn on design rules for this project'),
-    h('div', { class: 'grid-2' },
-      h('div', { class: 'field' }, h('label', {}, 'Approver'), approver, h('div', { class: 'hint' }, 'Gets rule changes and exception requests to approve.')),
-      h('div', { class: 'field' }, h('label', {}, 'Who can approve'), approve),
-      h('div', { class: 'field' }, h('label', {}, 'Who can make exceptions'), exceptions)),
-    h('div', { class: 'btn-row' }, saveBtn),
-    h('h4', {}, 'Design system'),
-    status,
+  const advanced = h('details', { class: 'ds-advanced' },
+    h('summary', {}, 'Advanced: edit by hand, or connect the site'),
+    h('h4', {}, 'Edit the design system'),
+    h('p', { class: 'hint' }, 'The same design system as JSON (colors, font, type sizes, radius, spacing, button and section styles, variants and rules). Changes here get a new version.'),
     tokens,
-    h('div', { class: 'btn-row' }, h('a', { class: 'btn btn-ghost', href: `#/projects/${id}/design` }, 'View design system page'), saveTokens),
-    h('label', { class: 'check' }, share, ' Shareable view-only link to the design system page'),
-    h('h4', {}, 'Site connection (optional)'),
-    h('p', { class: 'hint' }, 'Connect a site that serves the design rules API to apply changes on staging, preview rule changes and list the pages they affect. Without it, choices become ready-to-do tasks.'),
+    h('div', { class: 'btn-row' }, saveTokens),
+    h('h4', {}, 'Site connection'),
+    h('p', { class: 'hint' }, 'Only for sites with a design rules API. It lets PinPoint apply approved changes on staging, preview a rule change across every page it touches, and undo. Without it, choices become ready-to-do tasks.'),
     h('div', { class: 'grid-2' },
       h('div', { class: 'field' }, h('label', {}, 'Staging rules API'), base),
       h('div', { class: 'field' }, h('label', {}, 'Staging key'), key),
@@ -507,4 +526,22 @@ async function designRulesCard(id, user) {
       h('div', { class: 'field' }, h('label', {}, 'Preview parameter'), preview, h('div', { class: 'hint' }, 'The query parameter the site uses for previews. Default pp_preview.')),
       h('div', { class: 'field' }, h('label', {}, 'Key header'), keyHeader, h('div', { class: 'hint' }, 'Only if the site expects the key under its own header name. It’s always sent as X-PinPoint-Key too.'))),
     h('div', { class: 'btn-row' }, test, pull, saveConn));
+
+  return card('Design rules',
+    h('p', { class: 'hint' }, 'Optional. When it’s on, members get a “Style change” option on the site. PinPoint checks each change against the design system and offers the closest approved style, a logged exception, or a rule change for the approver.'),
+    h('h4', {}, '1. Design system'),
+    status,
+    hasDs ? h('div', { class: 'btn-row ds-left' }, h('a', { class: 'btn btn-ghost', href: `#/projects/${id}/design` }, 'View design system page'), reimport) : null,
+    h('div', { class: 'field', style: 'margin-top:12px' }, h('label', {}, hasDs ? 'Import from a different page' : 'Your design system page'),
+      h('div', { class: 'inline' }, addr, importBtn),
+      h('div', { class: 'hint' }, 'Paste the address of the site’s style guide or design system page. PinPoint finds the design system behind it and keeps a copy.')),
+    hasDs ? h('label', { class: 'check' }, share, ' Shareable view-only link to the design system page') : null,
+    h('h4', {}, '2. Turn it on'),
+    h('label', { class: 'check' }, enabled, ' Turn on design rules for this project'),
+    h('div', { class: 'grid-2' },
+      h('div', { class: 'field' }, h('label', {}, 'Approver'), approver, h('div', { class: 'hint' }, 'Gets rule changes and exception requests to approve.')),
+      h('div', { class: 'field' }, h('label', {}, 'Who can approve'), approve),
+      h('div', { class: 'field' }, h('label', {}, 'Who can make exceptions'), exceptions)),
+    h('div', { class: 'btn-row' }, saveBtn),
+    advanced);
 }

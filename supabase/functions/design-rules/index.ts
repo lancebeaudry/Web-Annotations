@@ -9,6 +9,8 @@
 //   approve, reject  an approver decides a rule change or an exception request
 //   revert           undo an applied change (connector sites)
 //   test, import     owner: test the site connector / pull its design system
+//   import_url       owner: import from a style guide page or tokens file
+//                      ({ url }; no url = re-import from the last address)
 //
 // Called from the overlay on any client site, so CORS reflects the caller's
 // origin; every action is gated by the signed-in user's own access, computed
@@ -19,6 +21,7 @@ import { db, json, SUPABASE_URL, ANON_KEY } from "../_shared/db.ts";
 import { requireUser } from "../_shared/auth.ts";
 import * as E from "../_shared/designEngine.ts";
 import { connectorFor, call } from "../_shared/designConnector.ts";
+import { importFromUrl } from "../_shared/designImport.ts";
 
 const cors = (req: Request) => ({
   "Access-Control-Allow-Origin": req.headers.get("origin") || "*",
@@ -69,15 +72,25 @@ async function approverEmail(project: any): Promise<string | null> {
   return typeof u === "string" ? u : null;
 }
 async function tokensOf(pid: string) {
-  const r = await db<any[]>(`design_systems?project_id=eq.${pid}&select=tokens,version,updated_at,source,share_token&limit=1`);
+  const r = await db<any[]>(`design_systems?project_id=eq.${pid}&select=tokens,version,updated_at,source,source_url,share_token&limit=1`);
   return r[0] || null;
 }
-async function saveTokens(pid: string, tokens: any, version: string, by: string, source: string) {
+async function saveTokens(pid: string, tokens: any, version: string, by: string, source: string, sourceUrl: string | null = null) {
   await db(`design_systems?on_conflict=project_id`, {
     method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify({ project_id: pid, tokens: { ...tokens, version }, version, updated_at: new Date().toISOString(), updated_by: by, source }),
+    body: JSON.stringify({ project_id: pid, tokens: { ...tokens, version }, version, updated_at: new Date().toISOString(), updated_by: by, source, source_url: sourceUrl }),
   });
 }
+// Same design system apart from the version and date stamps?
+// Key order doesn't count (the database stores tokens as jsonb, which
+// reorders keys).
+const canon = (v: any): string => Array.isArray(v) ? `[${v.map(canon).join(",")}]`
+  : v && typeof v === "object" ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(",")}}`
+  : JSON.stringify(v);
+const sameTokens = (a: any, b: any) => {
+  const strip = (t: any) => { const { version: _v, updated: _u, ...rest } = t || {}; return canon(rest); };
+  return strip(a) === strip(b);
+};
 async function log(pid: string, version: string, kind: string, summary: string, by: string, changes: any = null) {
   await db("design_changelog", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ project_id: pid, version, kind, summary: summary.slice(0, 300), changes, by }) });
 }
@@ -113,6 +126,27 @@ Deno.serve(async (req) => {
   const acc = await access(authz, pid);
   const me = caller.email.toLowerCase();
   const action = String(b.action || "");
+
+  // ---- owner: import from a style guide page or tokens file
+  if (action === "import_url") {
+    if (!(await isOwnerOrOperator(caller.id, project))) return json(403, { error: "Only the project owner can do this." }, h);
+    const cur = await tokensOf(pid);
+    const raw = str(b.url, 500).trim() || cur?.source_url || "";
+    if (!raw) return json(400, { error: "Paste the address of the design system page." }, h);
+    const got = await importFromUrl(raw);
+    if ("error" in got) return json(422, { error: got.error }, h);
+    const t = got.tokens;
+    if (JSON.stringify(t).length > 200_000) return json(422, { error: "That design system is too large." }, h);
+    if (cur?.tokens?.color && sameTokens(cur.tokens, t)) {
+      if (cur.source_url !== got.from) await db(`design_systems?project_id=eq.${pid}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ source_url: got.from, source: "url" }) });
+      return json(200, { ok: true, unchanged: true, version: cur.version, from: got.from }, h);
+    }
+    let version = String(t.version || "1.0.0").slice(0, 20);
+    if (cur?.version && !E.semverGt(version, cur.version)) version = E.bumpVersion(cur.version);
+    await saveTokens(pid, t, version, me, "url", got.from);
+    await log(pid, version, "import", `Imported from ${got.from}`, me);
+    return json(200, { ok: true, version, from: got.from, colors: Object.keys(t.color || {}).length, buttons: Object.keys(t.buttons || {}).length, surfaces: Object.keys(t.surfaces || {}).length }, h);
+  }
 
   // ---- owner tools: test / import (work before the feature is switched on)
   if (action === "test" || action === "import") {
