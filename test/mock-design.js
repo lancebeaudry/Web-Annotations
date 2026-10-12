@@ -32,7 +32,7 @@ export function mockDesign({ store, user, roleOn }) {
     const pid = body.project_id;
     const acc = access(pid);
     const action = body.action;
-    if (action === 'rules') return okd({ tokens: ds.tokens, version: ds.version, access: acc, production_version: null });
+    if (action === 'rules') return okd({ tokens: ds.tokens, version: ds.version, access: acc, production_version: null, share_token: acc.can_check ? 'mock-share' : null });
     if (!acc.can_check) return err(403, { error: 'Only project members can use design rules.' });
     if (action === 'check') return okd({ result: E.check(ds.tokens, body.request) });
 

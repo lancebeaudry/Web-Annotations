@@ -45,6 +45,8 @@ export const CSS = `
 /* Keep items from squishing/wrapping; they scroll instead. */
 .toolbar > * { flex: none; }
 .toolbar-spacer { flex: 1 1 auto; min-width: 0; }
+.toolbar-link { font-size: 13px; font-weight: 600; color: #14517a; text-decoration: underline; text-underline-offset: 3px; padding: 4px 6px; white-space: nowrap; }
+.toolbar-link:hover { color: #00263D; }
 .toolbar-brand {
   display: flex;
   align-items: center;

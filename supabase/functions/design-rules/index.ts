@@ -182,7 +182,8 @@ Deno.serve(async (req) => {
         prodCache.set(pid, { at: Date.now(), version: prod });
       }
     }
-    return json(200, { tokens, version: ds?.version || null, updated_at: ds?.updated_at || null, access: acc, production_version: prod }, h);
+    // The view-only share token only goes to members (it opens the public page).
+    return json(200, { tokens, version: ds?.version || null, updated_at: ds?.updated_at || null, access: acc, production_version: prod, share_token: acc.can_check ? ds?.share_token || null : null }, h);
   }
 
   if (!acc.can_check) return json(403, { error: "Only project members can use design rules." }, h);
