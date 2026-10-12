@@ -215,7 +215,7 @@ Deno.serve(async (req) => {
     if (!request.target?.page_path) request.target = { ...request.target, page_path: crow.page_path };
     const dir = b.direction === "less" || b.direction === "more" ? b.direction : "";
     const r = E.hint(tokens, request, dir);
-    if (!r || r.status === "allowed") return json(200, { comment: null, flagged: false }, h);
+    if (!r || r.status === "allowed" || r.info) return json(200, { comment: null, flagged: false }, h);
     const dc = { state: "flagged", request, direction: dir, result: { status: r.status, rule: r.rule, message: r.message }, tokens_version: r.tokens_version, decided_by: me, decided_at: now };
     return json(200, { comment: await patchComment(cid, { design_check: dc, labels: withLabel(crow.labels, "design") }), flagged: true }, h);
   }

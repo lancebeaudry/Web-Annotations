@@ -14,6 +14,11 @@
 //   surfaces: { key: { label, bg: colorKey, text: colorKey, heading?, accent?, match?: "css selector" } }
 //   buttons:  { key: { label, bg: colorKey, text: colorKey, match?: "css selector" } }
 //   variants: { module: { setting: [allowed values] } }
+//   space entries may carry scale: true (a spacing-scale step, e.g. 4/8/12/16…)
+//   and use: "what it's for"; entries without it are layout values (content
+//   width, gutter, section padding).
+//   anatomy:  [{ id, label, value: "space.md" | "760px", alt?, note? }]  — the
+//             spacing between the parts of a section, in reading order
 //   rules:    { hard: [{ id, label, check, applies_to }], soft: [...] }
 //   locked?:  [element names that can't be changed from the page]  (default logo, form, tracking)
 
@@ -44,6 +49,7 @@ export type Result = {
   apply?: Record<string, any>;
   options?: Option[];
   device_note?: string;
+  info?: boolean;            // guidance only (nothing was asked that breaks a rule)
 };
 
 const COLOR_PROPS = ["color", "background-color", "border-color", "background"];
@@ -112,7 +118,7 @@ function result(t: Tokens, status: Result["status"], ruleId: string, type: "hard
   };
 }
 function defaultLabel(id: string) {
-  return ({ contrast: "Text contrast", palette: "Brand colors", radius: "Corner radius", spacing: "Spacing", type: "Type scale", variants: "Variants", buttons: "Button styles", logo: "Logo", tracking: "Forms and tracking", manual: "Needs review" } as Record<string, string>)[id] || id;
+  return ({ contrast: "Text contrast", palette: "Brand colors", radius: "Corner radius", spacing: "Spacing", type: "Type scale", variants: "Variants", buttons: "Button styles", anatomy: "Section anatomy", logo: "Logo", tracking: "Forms and tracking", manual: "Needs review" } as Record<string, string>)[id] || id;
 }
 function slug(v: string) { return String(v).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32) || "custom"; }
 function label(group: Record<string, any> | undefined, key: string) { return group?.[key]?.label || key; }
@@ -229,11 +235,34 @@ function optRuleChangeColor(hex: string, req: Request, t: Tokens): Option {
   }
   return { id: "rule_change", label: "Change the rule", summary: "Update the design system, preview every affected page, then approve.", scopes };
 }
-function scaleFor(property: string, t: Tokens): [string | null, Record<string, any>] {
+const SPACE_PROPS = ["padding", "margin", "gap"];
+/** The spacing-scale steps (space entries marked scale: true). */
+export function spacingScale(t: Tokens): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries<any>(t.space || {})) if (v && v.scale) out[k] = v;
+  return out;
+}
+function scaleFor(property: string, t: Tokens, element = ""): [string | null, Record<string, any>] {
   if (property === "border-radius") return ["radius", t.radius || {}];
-  if (property === "padding" || property === "margin" || property === "gap") return ["space", t.space || {}];
+  if (SPACE_PROPS.includes(property)) {
+    const steps = spacingScale(t);
+    // Section padding is a layout value; everything else uses the scale
+    // when the design system has one.
+    if (Object.keys(steps).length && !(element === "section" && property === "padding")) return ["space", steps];
+    return ["space", t.space || {}];
+  }
   if (property === "font-size") return ["type", t.type || {}];
   return [null, {}];
+}
+/** Section anatomy parts with their values resolved ("space.md" -> 24px). */
+export function anatomyParts(t: Tokens): { id: string; label: string; ref: string; value: string; alt: string; note: string }[] {
+  const resolve = (v: any) => {
+    const m = String(v ?? "").match(/^space\.([A-Za-z0-9_-]+)$/);
+    return m ? String(t.space?.[m[1]]?.value ?? v) : String(v ?? "");
+  };
+  return (Array.isArray(t.anatomy) ? t.anatomy : []).filter((p: any) => p && p.label && p.value).map((p: any) => ({
+    id: String(p.id || ""), label: String(p.label), ref: String(p.value), value: resolve(p.value), alt: p.alt ? resolve(p.alt) : "", note: String(p.note || ""),
+  }));
 }
 function closestScale(value: string, scale: Record<string, any>): string | null {
   const n = parseFloat(value);
@@ -356,7 +385,7 @@ export function check(t: Tokens, req: Request): Result {
   }
 
   // Scales.
-  const [group, scale] = scaleFor(property, t);
+  const [group, scale] = scaleFor(property, t, element);
   if (group) {
     const rid = group === "radius" ? "radius" : group === "type" ? "type" : "spacing";
     for (const [k, tok] of Object.entries<any>(scale)) {
@@ -369,7 +398,7 @@ export function check(t: Tokens, req: Request): Result {
         optException(target, property, value),
         { id: "rule_change", label: "Change the rule", summary: `Add ${value} to the ${group} scale.`, scopes: [{
           id: "add", label: `Add ${value} as a new ${group === "space" ? "spacing" : group} step`, impact: "It becomes available everywhere, but nothing changes until it's used.",
-          changes: [{ path: `${group}.custom-${slug(value)}`, value: { value, label: `Custom ${value}` } }],
+          changes: [{ path: `${group}.custom-${slug(value)}`, value: { value, label: `Custom ${value}`, ...(group === "space" && Object.keys(spacingScale(t)).length ? { scale: true } : {}) } }],
         }] },
       ],
     }));
@@ -425,9 +454,17 @@ export function hint(t: Tokens, req: Request, direction: "less" | "more" | "" = 
     const pick = element === "button" && t.buttons ? ` Buttons come in ${Object.keys(t.buttons).length} approved styles: ${Object.entries<any>(t.buttons).map(([k, b]) => b?.label || k).join(", ")}.` : "";
     return result(t, "needs_decision", "palette", "soft", `Colors come from the ${brand} palette (${names.slice(0, 8).join(", ")}${names.length > 8 ? ", …" : ""}).${pick} Anything else would be an exception.`, target, { options: [] });
   }
-  const [group, scale] = scaleFor(property, t);
+  const [group, scale] = scaleFor(property, t, element);
   if (!group || !Object.keys(scale).length) return null;
-  const rid = group === "radius" ? "radius" : group === "type" ? "type" : "spacing";
+  // Space between the parts of a section: answer with the section anatomy.
+  const parts = anatomyParts(t);
+  const vw0 = Number(req.viewport_w) || 0;
+  if ((property === "margin" || property === "gap") && parts.length && (!direction || !pxOf(req.context?.current, vw0))) {
+    const list = parts.filter((p) => /px|rem|clamp/.test(p.value)).slice(0, 6).map((p) => `${p.label} ${p.value}`).join(", ");
+    const lead = direction && !pxOf(req.context?.current, vw0) ? "This element has no space of its own there; it comes from the section around it. " : "";
+    return result(t, "needs_decision", "anatomy", "soft", `${lead}Space between the parts of a section follows the section anatomy: ${list}.`, target, { options: [], info: true });
+  }
+  const rid = group === "radius" ? "radius" : group === "type" ? "type" : (property === "margin" || property === "gap") && parts.length ? "anatomy" : "spacing";
   const word = group === "space" ? "spacing" : group === "type" ? "type" : "corner radius";
   const vw = Number(req.viewport_w) || 0;
   const cur = pxOf(req.context?.current, vw);
@@ -441,7 +478,7 @@ export function hint(t: Tokens, req: Request, direction: "less" | "more" | "" = 
   // Within a few pixels counts as the step it's already on.
   const tol = Math.max(1, cur * 0.06);
   if (!cur || !direction) {
-    return result(t, "needs_decision", rid, "soft", `This has to use a step on the ${word} scale: ${steps.map((x) => `${x.label} ${x.value}`).join(", ")}.`, target, { options: [] });
+    return result(t, "needs_decision", rid, "soft", `This has to use a step on the ${word} scale: ${steps.map((x) => `${x.label} ${x.value}`).join(", ")}.`, target, { options: [], info: true });
   }
   const next = direction === "less" ? [...steps].reverse().find((x) => x.px < cur - tol) : steps.find((x) => x.px > cur + tol);
   if (next) {

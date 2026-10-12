@@ -11,7 +11,7 @@
 import { h, fmtDate, toast, copyBox } from '../ui/dom.js';
 import { card, pageHead } from '../ui/shell.js';
 import { getProject, projectAccess, designSystem, designExceptions, designProposals, designChangelog, designFn, sharedDesign } from '../api.js';
-import { contrast } from '../../../supabase/functions/_shared/designEngine.ts';
+import { contrast, spacingScale, anatomyParts } from '../../../supabase/functions/_shared/designEngine.ts';
 
 const FONT_HOSTS = ['fonts.googleapis.com', 'use.typekit.net', 'p.typekit.net'];
 const entries = (o) => Object.entries(o && typeof o === 'object' ? o : {});
@@ -104,11 +104,56 @@ function scales(t) {
   const blocks = [];
   const radius = bySize(t.radius);
   if (radius.length) blocks.push(h('h4', {}, 'Corner radius'), h('div', { class: 'ds-scale' }, ...radius.map(([k, x]) => h('div', { class: 'ds-scale-item' }, Object.assign(styled('div', { 'border-radius': val(x) }), { className: 'ds-radius-box' }), h('div', {}, h('b', {}, lab(k, x))), h('code', {}, String(val(x)))))));
-  const space = bySize(t.space);
-  if (space.length) blocks.push(h('h4', {}, 'Spacing'), ...space.map(([k, x]) => h('div', { class: 'ds-space-row' }, h('div', { class: 'ds-space-label' }, h('b', {}, lab(k, x)), ' ', h('code', {}, String(val(x)))), Object.assign(styled('div', { width: val(x) }), { className: 'ds-space-bar' }))));
+  // Layout values (content width, gutter, section padding); the spacing
+  // scale has its own card when the design system defines one.
+  const hasScale = Object.keys(spacingScale(t)).length > 0;
+  const space = bySize(t.space).filter(([, x]) => !(hasScale && x && x.scale));
+  if (space.length) blocks.push(h('h4', {}, hasScale ? 'Layout' : 'Spacing'), ...space.map(([k, x]) => h('div', { class: 'ds-space-row' }, h('div', { class: 'ds-space-label' }, h('b', {}, lab(k, x)), ' ', h('code', {}, String(val(x)))), Object.assign(styled('div', { width: val(x) }), { className: 'ds-space-bar' }))));
   const shadow = entries(t.shadow);
   if (shadow.length) blocks.push(h('h4', {}, 'Shadows'), h('div', { class: 'ds-scale' }, ...shadow.map(([k, x]) => h('div', { class: 'ds-scale-item' }, Object.assign(styled('div', { 'box-shadow': val(x) }), { className: 'ds-shadow-box' }), h('div', {}, h('b', {}, lab(k, x)))))));
-  return blocks.length ? card('Radius, spacing and shadows', ...blocks) : null;
+  return blocks.length ? card(hasScale ? 'Radius, layout and shadows' : 'Radius, spacing and shadows', ...blocks) : null;
+}
+function spacing(t) {
+  const steps = bySize(spacingScale(t));
+  if (!steps.length) return null;
+  return card('Spacing scale', h('p', { class: 'hint' }, 'Every gap, margin and padding inside a section uses one of these steps.'),
+    ...steps.map(([k, x]) => h('div', { class: 'ds-space-row ds-step', 'data-key': k },
+      h('div', { class: 'ds-space-label' }, h('b', {}, lab(k, x)), ' ', h('code', {}, String(val(x)))),
+      Object.assign(styled('div', { width: val(x) }), { className: 'ds-space-bar' }),
+      x && x.use ? h('span', { class: 'hint' }, x.use) : null)));
+}
+// A sample section with its spacing drawn in, numbered to match the table.
+function anatomy(t) {
+  const parts = anatomyParts(t);
+  if (!parts.length) return null;
+  const by = Object.fromEntries(parts.map((p, i) => [p.id, { ...p, n: i + 1 }]));
+  const gap = (id) => {
+    const p = by[id];
+    if (!p) return null;
+    const g = styled('div', { height: p.value });
+    g.className = 'ds-anat-gap';
+    g.title = p.label;
+    g.appendChild(h('b', {}, String(p.n)));
+    return g;
+  };
+  const cardsRow = styled('div', { gap: by.items ? by.items.value : '24px' }, ...[0, 1, 2].map(() => {
+    const c = styled('div', { padding: by['card-padding'] ? by['card-padding'].value : '24px' }, h('span', {}), h('span', {}));
+    c.className = 'ds-anat-card';
+    return c;
+  }));
+  cardsRow.className = 'ds-anat-cards';
+  const inner = styled('div', { 'max-width': by['text-width'] ? by['text-width'].value : '720px', 'font-family': family(t) },
+    h('div', { class: 'ds-anat-eyebrow' }, 'Eyebrow'), gap('eyebrow-heading'),
+    h('div', { class: 'ds-anat-h' }, 'Section heading'), gap('heading-text'),
+    h('div', { class: 'ds-anat-p' }, 'Intro text that explains the section in a sentence or two.'), gap('text-text'),
+    h('div', { class: 'ds-anat-p' }, 'A second paragraph when it needs one.'));
+  const frame = styled('div', { padding: `${by.padding ? by.padding.value : '48px'} 24px`, 'font-family': family(t) },
+    inner, gap('heading-content'), cardsRow, gap('content-actions'), h('span', { class: 'ds-anat-btn' }, 'Button'));
+  frame.className = 'ds-anat-frame';
+  const table = h('table', { class: 'ds-anat-table' }, h('tbody', {}, ...parts.map((p, i) => h('tr', { 'data-key': p.id },
+    h('td', {}, h('span', { class: 'ds-num' }, String(i + 1)), p.label, p.note ? h('div', { class: 'hint' }, p.note) : null),
+    h('td', {}, h('code', {}, p.value), p.alt ? h('div', {}, h('code', {}, p.alt)) : null)))));
+  return card('Section anatomy', h('p', { class: 'hint' }, 'How the parts of every section are spaced, top to bottom.'), h('div', { class: 'ds-anat' }, frame, table));
 }
 function variants(t) {
   const rows = [];
@@ -127,7 +172,7 @@ export function renderSystem(t) {
   loadFont(t);
   // Section ids let PinPoint link straight to the part a flag refers to:
   // #/design/<token>?to=buttons&item=primary
-  const parts = [['colors', colors(t)], ['typography', typeScale(t)], ['buttons', buttons(t)], ['surfaces', surfaces(t)], ['scales', scales(t)], ['variants', variants(t)], ['rules', rules(t)]];
+  const parts = [['colors', colors(t)], ['typography', typeScale(t)], ['buttons', buttons(t)], ['surfaces', surfaces(t)], ['spacing', spacing(t)], ['anatomy', anatomy(t)], ['scales', scales(t)], ['variants', variants(t)], ['rules', rules(t)]];
   return parts.filter(([, el]) => el).map(([id, el]) => { el.id = `ds-${id}`; return el; });
 }
 // Scroll to the section named in ?to= and highlight ?item= inside it.
@@ -136,7 +181,7 @@ function focusFrom(query = {}) {
   if (!to) return;
   const item = String(query.item || '').replace(/[^A-Za-z0-9_-]/g, '');
   setTimeout(() => {
-    const sec = document.getElementById(`ds-${to}`);
+    const sec = document.getElementById(`ds-${to}`) || ((to === 'spacing' || to === 'anatomy') && document.getElementById('ds-scales'));
     if (!sec) return;
     const hit = item ? sec.querySelector(`[data-key="${item}"]`) : null;
     const target = hit || sec;

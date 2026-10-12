@@ -45,7 +45,7 @@ export function mockDesign({ store, user, roleOn }) {
       if (crow.design_check) return okd({ comment: null, flagged: false });
       const request = { ...body.request, target: { ...(body.request.target || {}), page_path: crow.page_path } };
       const r = E.hint(ds.tokens, request, body.direction || '');
-      if (!r || r.status === 'allowed') return okd({ comment: null, flagged: false });
+      if (!r || r.status === 'allowed' || r.info) return okd({ comment: null, flagged: false });
       return patch(crow.id, { design_check: { state: 'flagged', request, direction: body.direction || '', result: { status: r.status, rule: r.rule, message: r.message }, tokens_version: r.tokens_version, decided_by: me, decided_at: now }, labels: withLabel(crow.labels) });
     }
     if (action === 'decide') {

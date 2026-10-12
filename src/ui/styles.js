@@ -815,6 +815,8 @@ export const CSS = `
 .ds-flag-h { margin-bottom: 3px; color: #7a5300; }
 .ds-flag-ok { background: #e3f6ec; border-color: #bfe5cf; }
 .ds-flag-ok .ds-flag-h { color: #17663b; }
+.ds-flag-info { background: #eef5fb; border-color: #cfe0ee; }
+.ds-flag-info .ds-flag-h { color: #14517a; }
 .ds-flag-no { background: #fde8e8; border-color: #f3c4c4; }
 .ds-flag-no .ds-flag-h { color: #9b1c1c; }
 .ds-flag-links { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 5px; }

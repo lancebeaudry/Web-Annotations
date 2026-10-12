@@ -32,7 +32,7 @@ export async function loadRules(app, force = false) {
 // Link to the design system page, at the section a result refers to. Uses
 // the view-only share page when the owner turned it on (no sign-in),
 // otherwise the members' page in the dashboard.
-const SECTION_FOR = { buttons: 'buttons', palette: 'colors', contrast: 'colors', type: 'typography', radius: 'scales', spacing: 'scales', variants: 'variants', logo: 'rules', tracking: 'rules', manual: 'rules' };
+const SECTION_FOR = { buttons: 'buttons', palette: 'colors', contrast: 'colors', type: 'typography', radius: 'scales', spacing: 'spacing', anatomy: 'anatomy', variants: 'variants', logo: 'rules', tracking: 'rules', manual: 'rules' };
 export function designSystemUrl(app, to = '', item = '') {
   const d = app.designRules && app.designRules.data;
   const q = to ? `?to=${encodeURIComponent(to)}${item ? `&item=${encodeURIComponent(item)}` : ''}` : '';
@@ -43,9 +43,11 @@ export function designSystemUrlFor(app, request, res) {
   const to = SECTION_FOR[rid] || '';
   const ctx = (request && request.context) || {};
   let item = '';
+  let sec = to;
   if (to === 'buttons') item = ctx.button || '';
+  else if (res && res.token && /^space\./.test(res.token)) { sec = 'spacing'; item = res.token.split('.')[1]; }
   else if (res && res.token && /^(type|color)\./.test(res.token)) item = res.token.split('.')[1];
-  return designSystemUrl(app, to, item);
+  return designSystemUrl(app, sec, item);
 }
 
 // ------------------------------------------------- reading the element
@@ -55,7 +57,7 @@ const ELEMENTS = [
 ];
 const PROPS = {
   'background-color': 'Background color', color: 'Text color', 'border-color': 'Border color',
-  'border-radius': 'Corner radius', 'font-size': 'Text size', padding: 'Spacing', variant: 'Section style',
+  'border-radius': 'Corner radius', 'font-size': 'Text size', padding: 'Spacing', margin: 'Space around', variant: 'Section style',
 };
 const COLOR_PROPS = ['background-color', 'color', 'border-color'];
 export const propLabel = (p) => PROPS[p] || p;
@@ -136,7 +138,15 @@ export function designContext(el, tokens) {
       background: element === 'button' ? (hex(cs.backgroundColor) || effectiveBackground(target)) : effectiveBackground(target),
       text: hex(cs.color),
     },
-    computed: { 'background-color': hex(cs.backgroundColor), color: hex(cs.color), 'border-color': hex(cs.borderTopColor), 'border-radius': cs.borderTopLeftRadius, 'font-size': cs.fontSize, padding: cs.paddingTop },
+    computed: {
+      'background-color': hex(cs.backgroundColor), color: hex(cs.color), 'border-color': hex(cs.borderTopColor), 'border-radius': cs.borderTopLeftRadius, 'font-size': cs.fontSize, padding: cs.paddingTop,
+      // The space above/below comes from this element or its neighbour,
+      // whichever is larger (margins collapse).
+      margin: `${Math.max(parseFloat(cs.marginTop) || 0, target.previousElementSibling ? parseFloat(getComputedStyle(target.previousElementSibling).marginBottom) || 0 : 0)}px`,
+      'margin-bottom': `${Math.max(parseFloat(cs.marginBottom) || 0, target.nextElementSibling ? parseFloat(getComputedStyle(target.nextElementSibling).marginTop) || 0 : 0)}px`,
+      // Space between siblings usually comes from the parent's gap.
+      gap: target.parentElement ? getComputedStyle(target.parentElement).rowGap : '',
+    },
   };
 }
 
@@ -164,7 +174,7 @@ export function stylePanel(app, el, post, prefill = null) {
   const isColor = () => COLOR_PROPS.includes(propSel.value);
   const fillProps = () => {
     const e = elementSel.value;
-    const props = e === 'section' ? ['background-color', 'variant', 'padding'] : e === 'button' ? ['background-color', 'color', 'padding', 'border-radius', 'border-color', 'font-size'] : ['color', 'font-size', 'background-color', 'padding', 'border-radius'];
+    const props = e === 'section' ? ['background-color', 'variant', 'padding'] : e === 'button' ? ['background-color', 'color', 'padding', 'border-radius', 'border-color', 'font-size'] : ['color', 'font-size', 'background-color', 'margin', 'padding', 'border-radius'];
     const hasVariants = ctx && ctx.target.module && tokens && tokens.variants && tokens.variants[ctx.target.module];
     propSel.replaceChildren(...props.filter((p) => p !== 'variant' || hasVariants).map((p) => h('option', { value: p }, propLabel(p))));
     syncValue();
@@ -317,14 +327,17 @@ export function stylePanel(app, el, post, prefill = null) {
 // button", "make the heading red") and checks it against the design system
 // while the person types. No AI and no network: the rules are already
 // loaded and the checker runs in the page.
-const LESS = /\b(less|smaller|tighter|reduce|decrease|shrink|thinner|narrower|sharper|squarer|too (big|large|much|wide|tall|rounded|roomy))\b/;
-const MORE = /\b(more|bigger|larger|increase|roomier|wider|taller|rounder|too (small|tight|narrow|cramped|thin))\b/;
+const LESS = /\b(less|smaller|tighter|reduce|decrease|shrink|thinner|narrower|sharper|squarer|closer|too (big|large|much|wide|tall|rounded|roomy|far))\b/;
+const MORE = /\b(more|bigger|larger|increase|roomier|wider|taller|rounder|further|farther|too (small|tight|narrow|cramped|thin|close))\b/;
 export function readIntent(text) {
   const s = ` ${String(text || '').toLowerCase()} `;
   const hexm = s.match(/#(?:[0-9a-f]{6}|[0-9a-f]{3})\b/);
   const pxm = s.match(/\b(\d{1,3}(?:\.\d+)?)\s*px\b/);
   let property = null;
-  if (/\b(padding|padded|spacing|space (around|inside|between)|breathing room|white ?space|tighter|roomier|cramped)\b/.test(s)) property = 'padding';
+  // Space above / below / between things: the section anatomy.
+  const where = /\b(between|apart)\b/.test(s) ? 'between' : /\b(below|under|underneath|after)\b/.test(s) ? 'below' : /\b(above|over|before)\b/.test(s) ? 'above' : '';
+  if ((where && /\b(space|spacing|gap|room|margin|distance|closer|further|farther)\b/.test(s)) || /\b(closer|further away|farther away|further apart|farther apart|spread (it |them )?out)\b/.test(s)) property = 'margin';
+  else if (/\b(padding|padded|spacing|space (around|inside)|breathing room|white ?space|tighter|roomier|cramped)\b/.test(s)) property = 'padding';
   else if (/\b(rounded|rounder|round corners?|corners?|radius|pill[- ]shaped)\b/.test(s)) property = 'border-radius';
   else if (/\bfont[- ]?size\b|\btext size\b/.test(s) || (/\b(font|text|type|headline|heading|title|copy|words?|label)\b/.test(s) && /\b(bigger|smaller|larger|huge|tiny|size)\b/.test(s))) property = 'font-size';
   else if (/\b(background|bg|fill)\b/.test(s)) property = 'background-color';
@@ -333,7 +346,7 @@ export function readIntent(text) {
   if (!property) return null;
   const direction = LESS.test(s) ? 'less' : MORE.test(s) ? 'more' : '';
   const value = property.endsWith('color') ? (hexm ? hexm[0] : '') : (pxm ? `${pxm[1]}px` : '');
-  return { property, direction, value };
+  return { property, direction, value, where };
 }
 
 export function attachFlag(app, el, input, onCheck) {
@@ -347,7 +360,7 @@ export function attachFlag(app, el, input, onCheck) {
     const property = intent.property === '*color' ? (['button', 'section'].includes(ctx.element) ? 'background-color' : 'color') : intent.property;
     const request = {
       element: ctx.element, property, value: intent.value,
-      context: { ...ctx.context, current: ctx.computed[property] || '' },
+      context: { ...ctx.context, current: property === 'margin' ? (intent.where === 'between' && parseFloat(ctx.computed.gap) ? ctx.computed.gap : intent.where === 'below' ? ctx.computed['margin-bottom'] : ctx.computed.margin) : ctx.computed[property] || '' },
       target: { ...ctx.target, page_path: app.pagePath },
       viewport_w: window.innerWidth,
     };
@@ -355,20 +368,20 @@ export function attachFlag(app, el, input, onCheck) {
     if (!res) { node.hidden = true; return; }
     last = { request, direction: intent.direction, result: res };
     const ok = res.status === 'allowed';
-    const tone = ok ? 'ok' : res.status === 'blocked' ? 'no' : 'warn';
+    const tone = res.info ? 'info' : ok ? 'ok' : res.status === 'blocked' ? 'no' : 'warn';
     const check = h('button', { type: 'button', class: 'ds-flag-link' }, 'Request style change');
     check.addEventListener('click', () => onCheck({ element: request.element, property, value: intent.value || (res.value || '') }));
     const view = h('a', { class: 'ds-flag-link', href: designSystemUrlFor(app, request, res), target: '_blank', rel: 'noopener' }, 'View in design system');
     node.className = `ds-flag ds-flag-${tone}`;
     node.replaceChildren(
-      h('div', { class: 'ds-flag-h' }, h('b', {}, ok ? 'Fits the design system' : res.status === 'blocked' ? 'Not allowed by the design system' : 'Goes against the design system'), h('span', {}, ` · ${res.rule.label}`)),
+      h('div', { class: 'ds-flag-h' }, h('b', {}, res.info ? 'Design system' : ok ? 'Fits the design system' : res.status === 'blocked' ? 'Not allowed by the design system' : 'Goes against the design system'), h('span', {}, ` · ${res.rule.label}`)),
       h('div', {}, res.message),
       h('div', { class: 'ds-flag-links' }, ok && !res.value ? null : check, view),
     );
     node.hidden = false;
   }
   input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 250); });
-  return { node, flagged: () => (last && last.result.status !== 'allowed' ? last : null) };
+  return { node, flagged: () => (last && last.result.status !== 'allowed' && !last.result.info ? last : null) };
 }
 
 const DONE = {
