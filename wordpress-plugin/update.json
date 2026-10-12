@@ -1,11 +1,11 @@
 {
   "name": "PinPoint by Avalanche",
   "slug": "avalanche-markup",
-  "version": "2.7.2",
-  "download_url": "https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/avalanche-markup-2.7.2.zip",
+  "version": "2.7.3",
+  "download_url": "https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/avalanche-markup-2.7.3.zip",
   "homepage": "https://pinpoint.avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "2.7.2 — A Design system link in the toolbar when design rules are on."
+  "changelog": "2.7.3 — Comments that ask for a style change are checked against the design system as you type, and flagged when they go against it."
 }
