@@ -41,9 +41,16 @@ export function mockDesign({ store, user, roleOn }) {
     const now = new Date().toISOString();
     const approver = 'owner@example.com';
 
+    if (action === 'flag') {
+      if (crow.design_check) return okd({ comment: null, flagged: false });
+      const request = { ...body.request, target: { ...(body.request.target || {}), page_path: crow.page_path } };
+      const r = E.hint(ds.tokens, request, body.direction || '');
+      if (!r || r.status === 'allowed') return okd({ comment: null, flagged: false });
+      return patch(crow.id, { design_check: { state: 'flagged', request, direction: body.direction || '', result: { status: r.status, rule: r.rule, message: r.message }, tokens_version: r.tokens_version, decided_by: me, decided_at: now }, labels: withLabel(crow.labels) });
+    }
     if (action === 'decide') {
       const prev = crow.design_check;
-      if (prev && !['rejected', 'exception_rejected', 'reverted'].includes(prev.state)) return err(409, { error: 'A choice is already recorded on this item.' });
+      if (prev && !['rejected', 'exception_rejected', 'reverted', 'flagged'].includes(prev.state)) return err(409, { error: 'A choice is already recorded on this item.' });
       const request = { ...body.request, target: { ...(body.request.target || {}), page_path: crow.page_path } };
       const result = E.check(ds.tokens, request);
       if (body.tokens_version && body.tokens_version !== result.tokens_version) return err(409, { error: 'RULES_CHANGED', result });

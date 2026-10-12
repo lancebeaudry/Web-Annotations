@@ -810,4 +810,12 @@ export const CSS = `
 .ds-pages { margin: 0; padding-left: 16px; font-size: 11.5px; }
 .ds-pages a { color: #0e8a82; }
 .ds-by { font-style: italic; }
+.ds-flag { margin: -2px 0 10px; padding: 8px 10px; border-radius: 8px; font-size: 12px; line-height: 1.45; color: #10242f; background: #fff4dc; border: 1px solid #f0d9a2; }
+.ds-flag[hidden] { display: none; }
+.ds-flag-h { margin-bottom: 3px; color: #7a5300; }
+.ds-flag-ok { background: #e3f6ec; border-color: #bfe5cf; }
+.ds-flag-ok .ds-flag-h { color: #17663b; }
+.ds-flag-no { background: #fde8e8; border-color: #f3c4c4; }
+.ds-flag-no .ds-flag-h { color: #9b1c1c; }
+.ds-flag-link { margin-top: 5px; padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: #14517a; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 `;

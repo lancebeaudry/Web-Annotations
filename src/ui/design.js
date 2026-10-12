@@ -6,6 +6,7 @@
 
 import { h, toast } from './overlay.js';
 import { buildSelector } from '../capture.js';
+import { hint as designHint } from '../../supabase/functions/_shared/designEngine.ts';
 
 export const designOn = (app) => !!(app.access && app.access.design_rules && app.access.design_rules.can_check);
 
@@ -123,7 +124,7 @@ export function designContext(el, tokens) {
 // Returns { node, focus } to place in the comment box. `post(text, extra)`
 // is supplied by the comment box: it saves the comment and resolves to the
 // new row, or null.
-export function stylePanel(app, el, post) {
+export function stylePanel(app, el, post, prefill = null) {
   const wrap = h('div', { class: 'ds-panel' });
   const status = h('div', { class: 'ds-loading' }, 'Loading the design rules…');
   wrap.appendChild(status);
@@ -143,7 +144,7 @@ export function stylePanel(app, el, post) {
   const isColor = () => COLOR_PROPS.includes(propSel.value);
   const fillProps = () => {
     const e = elementSel.value;
-    const props = e === 'section' ? ['background-color', 'variant', 'padding'] : e === 'button' ? ['background-color', 'color', 'border-radius', 'border-color', 'font-size'] : ['color', 'font-size', 'background-color', 'border-radius'];
+    const props = e === 'section' ? ['background-color', 'variant', 'padding'] : e === 'button' ? ['background-color', 'color', 'padding', 'border-radius', 'border-color', 'font-size'] : ['color', 'font-size', 'background-color', 'padding', 'border-radius'];
     const hasVariants = ctx && ctx.target.module && tokens && tokens.variants && tokens.variants[ctx.target.module];
     propSel.replaceChildren(...props.filter((p) => p !== 'variant' || hasVariants).map((p) => h('option', { value: p }, propLabel(p))));
     syncValue();
@@ -271,8 +272,16 @@ export function stylePanel(app, el, post) {
       if (!data.tokens || !data.tokens.color) { status.textContent = 'This project has no design system yet. The owner can add one in the dashboard.'; return; }
       tokens = data.tokens;
       ctx = designContext(el, tokens);
-      elementSel.value = ctx.element;
+      elementSel.value = (prefill && prefill.element) || ctx.element;
       fillProps();
+      if (prefill && prefill.property && [...propSel.options].some((o) => o.value === prefill.property)) {
+        propSel.value = prefill.property;
+        syncValue();
+      }
+      if (prefill && prefill.value) {
+        valueIn.value = prefill.value;
+        if (/^#[0-9a-f]{6}$/i.test(prefill.value)) colorIn.value = prefill.value;
+      }
       const ver = h('div', { class: 'ds-sub' }, `${tokens.name || 'Design system'} v${data.version}${data.production_version ? (data.production_version === data.version ? ' · live on production' : ` · production is v${data.production_version}`) : ''}`);
       status.replaceWith(
         h('div', { class: 'ds-row' }, h('label', {}, 'What is it?', elementSel), h('label', {}, 'Change', propSel)),
@@ -283,6 +292,64 @@ export function stylePanel(app, el, post) {
   return { node: wrap, focus: () => valueIn.focus() };
 }
 
+// ------------------------------------------------- the instant flag
+// Reads a plain comment for a style request ("less padding on this
+// button", "make the heading red") and checks it against the design system
+// while the person types. No AI and no network: the rules are already
+// loaded and the checker runs in the page.
+const LESS = /\b(less|smaller|tighter|reduce|decrease|shrink|thinner|narrower|sharper|squarer|too (big|large|much|wide|tall|rounded|roomy))\b/;
+const MORE = /\b(more|bigger|larger|increase|roomier|wider|taller|rounder|too (small|tight|narrow|cramped|thin))\b/;
+export function readIntent(text) {
+  const s = ` ${String(text || '').toLowerCase()} `;
+  const hexm = s.match(/#(?:[0-9a-f]{6}|[0-9a-f]{3})\b/);
+  const pxm = s.match(/\b(\d{1,3}(?:\.\d+)?)\s*px\b/);
+  let property = null;
+  if (/\b(padding|padded|spacing|space (around|inside|between)|breathing room|white ?space|tighter|roomier|cramped)\b/.test(s)) property = 'padding';
+  else if (/\b(rounded|rounder|round corners?|corners?|radius|pill[- ]shaped)\b/.test(s)) property = 'border-radius';
+  else if (/\bfont[- ]?size\b|\btext size\b/.test(s) || (/\b(font|text|type|headline|heading|title|copy|words?|label)\b/.test(s) && /\b(bigger|smaller|larger|huge|tiny|size)\b/.test(s))) property = 'font-size';
+  else if (/\b(background|bg|fill)\b/.test(s)) property = 'background-color';
+  else if (/\b(text|font) colou?r\b/.test(s)) property = 'color';
+  else if (hexm || /\b(colou?r|red|blue|green|black|white|gr[ae]y|orange|yellow|purple|pink|navy|teal|darker|lighter|brighter)\b/.test(s)) property = '*color';
+  if (!property) return null;
+  const direction = LESS.test(s) ? 'less' : MORE.test(s) ? 'more' : '';
+  const value = property.endsWith('color') ? (hexm ? hexm[0] : '') : (pxm ? `${pxm[1]}px` : '');
+  return { property, direction, value };
+}
+
+export function attachFlag(app, el, input, onCheck) {
+  const node = h('div', { class: 'ds-flag', hidden: true });
+  let last = null, ctx = null, timer = null, tokens = null;
+  loadRules(app).then((d) => { tokens = d && d.tokens && d.tokens.color ? d.tokens : null; if (tokens) ctx = designContext(el, tokens); run(); }).catch(() => {});
+  function run() {
+    last = null;
+    const intent = tokens && ctx ? readIntent(input.value) : null;
+    if (!intent) { node.hidden = true; return; }
+    const property = intent.property === '*color' ? (['button', 'section'].includes(ctx.element) ? 'background-color' : 'color') : intent.property;
+    const request = {
+      element: ctx.element, property, value: intent.value,
+      context: { ...ctx.context, current: ctx.computed[property] || '' },
+      target: { ...ctx.target, page_path: app.pagePath },
+      viewport_w: window.innerWidth,
+    };
+    const res = designHint(tokens, request, intent.direction);
+    if (!res) { node.hidden = true; return; }
+    last = { request, direction: intent.direction, result: res };
+    const ok = res.status === 'allowed';
+    const tone = ok ? 'ok' : res.status === 'blocked' ? 'no' : 'warn';
+    const check = h('button', { type: 'button', class: 'ds-flag-link' }, 'Check it as a style change');
+    check.addEventListener('click', () => onCheck({ element: request.element, property, value: intent.value || (res.value || '') }));
+    node.className = `ds-flag ds-flag-${tone}`;
+    node.replaceChildren(
+      h('div', { class: 'ds-flag-h' }, h('b', {}, ok ? 'Fits the design system' : res.status === 'blocked' ? 'Not allowed by the design system' : 'Goes against the design system'), h('span', {}, ` · ${res.rule.label}`)),
+      h('div', {}, res.message),
+      ok && !res.value ? null : check,
+    );
+    node.hidden = false;
+  }
+  input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 250); });
+  return { node, flagged: () => (last && last.result.status !== 'allowed' ? last : null) };
+}
+
 const DONE = {
   applied: 'Applied on staging', task: 'Saved as a ready-to-do change', exception_applied: 'Exception applied',
   exception_logged: 'Exception logged', exception_requested: 'Exception requested', proposal_pending: 'Rule change sent for approval',
@@ -291,6 +358,7 @@ const DONE = {
 
 // ------------------------------------------------------------ status card
 const TITLES = {
+  flagged: ['warn', 'Goes against the design system'],
   applied: ['ok', 'Applied on staging'],
   task: ['warn', 'Ready to do'],
   exception_applied: ['ok', 'Exception applied'],
@@ -307,12 +375,13 @@ const TITLES = {
 export function designCard(app, comment, reopen) {
   const dc = comment.design_check;
   if (!dc || !dc.state) return null;
-  const [tone, title] = TITLES[dc.state] || ['warn', dc.state];
+  let [tone, title] = TITLES[dc.state] || ['warn', dc.state];
+  if (dc.state === 'flagged' && dc.result && dc.result.status === 'blocked') [tone, title] = ['no', 'Not allowed by the design system'];
   const r = dc.request || {};
   const da = (app.access && app.access.design_rules) || {};
   const rows = [
     h('div', { class: `ds-badge ds-${tone}` }, h('b', {}, title), dc.approved_version ? h('span', {}, ` · v${dc.approved_version}`) : null),
-    h('div', { class: 'ds-sub' }, `${elementLabel(r.element || '')} ${propLabel(r.property || '').toLowerCase()} → ${r.value || ''}`, /^#[0-9a-f]{6}$/i.test(r.value || '') ? h('span', { class: 'ds-swatch ds-inline', style: `background:${r.value}` }) : null),
+    h('div', { class: 'ds-sub' }, `${elementLabel(r.element || '')} ${propLabel(r.property || '').toLowerCase()} ${r.value ? `→ ${r.value}` : dc.direction === 'less' ? '· less' : dc.direction === 'more' ? '· more' : ''}`, /^#[0-9a-f]{6}$/i.test(r.value || '') ? h('span', { class: 'ds-swatch ds-inline', style: `background:${r.value}` }) : null),
   ];
   if (dc.result && dc.result.message) rows.push(h('div', { class: 'ds-sub' }, dc.result.message));
   if (dc.scope) rows.push(h('div', { class: 'ds-sub' }, h('b', {}, 'Proposed: '), dc.scope.label));
@@ -330,7 +399,7 @@ export function designCard(app, comment, reopen) {
     }
     rows.push(list);
   }
-  const by = dc.approved_by || dc.decided_by;
+  const by = dc.state === 'flagged' ? null : dc.approved_by || dc.decided_by;
   if (by) rows.push(h('div', { class: 'ds-sub ds-by' }, `${dc.approved_by ? 'Approved' : 'Chosen'} by ${by}`));
 
   const act = async (action, btn, done) => {

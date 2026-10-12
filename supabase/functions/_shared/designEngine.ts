@@ -112,7 +112,7 @@ function result(t: Tokens, status: Result["status"], ruleId: string, type: "hard
   };
 }
 function defaultLabel(id: string) {
-  return ({ contrast: "Text contrast", palette: "Brand colors", radius: "Corner radius", spacing: "Spacing", type: "Type scale", variants: "Variants", logo: "Logo", tracking: "Forms and tracking", manual: "Needs review" } as Record<string, string>)[id] || id;
+  return ({ contrast: "Text contrast", palette: "Brand colors", radius: "Corner radius", spacing: "Spacing", type: "Type scale", variants: "Variants", buttons: "Button styles", logo: "Logo", tracking: "Forms and tracking", manual: "Needs review" } as Record<string, string>)[id] || id;
 }
 function slug(v: string) { return String(v).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32) || "custom"; }
 function label(group: Record<string, any> | undefined, key: string) { return group?.[key]?.label || key; }
@@ -253,6 +253,20 @@ function deviceNote(req: Request): string | undefined {
   return undefined;
 }
 
+// ------------------------------------------------- button style props
+const BUTTON_STYLE_PROPS = ["padding", "font-size", "height", "min-height"];
+const styleField = (p: string) => (p === "font-size" ? "font_size" : p === "padding" ? "padding" : "height");
+const propWord = (p: string) => (p === "font-size" ? "text size" : p === "padding" ? "padding" : "height");
+function buttonKey(t: Tokens, req: Request): string | null {
+  const k = req.context?.button;
+  if (k && t.buttons?.[k]) return k;
+  return null;
+}
+function buttonStyleMessage(t: Tokens, bk: string | null, property: string): string {
+  const which = bk ? `the ${label(t.buttons, bk)} button style` : "the button styles";
+  return `Button ${propWord(property)} is set by ${which}, so every button matches. Changing this one button would be a one-off exception; changing all of them is a rule change.`;
+}
+
 // ------------------------------------------------------------------ check
 export function check(t: Tokens, req: Request): Result {
   const element = String(req.element || "text").toLowerCase();
@@ -320,6 +334,27 @@ export function check(t: Tokens, req: Request): Result {
     }));
   }
 
+  // Button padding and text size belong to the button style, so every
+  // button of a style matches. Changing one is an exception; changing all
+  // of them is a rule change.
+  if (element === "button" && BUTTON_STYLE_PROPS.includes(property) && t.buttons && Object.keys(t.buttons).length) {
+    const bk = buttonKey(t, req);
+    const set = bk ? t.buttons[bk]?.[styleField(property)] : null;
+    if (set && value && String(set).trim() === value) {
+      return withNote(result(t, "allowed", "buttons", "soft", `${value} is the ${label(t.buttons, bk!)} button's ${propWord(property)}.`, target, { apply: { type: "set_style", property, value } }));
+    }
+    return withNote(result(t, "needs_decision", "buttons", "soft", buttonStyleMessage(t, bk, property), target, {
+      options: [
+        { id: "closest", label: "Keep the approved button style", summary: `Keep the standard ${bk ? label(t.buttons, bk) + " " : ""}button ${propWord(property)}.`, value: set || req.context?.current || "", action: { type: "set_style", property, value: set || req.context?.current || "" } },
+        optException(target, property, value),
+        ...(value && bk ? [{ id: "rule_change", label: "Change the rule", summary: `Change the ${propWord(property)} on every ${label(t.buttons, bk)} button.`, scopes: [{
+          id: "replace", label: `Set the ${propWord(property)} of every ${label(t.buttons, bk)} button to ${value}`, impact: `Every ${label(t.buttons, bk)} button on the site changes.`,
+          changes: [{ path: `buttons.${bk}.${styleField(property)}`, value }],
+        }] }] : []),
+      ],
+    }));
+  }
+
   // Scales.
   const [group, scale] = scaleFor(property, t);
   if (group) {
@@ -343,6 +378,76 @@ export function check(t: Tokens, req: Request): Result {
   return withNote(result(t, "needs_decision", "manual", "soft", "This kind of change isn't covered by an automatic rule. The team will review it.", target, {
     options: [optException(target, property || "other", value)],
   }));
+}
+
+// ---------------------------------------------------------------- hint
+/** Size of a scale value in px at a screen width: plain px/rem values, or
+ *  clamp(min, Nvw, max) resolved at that width (the max when unknown). */
+function pxOf(v: any, vw = 0): number {
+  const str = String(v ?? "").trim();
+  const one = (x: string) => {
+    const m = x.trim().match(/^([\d.]+)\s*(px|rem|em|vw)?$/);
+    if (!m) return NaN;
+    const n = parseFloat(m[1]);
+    return m[2] === "rem" || m[2] === "em" ? n * 16 : m[2] === "vw" ? (vw ? (n * vw) / 100 : NaN) : n;
+  };
+  const c = str.match(/^clamp\(([^,]+),([^,]+),([^)]+)\)$/i);
+  if (c) {
+    const lo = one(c[1]), mid = one(c[2]), hi = one(c[3]);
+    if (!Number.isNaN(lo) && !Number.isNaN(hi)) return Number.isNaN(mid) ? hi : Math.min(Math.max(lo, mid), hi);
+  }
+  const n = one(str);
+  if (!Number.isNaN(n)) return n;
+  const m = str.match(/([\d.]+)\s*px/);
+  return m ? parseFloat(m[1]) : 0;
+}
+/**
+ * A quick answer for a request written in words, such as "less padding on
+ * this button", where there may be no exact value. With a value it's the
+ * same as check(). Without one it says whether the design system allows
+ * moving that way, and names the approved step to use if there is one.
+ * Returns null when there's nothing to say.
+ */
+export function hint(t: Tokens, req: Request, direction: "less" | "more" | "" = ""): Result | null {
+  if (!t || !t.color) return null;
+  if (req.value) return check(t, req);
+  const element = String(req.element || "text").toLowerCase();
+  const property = String(req.property || "").toLowerCase();
+  const target = { ...(req.target || {}) };
+  const locked: string[] = Array.isArray(t.locked) ? t.locked : DEFAULT_LOCKED;
+  if (locked.includes(element)) return check(t, { ...req, value: "x" });
+  if (element === "button" && BUTTON_STYLE_PROPS.includes(property) && t.buttons && Object.keys(t.buttons).length) {
+    return check(t, { ...req, value: "" });
+  }
+  if (COLOR_PROPS.includes(property)) {
+    const names = Object.entries<any>(t.color || {}).map(([k, c]) => c?.label || k);
+    const brand = t.name ? String(t.name).replace(/\s*design system\s*$/i, "") : "the brand";
+    const pick = element === "button" && t.buttons ? ` Buttons come in ${Object.keys(t.buttons).length} approved styles: ${Object.entries<any>(t.buttons).map(([k, b]) => b?.label || k).join(", ")}.` : "";
+    return result(t, "needs_decision", "palette", "soft", `Colors come from the ${brand} palette (${names.slice(0, 8).join(", ")}${names.length > 8 ? ", …" : ""}).${pick} Anything else would be an exception.`, target, { options: [] });
+  }
+  const [group, scale] = scaleFor(property, t);
+  if (!group || !Object.keys(scale).length) return null;
+  const rid = group === "radius" ? "radius" : group === "type" ? "type" : "spacing";
+  const word = group === "space" ? "spacing" : group === "type" ? "type" : "corner radius";
+  const vw = Number(req.viewport_w) || 0;
+  const cur = pxOf(req.context?.current, vw);
+  const steps = Object.entries<any>(scale).map(([k, v]) => ({ k, label: v?.label || k, value: String(v?.value ?? v), px: pxOf(v?.value ?? v, vw) })).filter((x) => x.px).sort((a, b) => a.px - b.px);
+  // Padding: when the scale names padding steps, only those count (not gaps
+  // or content widths).
+  if (property === "padding") {
+    const pad = steps.filter((x) => /padding/i.test(`${x.k} ${x.label}`));
+    if (pad.length) steps.splice(0, steps.length, ...pad);
+  }
+  // Within a few pixels counts as the step it's already on.
+  const tol = Math.max(1, cur * 0.06);
+  if (!cur || !direction) {
+    return result(t, "needs_decision", rid, "soft", `This has to use a step on the ${word} scale: ${steps.map((x) => `${x.label} ${x.value}`).join(", ")}.`, target, { options: [] });
+  }
+  const next = direction === "less" ? [...steps].reverse().find((x) => x.px < cur - tol) : steps.find((x) => x.px > cur + tol);
+  if (next) {
+    return result(t, "allowed", rid, "soft", `The approved ${direction === "less" ? "smaller" : "larger"} step is ${next.label} (${next.value}).`, target, { token: `${group}.${next.k}`, value: next.value, apply: { type: "set_style", property, value: next.value } } as any);
+  }
+  return result(t, "needs_decision", rid, "soft", `This is already the ${direction === "less" ? "smallest" : "largest"} step on the ${word} scale. Going ${direction === "less" ? "smaller" : "larger"} would be a one-off exception or a rule change.`, target, { options: [] });
 }
 
 // ------------------------------------------------------- rule changes

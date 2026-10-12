@@ -7,7 +7,7 @@ import { attachMentions } from './mentions.js';
 import { attachImages, imageOnlyText } from './attach.js';
 import { authorEmail, renderCapCard } from '../app.js';
 import { captureElementScreenshot, collectContext } from '../screenshot.js';
-import { designOn, stylePanel } from './design.js';
+import { designOn, stylePanel, attachFlag, designCall } from './design.js';
 
 // New-comment box, opened by clicking an element in comment mode.
 // Captures the technical context invisibly; the client only sees a
@@ -123,23 +123,33 @@ export function openCommentBox(app, el, clickEvent) {
       toast(app.ui, 'Reference attached');
       return;
     }
+    const flagged = flag && flag.flagged();
     const row = await insertRoot(text, atts, mentions.getMentions());
     if (!row) { save.disabled = false; save.textContent = 'Save comment'; return; }
-    toast(app.ui, 'Comment saved');
+    toast(app.ui, flagged ? 'Comment saved and flagged: it goes against the design system' : 'Comment saved');
+    // Keep the flag on the comment so the team sees it too. The server
+    // re-checks it with the same rules before recording it.
+    if (flagged) {
+      designCall(app, { action: 'flag', comment_id: row.id, request: flagged.request, direction: flagged.direction })
+        .then((res) => { if (res && res.comment) { app.comments.set(res.comment.id, res.comment); app.refresh(); } })
+        .catch(() => {});
+    }
   });
 
-  // Design rules on: "Comment | Style change". The style panel loads the
-  // rules lazily the first time it's opened.
+  // Design rules on: "Comment | Style change", plus an instant flag under
+  // the comment box when what's typed reads as a style request.
+  let flag = null;
   if (!ref && designOn(app) && app.writable) {
     let panel = null;
     const tabC = h('button', { type: 'button', class: 'mode-tab on' }, 'Comment');
     const tabS = h('button', { type: 'button', class: 'mode-tab' }, 'Style change');
-    const setMode = (style) => {
+    const setMode = (style, prefill = null) => {
       tabC.classList.toggle('on', !style);
       tabS.classList.toggle('on', style);
       form.style.display = style ? 'none' : '';
+      if (style && prefill && panel) { panel.node.remove(); panel = null; }
       if (style && !panel) {
-        panel = stylePanel(app, el, (text) => insertRoot(text, [], []));
+        panel = stylePanel(app, el, (text) => insertRoot(text, [], []), prefill);
         form.after(panel.node);
       }
       if (panel) panel.node.style.display = style ? '' : 'none';
@@ -148,6 +158,8 @@ export function openCommentBox(app, el, clickEvent) {
     tabC.addEventListener('click', () => setMode(false));
     tabS.addEventListener('click', () => setMode(true));
     form.before(h('div', { class: 'mode-tabs' }, tabC, tabS));
+    flag = attachFlag(app, el, input, (prefill) => setMode(true, prefill));
+    input.closest('.field').after(flag.node);
   }
 
   const x = clickEvent.clientX + window.scrollX + 10;

@@ -13,6 +13,7 @@ const LABEL = { bug: 'Bug', copy: 'Copy', design: 'Design', content: 'Content ne
 const LABELS = Object.keys(LABEL);
 const EFFORT = { quick: 'Quick', medium: 'Medium', large: 'Large' };
 const DESIGN_STATE = {
+  flagged: 'Goes against the design system',
   applied: 'Style change applied on staging', task: 'Style change ready to do', exception_applied: 'Exception applied',
   exception_logged: 'Exception logged, ready to do', exception_requested: 'Exception waiting on approval', exception_rejected: 'Exception not approved',
   proposal_pending: 'Rule change waiting on approval', approved_applied: 'Rule change approved and applied', approved_task: 'Rule change approved, ready to do',
@@ -119,7 +120,8 @@ export async function feedbackScreen({ id, user, acct, query }) {
   function designLine(dc) {
     const r = dc.request || {};
     const state = DESIGN_STATE[dc.state] || dc.state;
-    const parts = [h('b', {}, state), ` · ${r.property || 'style'} → ${r.value || ''}`];
+    const parts = [h('b', {}, state), ` · ${r.property || 'style'}${r.value ? ` → ${r.value}` : dc.direction ? ` · ${dc.direction}` : ''}`];
+    if (dc.state === 'flagged' && dc.result && dc.result.message) parts.push(h('div', { class: 'hint' }, dc.result.message));
     if (dc.task) parts.push(h('div', { class: 'hint' }, dc.task));
     return h('div', { class: `dsline ds-${dc.state}` }, ...parts);
   }

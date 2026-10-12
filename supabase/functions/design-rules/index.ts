@@ -6,6 +6,8 @@
 //   check            check a requested style change (no writes)
 //   decide           record the reviewer's choice on a comment:
 //                      apply | closest | exception | rule_change | send
+//   flag             record that a plain comment goes against the design
+//                      system ({ comment_id, request, direction }); re-checked here
 //   approve, reject  an approver decides a rule change or an exception request
 //   revert           undo an applied change (connector sites)
 //   test, import     owner: test the site connector / pull its design system
@@ -204,12 +206,26 @@ Deno.serve(async (req) => {
   const approver = (await approverEmail(project)) || null;
   const now = new Date().toISOString();
 
+  // ---- flag: a plain comment that reads as a style change
+  if (action === "flag") {
+    const isAuthor = (crow.author_email || "").toLowerCase() === me;
+    if (!isAuthor && !acc.can_revert) return json(403, { error: "Only the person who wrote it, or a manager, can flag this." }, h);
+    if (crow.design_check) return json(200, { comment: null, flagged: false }, h);
+    const request = cleanRequest(b.request);
+    if (!request.target?.page_path) request.target = { ...request.target, page_path: crow.page_path };
+    const dir = b.direction === "less" || b.direction === "more" ? b.direction : "";
+    const r = E.hint(tokens, request, dir);
+    if (!r || r.status === "allowed") return json(200, { comment: null, flagged: false }, h);
+    const dc = { state: "flagged", request, direction: dir, result: { status: r.status, rule: r.rule, message: r.message }, tokens_version: r.tokens_version, decided_by: me, decided_at: now };
+    return json(200, { comment: await patchComment(cid, { design_check: dc, labels: withLabel(crow.labels, "design") }), flagged: true }, h);
+  }
+
   // ---- decide
   if (action === "decide") {
     const isAuthor = (crow.author_email || "").toLowerCase() === me;
     if (!isAuthor && !acc.can_revert) return json(403, { error: "Only the person who asked, or a manager, can choose here." }, h);
     const prev = crow.design_check;
-    if (prev && !["rejected", "exception_rejected", "reverted"].includes(prev.state)) return json(409, { error: "A choice is already recorded on this item." }, h);
+    if (prev && !["rejected", "exception_rejected", "reverted", "flagged"].includes(prev.state)) return json(409, { error: "A choice is already recorded on this item." }, h);
     const request = cleanRequest(b.request);
     if (!request.target?.page_path) request.target = { ...request.target, page_path: crow.page_path };
     const result = E.check(tokens, request);
