@@ -7,7 +7,7 @@ import { renderAuthCard, renderGuestCard, removeAuthCard, savedName } from './ui
 import { renderPins, invalidatePins } from './ui/pins.js';
 import { openCommentBox } from './ui/commentBox.js';
 import { closePopovers, refreshOpenThread, openThread } from './ui/popover.js';
-import { toggleSidebar, closeSidebar, refreshSidebar, openRootCount, resumeJumpAfterNav } from './ui/sidebar.js';
+import { toggleSidebar, closeSidebar, refreshSidebar, openRootCount, resumeJumpAfterNav, openMovedComment } from './ui/sidebar.js';
 import { toggleInviteMenu } from './ui/invite.js';
 import { prefetchMentionables } from './ui/mentions.js';
 import { buildMarkdown, buildJson, copyToClipboard } from './export.js';
@@ -296,6 +296,8 @@ async function start(app) {
       if (pin) pin.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setTimeout(() => openThread(app, wanted), 350);
     }, 400);
+    // The link points at the comment's old address, which redirected here.
+    else if (c.page_path && !c.parent_id && (c.preview_id || null) === (app.previewId || null)) setTimeout(() => openMovedComment(app, c), 400);
   }
 
   subscribeRealtime(app.supabase, app.project.id, (type, row) => {

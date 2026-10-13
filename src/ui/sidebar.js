@@ -376,11 +376,60 @@ export function resumeJumpAfterNav(app) {
   }
   if (!id) return;
   const comment = app.comments.get(id);
-  if (!comment || comment.page_path !== app.pagePath || (comment.preview_id || null) !== (app.previewId || null)) return;
+  if (!comment || (comment.preview_id || null) !== (app.previewId || null)) return;
+  // We navigated to the comment's page but landed somewhere else: the page
+  // moved and its old address redirects here.
+  if (comment.page_path && comment.page_path !== app.pagePath) {
+    if (!app.sidebarEl && window.self === window.top) toggleSidebar(app);
+    openMovedComment(app, comment);
+    return;
+  }
   // Inside a device frame the sidebar would cover the whole page, so only
   // reopen it at the top level.
   if (!app.sidebarEl && window.self === window.top) toggleSidebar(app);
   const target = resolveElement(comment);
   if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
   setTimeout(() => openThread(app, comment.id), target ? 600 : 0);
+}
+
+// A comment left on a page that now redirects here (the page was moved or
+// renamed). Its pins can't match this address, so show the thread anyway
+// and let the owner or a manager move that old page's comments here.
+export function openMovedComment(app, comment) {
+  const from = comment.page_path;
+  const samePv = (c) => (c.preview_id || null) === (app.previewId || null);
+  const rows = [...app.comments.values()].filter((c) => c.page_path === from && samePv(c));
+  const roots = rows.filter((c) => !c.parent_id).length;
+  app.ui.layer.querySelectorAll('.moved-card').forEach((el) => el.remove());
+  const actions = h('div', { class: 'btn-row' });
+  const close = () => card.remove();
+  const dismiss = h('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Not now');
+  dismiss.addEventListener('click', close);
+  if (app.canManage && app.writable) {
+    const move = h('button', { class: 'btn btn-sm', type: 'button' }, roots === 1 ? 'Move it to this page' : `Move all ${roots} to this page`);
+    move.addEventListener('click', async () => {
+      move.disabled = true;
+      dismiss.disabled = true;
+      let moved = 0;
+      for (const c of rows) {
+        const row = await updateComment(app.supabase, c.id, { page_path: app.pagePath, page_url: app.pageUrl });
+        if (row) { app.comments.set(row.id, row); moved++; }
+      }
+      close();
+      app.refresh();
+      toast(app.ui, moved === rows.length ? `Moved to this page` : `Moved ${moved} of ${rows.length}. Try again for the rest.`);
+      openThread(app, comment.id);
+    });
+    actions.append(dismiss, move);
+  } else {
+    actions.append(dismiss);
+  }
+  const card = h('div', { class: 'card moved-card', role: 'status' },
+    h('div', { class: 'card-head' }, 'This page moved'),
+    h('div', { class: 'card-body' },
+      h('p', {}, 'This comment was left on ', h('code', {}, from), `, which now redirects here. ${roots === 1 ? 'It' : `It and ${roots - 1} other comment${roots - 1 === 1 ? '' : 's'}`} won't show on this page until ${roots === 1 ? 'it’s' : 'they’re'} moved.`),
+      app.canManage && app.writable ? null : h('p', { class: 'hint' }, 'The project owner or a manager can move them here.'),
+      actions));
+  app.ui.layer.appendChild(card);
+  openThread(app, comment.id);
 }

@@ -461,6 +461,9 @@ export const CSS = `
   width: 300px;
   z-index: 40;
 }
+.moved-card { position: fixed; bottom: 68px; left: 16px; width: 320px; max-width: calc(100vw - 32px); z-index: 41; }
+.moved-card p { margin: 0 0 8px; font-size: 13px; line-height: 1.45; }
+.moved-card code { font-size: 12px; background: #f1f4f6; padding: 1px 5px; border-radius: 4px; word-break: break-all; }
 .auth-card .hint { font-size: 12px; color: #6b7a85; margin: 0 0 12px; }
 /* Sign-in cards read top to bottom: everything left-aligned, main button first. */
 .auth-card .btn-row { justify-content: flex-start; margin-top: 14px; }

@@ -29,6 +29,11 @@ export function createClient() {
     { id: 'seed-ref', project_id: 'mock-project-1', parent_id: null, kind: 'reference', page_url: location.origin + '/', page_path: '', comment_text: 'I like this hero layout for our homepage — big photo, short headline, one button.', author_email: 'sarah@acmelandscaping.example', author_name: 'Sarah Chen', author_role: 'owner', status: 'open', labels: ['design'], created_at: ago(2), mentions: [], attachments: [], source: { for_page: pagePath, url: 'https://example-landscapes.test/', host: 'example-landscapes.test', element_tag: 'section', text: 'Gardens that grow with you', styles: { fontFamily: 'Inter', fontSize: '56px', fontWeight: '700', color: 'rgb(255, 255, 255)', backgroundColor: 'rgb(16, 40, 61)', borderRadius: '16px' } }, viewport_w: 1440 },
     { id: 'seed-4', project_id: 'mock-project-1', parent_id: null, page_url: location.origin + pagePath, page_path: pagePath, selector: '.stats .stat:nth-child(1) b', element_tag: 'b', current_text: '1,400+', comment_text: "Is 1,400+ still right? Pretty sure we passed 1,500 this spring — @mike can you confirm?", author_email: 'sarah@acmelandscaping.example', author_name: 'Sarah Chen', author_role: 'owner', status: 'waiting', labels: ['decision'], assignee_email: 'mike@acmelandscaping.example', created_at: ago(5), mentions: ['mike@acmelandscaping.example'], attachments: [], x_pct: 50, y_pct: 50, viewport_w: 390 },
   ] : [];
+  // ?mockMoved=1: one comment still stored under an old page address (the
+  // page was moved and its old address redirects here).
+  if (seed && params.get('mockMoved') === '1') {
+    for (const c of seeded) if (c.id === 'seed-2' || c.parent_id === 'seed-2') { c.page_path = '/old-address'; c.page_url = location.origin + '/old-address'; }
+  }
   // A style change waiting on approval, for design rules screenshots.
   if (seed && params.get('mockDesignRules') === '1') {
     const req = { element: 'button', property: 'background-color', value: '#3f7a52', context: { button: 'primary', current: '#24523a' }, target: { selector: '.nav .cta', page_path: pagePath } };
