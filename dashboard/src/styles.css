@@ -289,3 +289,11 @@ label.check.mgr { margin: 0; align-items: center; font-size: 13px; color: var(--
 .ds-anat-table td { padding: 9px 6px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
 .ds-anat-table td:first-child { display: flex; flex-wrap: wrap; align-items: baseline; }
 .ds-anat-table td:first-child .hint { flex-basis: 100%; padding-left: 26px; }
+.ds-css { margin-top: 8px; font-size: 13px; }
+.ds-css > summary { cursor: pointer; color: var(--blue); font-weight: 500; width: max-content; }
+.ds-css-body { position: relative; margin-top: 6px; }
+.ds-css pre { margin: 0; padding: 12px 14px; padding-right: 70px; background: var(--navy); color: #DCE8F2; border-radius: 8px; font-size: 12px; line-height: 1.6; overflow-x: auto; white-space: pre; }
+.ds-css pre code { background: none; color: inherit; padding: 0; font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; }
+.ds-css-body .btn { position: absolute; top: 8px; right: 8px; background: #fff; }
+.ds-type-row > .ds-css { grid-column: 1 / -1; margin-top: 0; }
+.ds-btn-row > div:last-child { flex: 1 1 300px; min-width: 0; }

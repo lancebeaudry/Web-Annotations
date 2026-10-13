@@ -292,7 +292,8 @@ function buttonKey(t: Tokens, req: Request): string | null {
   return null;
 }
 function buttonStyleMessage(t: Tokens, bk: string | null, property: string): string {
-  const which = bk ? `the ${label(t.buttons, bk)} button style` : "the button styles";
+  const set = bk ? t.buttons?.[bk]?.[styleField(property)] : null;
+  const which = bk ? `the ${label(t.buttons, bk)} button style${set ? ` (${set})` : ""}` : "the button styles";
   return `Button ${propWord(property)} is set by ${which}, so every button matches. Changing this one button would be a one-off exception; changing all of them is a rule change.`;
 }
 

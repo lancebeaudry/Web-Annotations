@@ -67,24 +67,86 @@ function colors(t) {
   }
   return grid.children.length ? card('Colors', grid) : null;
 }
+// ------------------------------------------------------------ copy CSS
+// CSS built from the design system, with a comment naming the token each
+// value comes from, so a developer can paste it or map it to variables.
+const cssSafe = (v) => String(v ?? '').replace(/[{};<>]/g, '').trim();
+const cls = (k) => String(k).toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+function cssRule(selector, decls) {
+  const lines = decls.filter(([, v]) => v).map(([p, v, note]) => `  ${p}: ${cssSafe(v)};${note ? ` /* ${cssSafe(note)} */` : ''}`);
+  return lines.length ? `${selector} {\n${lines.join('\n')}\n}` : '';
+}
+function cssBox(text) {
+  if (!text) return null;
+  const copy = h('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Copy');
+  const code = h('code', {}, text);
+  const done = () => { copy.textContent = 'Copied'; setTimeout(() => (copy.textContent = 'Copy'), 1500); };
+  copy.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try { await navigator.clipboard.writeText(text); return done(); } catch { /* blocked: try the older way */ }
+    const ta = h('textarea', { style: 'position:fixed;left:-9999px;top:0', readonly: true });
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    ta.remove();
+    if (ok) return done();
+    // Last resort: select the CSS so Cmd/Ctrl+C copies it.
+    const range = document.createRange();
+    range.selectNodeContents(code);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    toast('Selected. Press Cmd+C (Ctrl+C) to copy.');
+  });
+  return h('details', { class: 'ds-css' }, h('summary', {}, 'View CSS'), h('div', { class: 'ds-css-body' }, h('pre', {}, code), copy));
+}
+const colorDecl = (t, prop, key) => [prop, hexOf(t, key), key && t.color && t.color[key] ? `color.${key}` : ''];
+function buttonCss(t, k, b) {
+  const rk = t.radius && (t.radius.button ? 'button' : t.radius.md ? 'md' : '');
+  return cssRule(`.btn-${cls(k)}`, [
+    colorDecl(t, 'background', b.bg),
+    colorDecl(t, 'color', b.text),
+    ['border-radius', rk ? val(t.radius[rk]) : '', rk ? `radius.${rk}` : ''],
+    ['padding', b.padding, `buttons.${k}.padding`],
+    ['font-family', family(t), 'font.family'],
+    ['font-size', b.font_size, `buttons.${k}.font_size`],
+    ['font-weight', b.font_weight, `buttons.${k}.font_weight`],
+    ['box-shadow', t.shadow && t.shadow.button ? val(t.shadow.button) : '', t.shadow && t.shadow.button ? 'shadow.button' : ''],
+  ]);
+}
+function surfaceCss(t, k, s) {
+  const sel = `.section-${cls(k)}`;
+  return [
+    cssRule(sel, [colorDecl(t, 'background', s.bg), colorDecl(t, 'color', s.text)]),
+    s.heading ? cssRule(`${sel} :is(h1, h2, h3, h4)`, [colorDecl(t, 'color', s.heading)]) : '',
+    s.accent ? cssRule(`${sel} a`, [colorDecl(t, 'color', s.accent)]) : '',
+  ].filter(Boolean).join('\n\n');
+}
+function typeCss(t, k, x) {
+  return cssRule(`.text-${cls(k)}`, [['font-size', val(x), `type.${k}`], ['font-family', family(t), 'font.family']]);
+}
 function typeScale(t) {
   const fam = family(t);
   const rows = bySize(t.type, true).map(([k, x]) => h('div', { class: 'ds-type-row', 'data-key': k },
     h('div', { class: 'ds-type-meta' }, h('b', {}, lab(k, x)), h('code', {}, String(val(x) || ''))),
-    styled('div', { 'font-size': val(x), 'font-family': fam, 'line-height': '1.2', 'font-weight': /display|h\d|head/i.test(k) ? '700' : '400' }, 'The quick brown fox jumps over the lazy dog')));
+    styled('div', { 'font-size': val(x), 'font-family': fam, 'line-height': '1.2', 'font-weight': /display|h\d|head/i.test(k) ? '700' : '400' }, 'The quick brown fox jumps over the lazy dog'),
+    cssBox(typeCss(t, k, x))));
   const famRow = fam ? h('p', {}, 'Font: ', h('b', {}, lab('', t.font && t.font.family) || fam), h('span', { class: 'hint' }, ` (${fam})`)) : null;
   return rows.length || famRow ? card('Typography', famRow, ...rows) : null;
 }
 function buttonEl(t, b) {
   const radius = val(t.radius && (t.radius.button || t.radius.md)) || '8px';
-  const el = styled('span', { background: hexOf(t, b.bg), color: hexOf(t, b.text), 'border-radius': radius, 'font-family': family(t) }, lab('Button', b));
+  const el = styled('span', { background: hexOf(t, b.bg), color: hexOf(t, b.text), 'border-radius': radius, 'font-family': family(t), 'font-weight': b.font_weight || '' }, lab('Button', b));
   el.className = 'ds-btn';
   return el;
 }
 function buttons(t) {
   const rows = entries(t.buttons).map(([k, b]) => h('div', { class: 'ds-btn-row', 'data-key': k }, buttonEl(t, b),
     h('div', {}, h('div', {}, h('b', {}, lab(k, b)), ' ', h('code', {}, k)),
-      h('div', { class: 'hint' }, `Fill ${b.bg} · text ${b.text}`, ' '), aa(hexOf(t, b.text), hexOf(t, b.bg)))));
+      h('div', { class: 'hint' }, `Fill ${b.bg} · text ${b.text}${b.padding ? ` · padding ${b.padding}` : ''}${b.font_size ? ` · ${b.font_size}` : ''}`, ' '), aa(hexOf(t, b.text), hexOf(t, b.bg)),
+      cssBox(buttonCss(t, k, b)))));
   return rows.length ? card('Buttons', ...rows) : null;
 }
 function surfaces(t) {
@@ -96,7 +158,7 @@ function surfaces(t) {
       styled('div', { 'font-size': '14px', 'line-height': '1.5' }, 'Body text on this surface. ', styled('span', { color: accent, 'font-weight': '600' }, 'Accent link')),
       h('div', { class: 'ds-surface-btns' }, ...entries(t.buttons).filter(([, b]) => hexOf(t, b.bg) !== bg).slice(0, 2).map(([, b]) => buttonEl(t, b))));
     sample.className = 'ds-surface';
-    grid.appendChild(h('div', {}, sample, h('div', { class: 'hint', style: 'margin-top:6px' }, h('code', {}, k), ' · text ', aa(text, bg) || '', ' · heading ', aa(head, bg, 3) || '')));
+    grid.appendChild(h('div', { 'data-key': k }, sample, h('div', { class: 'hint', style: 'margin-top:6px' }, h('code', {}, k), ' · text ', aa(text, bg) || '', ' · heading ', aa(head, bg, 3) || ''), cssBox(surfaceCss(t, k, s))));
   }
   return grid.children.length ? card('Surfaces', h('p', { class: 'hint' }, 'Section backgrounds and the text, heading and accent colors that go on each.'), grid) : null;
 }
