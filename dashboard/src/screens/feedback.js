@@ -3,7 +3,7 @@
 // view, a "Needs your decision" view for the client, and deep links that
 // open the item on the live site.
 import { h, fmtDate, toast } from '../ui/dom.js';
-import { card, pageHead } from '../ui/shell.js';
+import { card, pageHead, projectHeader } from '../ui/shell.js';
 import { getProject, listComments, patchComment, assignees as listAssignees, projectAccess, sendDigest, setDigestWeekly } from '../api.js';
 
 const STATUS = { open: 'Open', in_progress: 'In progress', waiting: 'Waiting on client', resolved: 'Resolved', wont_fix: "Won't fix" };
@@ -241,8 +241,7 @@ export async function feedbackScreen({ id, user, acct, query }) {
   return h(
     'div',
     {},
-    pageHead(p.name, p.site_url, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'All projects'), h('a', { class: 'btn', href: `${p.site_url.replace(/\/$/, '')}/?pinpoint=${p.token}`, target: '_blank', rel: 'noopener' }, 'Open site in PinPoint')),
-    h('div', { class: 'tabs' }, h('a', { href: `#/projects/${id}` }, 'Settings'), h('a', { class: 'on', href: `#/projects/${id}/feedback` }, `Feedback (${openCount} open)`)),
+    projectHeader(p, 'feedback', { openCount, design: !!(access.design_rules && access.design_rules.enabled) }),
     card(null, summary, h('div', { class: 'filters' }, on('status') ? statusSel : null, pageSel, on('labels') ? labelSel : null, kindSel, deviceSel, canManage && on('assignee') ? assigneeSel : null, search, viewSeg), body, on('status') ? digestCard : null)
   );
 }

@@ -48,3 +48,17 @@ export function anchored(id, cardEl) {
 export function pageHead(title, sub, ...actions) {
   return h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, title), sub ? h('div', { class: 'sub' }, sub) : null), actions.length ? h('div', { class: 'actions' }, ...actions) : null);
 }
+
+// The project header shared by Settings, Feedback and Design system: name,
+// site, actions, then the three tabs. Design system shows when the project
+// has design rules on (or when you're already on it).
+export function projectHeader(p, active, { openCount = null, design = false } = {}) {
+  const site = p.site_url.replace(/\/$/, '');
+  const tab = (key, href, label) => h('a', { class: active === key ? 'on' : '', href, 'aria-current': active === key ? 'page' : null }, label);
+  return h('div', {},
+    pageHead(p.name, p.site_url, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'All projects'), h('a', { class: 'btn', href: `${site}/?pinpoint=${p.token}`, target: '_blank', rel: 'noopener' }, 'Open site in PinPoint')),
+    h('nav', { class: 'tabs', 'aria-label': 'Project' },
+      tab('settings', `#/projects/${p.id}`, 'Settings'),
+      tab('feedback', `#/projects/${p.id}/feedback`, openCount == null ? 'Feedback' : `Feedback (${openCount} open)`),
+      design || active === 'design' ? tab('design', `#/projects/${p.id}/design`, 'Design system') : null));
+}

@@ -9,8 +9,8 @@
 // style attributes), and the web-font stylesheet must come from Google Fonts
 // or Adobe Fonts.
 import { h, fmtDate, toast, copyBox } from '../ui/dom.js';
-import { card, pageHead } from '../ui/shell.js';
-import { getProject, projectAccess, designSystem, designExceptions, designProposals, designChangelog, designFn, sharedDesign } from '../api.js';
+import { card, pageHead, projectHeader } from '../ui/shell.js';
+import { getProject, projectAccess, designSystem, designExceptions, designProposals, designChangelog, designFn, sharedDesign, openCounts } from '../api.js';
 import { contrast, spacingScale, anatomyParts } from '../../../supabase/functions/_shared/designEngine.ts';
 
 const FONT_HOSTS = ['fonts.googleapis.com', 'use.typekit.net', 'p.typekit.net'];
@@ -256,15 +256,17 @@ function focusFrom(query = {}) {
 
 // --------------------------------------------------------------- screens
 export async function designScreen({ id, query = {} }) {
-  const [p, access, ds] = await Promise.all([getProject(id), projectAccess(id).catch(() => ({})), designSystem(id).catch(() => null)]);
+  const [p, access, ds, counts] = await Promise.all([getProject(id), projectAccess(id).catch(() => ({})), designSystem(id).catch(() => null), openCounts().catch(() => ({}))]);
   if (!p) return card('Not found', h('p', {}, 'This project doesn’t exist or you don’t have access.'));
   const da = access.design_rules || {};
-  const back = h('a', { class: 'btn btn-ghost', href: `#/projects/${id}?to=design` }, 'Design rules settings');
+  const tabs = projectHeader(p, 'design', { openCount: counts[id] || 0, design: true });
+  const back = h('a', { class: 'btn btn-ghost btn-sm', href: `#/projects/${id}?to=design` }, 'Design rules settings');
+  const subhead = (title, meta) => h('div', { class: 'ds-subhead' }, h('div', {}, h('h2', {}, title), meta ? h('div', { class: 'sub' }, meta) : null), back);
   if (!ds || !ds.tokens || !ds.tokens.color) {
-    return h('div', {}, pageHead('Design system', p.name, back), card('No design system yet', h('p', {}, 'The owner can paste one or import it from the site under Design rules in the project settings.')));
+    return h('div', {}, tabs, subhead('Design system', ''), card('No design system yet', h('p', {}, 'The owner can import it from the site’s design system page under Design rules in the project settings.')));
   }
   const t = ds.tokens;
-  const head = pageHead(t.name ? `${t.name} design system` : 'Design system', `Version ${ds.version} · updated ${fmtDate(ds.updated_at)}${ds.updated_by ? ` by ${ds.updated_by}` : ''}${ds.source === 'connector' ? ' · from the site' : ''}`, back);
+  const head = h('div', {}, tabs, subhead(t.name || 'Design system', `Version ${ds.version} · updated ${fmtDate(ds.updated_at)}${ds.updated_by ? ` by ${ds.updated_by}` : ''}${ds.source === 'connector' || ds.source === 'url' ? ' · imported from the site' : ''}`));
   const extra = [];
 
   // Pending rule changes, with approve / reject for the approver.

@@ -1,5 +1,5 @@
 import { h, field, toast, copyBox } from '../ui/dom.js';
-import { card, anchored, pageHead } from '../ui/shell.js';
+import { card, anchored, pageHead, projectHeader } from '../ui/shell.js';
 import { getProject, updateSettings, saveTriage, setManager, setNotifyMode, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, agentPersona, saveAgentPersona, assignees as listAssignees, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments, designSettings, setDesignRules, setDesignKey, designKeyStatus, saveDesignTokens, setDesignShare, designSystem, designFn } from '../api.js';
 import { bumpVersion } from '../../../supabase/functions/_shared/designEngine.ts';
 import { BUNDLE_URL, PLUGIN_ZIP_URL, FUNCTIONS_URL, MCP_URL } from '../config.js';
@@ -14,8 +14,7 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
   const hasFeature = (f) => acct.is_operator || (access.features || []).includes(f);
   const openCount = (await listComments(id).catch(() => [])).filter((c) => !c.parent_id && (c.status === 'open' || c.status === 'in_progress' || c.status === 'waiting')).length;
   const dsOn = !!(access.design_rules && access.design_rules.enabled);
-  const tabs = h('div', { class: 'tabs' }, h('a', { class: 'on', href: `#/projects/${id}` }, 'Settings'), h('a', { href: `#/projects/${id}/feedback` }, `Feedback (${openCount} open)`), dsOn ? h('a', { href: `#/projects/${id}/design` }, 'Design system') : null);
-  const head = pageHead(p.name, p.site_url, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'All projects'), h('a', { class: 'btn', href: shareLink, target: '_blank', rel: 'noopener' }, 'Open site in PinPoint'));
+  const head = projectHeader(p, 'settings', { openCount, design: dsOn });
 
   // --- Share + install
   const install = card(
@@ -35,7 +34,7 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
     copyBox(`<script defer src="${BUNDLE_URL}" data-project="${p.token}"${p.open_access ? ' data-open="1"' : ''}></script>`, { multiline: true })
   );
 
-  if (!canManage) return h('div', {}, head, tabs, install);
+  if (!canManage) return h('div', {}, head, install);
 
   // --- Settings
   const name = h('input', { type: 'text', value: p.name });
@@ -397,7 +396,7 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
     links.forEach((a) => a.classList.toggle('on', a.dataset.to === best));
   }, { rootMargin: '-90px 0px -60% 0px', threshold: [0, 0.1, 0.5] });
   setTimeout(() => sections.forEach(([sid]) => { const el = document.getElementById(sid); if (el) io.observe(el); }), 0);
-  const page = h('div', {}, head, tabs, h('div', { class: 'two-col' }, nav, content));
+  const page = h('div', {}, head, h('div', { class: 'two-col' }, nav, content));
   if (query.to) setTimeout(() => document.getElementById(query.to)?.scrollIntoView({ block: 'start' }), 50);
   return page;
 }
