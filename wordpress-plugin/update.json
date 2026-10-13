@@ -1,11 +1,11 @@
 {
   "name": "PinPoint by Avalanche",
   "slug": "avalanche-markup",
-  "version": "2.8.1",
-  "download_url": "https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/avalanche-markup-2.8.1.zip",
+  "version": "2.8.2",
+  "download_url": "https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/avalanche-markup-2.8.2.zip",
   "homepage": "https://pinpoint.avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "2.8.1 — Button style warnings name the approved value (for example 20px 35px)."
+  "changelog": "2.8.2 — Comments on pages that moved (old address now redirects) open anyway, with a one-click move to the new page."
 }
