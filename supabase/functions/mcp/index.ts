@@ -44,7 +44,7 @@ const TOOLS = [
   { name: "assign", description: "Assign an item to a person by email (the owner or a collaborator), or pass an empty string to unassign.", inputSchema: { type: "object", required: ["id", "email"], properties: { id: { type: "string" }, email: { type: "string" } } } },
   {
     name: "triage",
-    description: "Label an item and size it. labels: bug (something broken), copy (text change), design (layout/visual), content (client must write or supply content), photo (client must supply an image), decision (client must choose). effort: quick (under 30 minutes), medium (a small build or content pass), large (a real build). Pass only the fields you want to change.",
+    description: "Label an item and size it. labels: bug (something broken), copy (text change), design (layout/visual), content (client must write or supply content), photo (client must supply an image), decision (client must choose), feature (a request for something new rather than a fix). effort: quick (under 30 minutes), medium (a small build or content pass), large (a real build). Pass only the fields you want to change.",
     inputSchema: { type: "object", required: ["id"], properties: { id: { type: "string" }, labels: { type: "array", items: { type: "string", enum: [...LABELS] } }, effort: { type: "string", enum: [...EFFORTS, ""] , description: "Empty string clears it." } } },
   },
   { name: "project_info", description: "The project's name and site URL.", inputSchema: { type: "object", properties: {} } },

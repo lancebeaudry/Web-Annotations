@@ -10,7 +10,7 @@ import { capture } from '../../src/capture.js';
 if (!window.__ppPicker) {
   window.__ppPicker = true;
 
-  const LABELS = [['design', 'Design'], ['copy', 'Copy'], ['bug', 'Bug'], ['content', 'Content'], ['photo', 'Photo'], ['decision', 'Decision']];
+  const LABELS = [['design', 'Design'], ['copy', 'Copy'], ['bug', 'Bug'], ['content', 'Content'], ['photo', 'Photo'], ['decision', 'Decision'], ['feature', 'Feature request']];
   const STYLE_KEYS = ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'textTransform', 'color', 'backgroundColor', 'backgroundImage', 'padding', 'borderRadius', 'border', 'boxShadow', 'gap', 'display', 'maxWidth'];
   const send = (msg) => new Promise((res) => chrome.runtime.sendMessage(msg, res));
 

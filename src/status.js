@@ -21,8 +21,9 @@ export const LABEL_TEXT = {
   content: 'Content needed',
   photo: 'Photo needed',
   decision: 'Decision',
+  feature: 'Feature request',
 };
-export const LABEL_ORDER = ['bug', 'copy', 'design', 'content', 'photo', 'decision'];
+export const LABEL_ORDER = ['bug', 'copy', 'design', 'content', 'photo', 'decision', 'feature'];
 export const labelText = (l) => LABEL_TEXT[l] || l;
 
 // Effort: how big the change is.

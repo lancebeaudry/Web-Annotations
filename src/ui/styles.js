@@ -271,6 +271,7 @@ export const CSS = `
 .label-chip.on.lb-content { background: #E8A317; }
 .label-chip.on.lb-photo { background: #E8A317; }
 .label-chip.on.lb-decision { background: #7E57C2; }
+.label-chip.on.lb-feature { background: #3949AB; }
 .reply-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .reply-row .attach { margin: 0; flex: 1; }
 .foot-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid #eef2f4; }
@@ -301,6 +302,7 @@ export const CSS = `
 .side-status.lb-design { background: #dff5f2; color: #0e8a82; }
 .side-status.lb-content, .side-status.lb-photo { background: #fff1d6; color: #8a5a00; }
 .side-status.lb-decision { background: #f2edfa; color: #5b3d99; }
+.side-status.lb-feature { background: #e8eaf6; color: #3949AB; }
 .side-item.closed { opacity: 0.6; }
 /* "looks addressed": amber dot badge — the content here changed since
    the comment was written, so it likely got handled. */

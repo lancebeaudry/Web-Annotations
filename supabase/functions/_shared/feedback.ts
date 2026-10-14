@@ -7,7 +7,7 @@ export type Row = Record<string, any>;
 export type Project = { id: string; name: string; site_url: string; token: string };
 
 export const STATUSES = ["open", "in_progress", "waiting", "resolved", "wont_fix"] as const;
-export const LABELS = ["bug", "copy", "design", "content", "photo", "decision"] as const;
+export const LABELS = ["bug", "copy", "design", "content", "photo", "decision", "feature"] as const;
 export const EFFORTS = ["quick", "medium", "large"] as const;
 export type Status = typeof STATUSES[number];
 const KEY_RE = /^pp_[0-9a-f]{40}$/;

@@ -22,7 +22,7 @@ import { deepLink } from "../_shared/integrations.ts";
 const NOTIFY_SECRET = Deno.env.get("NOTIFY_SECRET") ?? "";
 const DASHBOARD_URL = (Deno.env.get("DASHBOARD_URL") ?? "").split(",")[0].trim().replace(/\/?$/, "/");
 const esc = (s: string) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const LABEL: Record<string, string> = { bug: "Bug", copy: "Copy", design: "Design", content: "Content needed", photo: "Photo needed", decision: "Decision" };
+const LABEL: Record<string, string> = { bug: "Bug", copy: "Copy", design: "Design", content: "Content needed", photo: "Photo needed", decision: "Decision", feature: "Feature request" };
 
 type Project = { id: string; name: string; site_url: string; token: string; owner_id: string; digest_weekly: boolean };
 type Item = Record<string, any>;

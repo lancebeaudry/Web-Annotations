@@ -9,7 +9,7 @@ import { getProject, listComments, patchComment, assignees as listAssignees, pro
 const STATUS = { open: 'Open', in_progress: 'In progress', waiting: 'Waiting on client', resolved: 'Resolved', wont_fix: "Won't fix" };
 const ORDER = ['open', 'in_progress', 'waiting', 'resolved', 'wont_fix'];
 const isOpen = (s) => s === 'open' || s === 'in_progress' || s === 'waiting';
-const LABEL = { bug: 'Bug', copy: 'Copy', design: 'Design', content: 'Content needed', photo: 'Photo needed', decision: 'Decision' };
+const LABEL = { bug: 'Bug', copy: 'Copy', design: 'Design', content: 'Content needed', photo: 'Photo needed', decision: 'Decision', feature: 'Feature request' };
 const LABELS = Object.keys(LABEL);
 const EFFORT = { quick: 'Quick', medium: 'Medium', large: 'Large' };
 const DESIGN_STATE = {
