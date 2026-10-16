@@ -38,13 +38,26 @@ if (params.has('pinpoint') || params.has('markup')) {
   }
 }
 
+// Never inside a page builder's editor or the WordPress Customizer: the
+// token is remembered for the tab, so without this PinPoint would start on
+// top of the editor. URL flags cover the editors' own loads; body classes
+// cover editors that switch modes without reloading.
+const EDITOR_PARAMS = ['fl_builder', 'fl_builder_load_settings_config', 'elementor-preview', 'et_fb', 'ct_builder', 'bricks', 'vc_editable', 'vcv-editable', 'brizy-edit-iframe', 'customize_changeset_uuid', 'customize_messenger_channel'];
+const EDITOR_CLASSES = ['fl-builder-edit', 'fl-builder--editing', 'elementor-editor-active', 'et-fb', 'oxygen-builder-body', 'brz-ed', 'wp-customizer'];
+function inPageEditor() {
+  if (EDITOR_PARAMS.some((p) => params.has(p))) return true;
+  const cls = (document.body && document.body.classList) || { contains: () => false };
+  return EDITOR_CLASSES.some((c) => cls.contains(c));
+}
+
 // Double-include guard: if the embed ends up in both a theme and the
 // plugin, only the first copy mounts.
 if (token && !window.__avalancheMarkup) {
   window.__avalancheMarkup = true;
+  const start = () => { if (!inPageEditor()) init(token, { openAccess }); };
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => init(token, { openAccess }));
+    document.addEventListener('DOMContentLoaded', start);
   } else {
-    init(token, { openAccess });
+    start();
   }
 }

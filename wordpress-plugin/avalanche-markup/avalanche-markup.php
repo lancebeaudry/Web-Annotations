@@ -62,9 +62,27 @@ const AVMK_UPDATE_MANIFEST = 'https://vaculezzigjtgbysnajf.supabase.co/storage/v
 // guarantees the served bundle always matches this plugin version. The
 // bundle updates with the plugin via the self-updater. Cache-busted by
 // the file's mtime so a new version is picked up immediately.
+// Page builders' editors and the Customizer show the page with editing
+// tools on top; PinPoint must not load there. Sites can add their own case
+// with the avalanche_markup_skip_page filter.
+function avmk_in_page_editor() {
+	if ( function_exists( 'is_customize_preview' ) && is_customize_preview() ) {
+		return true;
+	}
+	if ( class_exists( 'FLBuilderModel' ) && method_exists( 'FLBuilderModel', 'is_builder_active' ) && FLBuilderModel::is_builder_active() ) {
+		return true;
+	}
+	foreach ( [ 'fl_builder', 'elementor-preview', 'et_fb', 'ct_builder', 'bricks', 'vc_editable', 'vcv-editable', 'brizy-edit-iframe' ] as $param ) {
+		if ( isset( $_GET[ $param ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification -- read-only check
+			return true;
+		}
+	}
+	return (bool) apply_filters( 'avalanche_markup_skip_page', false );
+}
+
 add_action( 'wp_head', function () {
 	$token = get_option( AVMK_OPTION, '' );
-	if ( ! $token ) {
+	if ( ! $token || avmk_in_page_editor() ) {
 		return;
 	}
 	$file = plugin_dir_path( __FILE__ ) . 'markup.js';
