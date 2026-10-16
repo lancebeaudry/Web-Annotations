@@ -155,3 +155,8 @@ Off by default; the owner turns it on per project (dashboard, Design rules card)
 - **Design system page.** `#/projects/:id/design` for members (plus pending rule changes with approve/reject, exceptions and changelog); an optional view-only share link `#/design/:token` (`set_design_share`, `get_shared_design_system`). Font CSS loads only from Google Fonts or Adobe Fonts; token values reach the page only through text and CSSOM setters.
 - **AI agents.** When design rules are on, MCP lists `design_rules` and `design_check` (read and check only) and its instructions tell the agent to check style changes first; the agent endpoint has `GET ?design=1` and `POST {design_check:{…}}`. Feedback items include `design_check` and `preview_id`.
 - Mock harness: `?mockDesignRules=1` runs the real engine against `test/fixtures/acme-tokens.json`. Migrations `supabase/v27.sql`, `v27b.sql`, `v27c.sql`, `v27d.sql`.
+
+## 2.8.4: Sign in with PinPoint
+
+The sign-in card on a site has a "Sign in with PinPoint" button. It opens the dashboard's `#/connect?origin=…&token=…` page in a small window; the person (signed in to the dashboard) confirms the site, and `functions/connect` checks they're a member of that project and that the origin is one of its addresses (its site URL, or an origin where the project already has comments), then mints a separate session. The page posts it to `window.opener` addressed to that exact origin; the overlay accepts it only from the dashboard origin and the window it opened, then calls `setSession`. Unlike the WordPress bridge this works for team (operator) accounts, because nothing happens without the person's own click in their own dashboard session.
+

@@ -37,10 +37,16 @@ export function renderAuthCard(app) {
   const emailInput = h('input', { type: 'email', placeholder: 'you@example.com', required: 'true' });
   const submit = h('button', { class: 'btn', type: 'submit' }, 'Email me a sign-in code');
 
+  // One click when you're already signed in to the PinPoint dashboard.
+  const withPinPoint = h('button', { class: 'btn btn-ghost pp-connect', type: 'button' }, brandMark(14), h('span', {}, 'Sign in with PinPoint'));
+  withPinPoint.addEventListener('click', () => connectWithPinPoint(app, withPinPoint));
+
   const form = h(
     'form',
     {},
     h('p', { class: 'hint' }, 'Sign in once and you can click anywhere on the page to leave feedback.'),
+    withPinPoint,
+    h('div', { class: 'or-rule' }, h('span', {}, 'or use your email')),
     h('div', { class: 'field' }, h('label', {}, 'Your name'), nameInput),
     h('div', { class: 'field' }, h('label', {}, 'Email'), emailInput),
     h('div', { class: 'btn-row' }, submit),
@@ -194,6 +200,31 @@ export function renderGuestCard(app) {
 
   ui.layer.appendChild(card);
   app.authCard = card;
+}
+
+// Opens the dashboard's #/connect page in a small window. If the person is
+// signed in there and confirms this site, it posts back a session minted for
+// this site; we only accept it from the dashboard's own origin and from the
+// window we opened.
+function connectWithPinPoint(app, btn) {
+  const dash = new URL(DASHBOARD_URL);
+  dash.hash = `#/connect?origin=${encodeURIComponent(location.origin)}&token=${encodeURIComponent(app.token || '')}`;
+  const pop = window.open(dash.toString(), 'pinpoint-connect', 'popup,width=480,height=620');
+  if (!pop) return toast(app.ui, 'Allow pop-ups for this site, then try again.');
+  btn.disabled = true;
+  const done = () => { window.removeEventListener('message', onMsg); clearInterval(watch); btn.disabled = false; };
+  async function onMsg(e) {
+    if (e.origin !== dash.origin || e.source !== pop) return;
+    const d = e.data || {};
+    if (d.type !== 'pinpoint-connect' || !d.access_token || !d.refresh_token) return;
+    done();
+    const { error } = await app.supabase.auth.setSession({ access_token: d.access_token, refresh_token: d.refresh_token });
+    if (error) toast(app.ui, 'Couldn’t sign you in. Use your email instead.');
+    // Success: onAuthStateChange in app.js picks up the session and starts.
+  }
+  window.addEventListener('message', onMsg);
+  // Re-enable the button if the window is closed without signing in.
+  const watch = setInterval(() => { if (pop.closed) done(); }, 700);
 }
 
 export function removeAuthCard(app) {

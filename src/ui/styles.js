@@ -467,6 +467,9 @@ export const CSS = `
 .moved-card p { margin: 0 0 8px; font-size: 13px; line-height: 1.45; }
 .moved-card code { font-size: 12px; background: #f1f4f6; padding: 1px 5px; border-radius: 4px; word-break: break-all; }
 .auth-card .hint { font-size: 12px; color: #6b7a85; margin: 0 0 12px; }
+.auth-card .pp-connect { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.or-rule { display: flex; align-items: center; gap: 10px; margin: 14px 0 12px; font-size: 11px; color: #8796a1; }
+.or-rule::before, .or-rule::after { content: ''; flex: 1; height: 1px; background: #e3e9ed; }
 /* Sign-in cards read top to bottom: everything left-aligned, main button first. */
 .auth-card .btn-row { justify-content: flex-start; margin-top: 14px; }
 .auth-card .auth-foot { margin: 12px 0 0; }

@@ -10,6 +10,7 @@ import { projectDetailScreen } from './screens/projectDetail.js';
 import { accountScreen } from './screens/account.js';
 import { feedbackScreen } from './screens/feedback.js';
 import { designScreen, sharedDesignScreen } from './screens/designSystem.js';
+import { connectScreen } from './screens/connect.js';
 
 const root = document.getElementById('app');
 let rendering = 0;
@@ -55,6 +56,7 @@ async function render() {
       case 'projectDetail': content = await projectDetailScreen({ id: route.id, user, acct, query }); break;
       case 'feedback': content = await feedbackScreen({ id: route.id, user, acct, query }); break;
       case 'design': content = await designScreen({ id: route.id, user, acct, query }); break;
+      case 'connect': content = await connectScreen({ user, query }); break;
       case 'account': content = await accountScreen({ user, acct, query }); break;
       default: content = await projectsScreen({ user, acct, query });
     }
