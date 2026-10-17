@@ -160,3 +160,7 @@ Off by default; the owner turns it on per project (dashboard, Design rules card)
 
 The sign-in card on a site has a "Sign in with PinPoint" button. It opens the dashboard's `#/connect?origin=…&token=…` page in a small window; the person (signed in to the dashboard) confirms the site, and `functions/connect` checks they're a member of that project and that the origin is one of its addresses (its site URL, or an origin where the project already has comments), then mints a separate session. The page posts it to `window.opener` addressed to that exact origin; the overlay accepts it only from the dashboard origin and the window it opened, then calls `setSession`. Unlike the WordPress bridge this works for team (operator) accounts, because nothing happens without the person's own click in their own dashboard session.
 
+## Building a design system with Claude Code
+
+`dashboard/src/designPrompt.js` holds the Claude Code prompt that builds a PinPoint design system from a site's own source (CSS variables, theme.json, stylesheets, page-builder modules). It writes `design-system/tokens.json` in the theme in the exact token shape above, validates color and spacing references and `match` selectors, and reports drift (off-palette colors, off-scale sizes). The Design rules card shows it filled in for the project under "Create one with Claude Code".
+

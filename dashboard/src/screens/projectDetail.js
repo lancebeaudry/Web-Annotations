@@ -2,6 +2,7 @@ import { h, field, toast, copyBox } from '../ui/dom.js';
 import { card, anchored, pageHead, projectHeader } from '../ui/shell.js';
 import { getProject, updateSettings, saveTriage, setManager, setNotifyMode, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, agentPersona, saveAgentPersona, assignees as listAssignees, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments, designSettings, setDesignRules, setDesignKey, designKeyStatus, saveDesignTokens, setDesignShare, designSystem, designFn } from '../api.js';
 import { bumpVersion } from '../../../supabase/functions/_shared/designEngine.ts';
+import { designPrompt } from '../designPrompt.js';
 import { BUNDLE_URL, PLUGIN_ZIP_URL, FUNCTIONS_URL, MCP_URL } from '../config.js';
 import { go } from '../router.js';
 
@@ -359,7 +360,7 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
     }
   });
 
-  const designCard = hasFeature('design_rules') ? await designRulesCard(id, user) : card('Design rules', h('div', { class: 'upsell' }, 'Check every style change against the site’s design system, with approvals and a shareable style guide. ', h('a', { href: '#/account' }, 'Part of the Agency plan.')));
+  const designCard = hasFeature('design_rules') ? await designRulesCard(id, user, p) : card('Design rules', h('div', { class: 'upsell' }, 'Check every style change against the site’s design system, with approvals and a shareable style guide. ', h('a', { href: '#/account' }, 'Part of the Agency plan.')));
 
   const sections = [
     ['install', 'Share & install', install],
@@ -404,7 +405,7 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
 // Design rules: optional, off by default. PinPoint keeps the design system
 // and runs the checks; a site connector is optional and adds apply, preview
 // and affected pages on staging. Keys are write-only.
-async function designRulesCard(id, user) {
+async function designRulesCard(id, user, project = {}) {
   const [cfg, ds, keys, members] = await Promise.all([
     designSettings(id).catch(() => ({})), designSystem(id).catch(() => null),
     designKeyStatus(id).catch(() => ({})), listInvites(id).catch(() => []),
@@ -534,6 +535,10 @@ async function designRulesCard(id, user) {
     h('div', { class: 'field', style: 'margin-top:12px' }, h('label', {}, hasDs ? 'Import from a different page' : 'Your design system page'),
       h('div', { class: 'inline' }, addr, importBtn),
       h('div', { class: 'hint' }, 'Paste the address of the site’s style guide or design system page. PinPoint finds the design system behind it and keeps a copy.')),
+    h('details', { class: 'ds-advanced ds-claude' },
+      h('summary', {}, hasDs ? 'Rebuild it with Claude Code' : 'No design system yet? Create one with Claude Code'),
+      h('p', { class: 'hint' }, 'Copy this prompt into Claude Code, opened in the site’s theme or project folder. It reads the site’s own CSS and writes design-system/tokens.json in the format PinPoint uses, then reports colors and spacing that don’t fit. Import that file here, or paste it under Advanced if the site is password-protected.'),
+      copyBox(designPrompt({ name: project.name || 'this site', site: project.site_url || '' }), { multiline: true })),
     hasDs ? h('label', { class: 'check' }, share, ' Shareable view-only link to the design system page') : null,
     h('h4', {}, '2. Turn it on'),
     h('label', { class: 'check' }, enabled, ' Turn on design rules for this project'),
