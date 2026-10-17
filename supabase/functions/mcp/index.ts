@@ -13,7 +13,7 @@
 // request is authenticated by the key, so no session ids are issued.
 // Deploy: supabase functions deploy mcp --no-verify-jwt --use-api
 
-import { resolveProject, listFeedback, listPages, getFeedback, actOn, designFor, DESIGN_GUIDE, STATUSES, LABELS, EFFORTS, type Project } from "../_shared/feedback.ts";
+import { resolveProject, listFeedback, listPages, getFeedback, actOn, designFor, designEnabled, submitDesignDraft, DESIGN_GUIDE, STATUSES, LABELS, EFFORTS, type Project } from "../_shared/feedback.ts";
 import { check as designCheck } from "../_shared/designEngine.ts";
 
 const PROTOCOL = "2025-03-26";
@@ -50,7 +50,14 @@ const TOOLS = [
   { name: "project_info", description: "The project's name and site URL.", inputSchema: { type: "object", properties: {} } },
 ];
 
-// Listed only when the project has design rules on.
+// Listed when the project has design rules on (even before it has a design
+// system, so a first one can be sent in).
+const DRAFT_TOOL = {
+  name: "design_submit_draft",
+  description: "Send a design system (the full design-system/tokens.json object) to PinPoint as a draft. The project owner previews it and approves or discards it; nothing changes until they do. Returns problems to fix if the file isn't valid.",
+  inputSchema: { type: "object", required: ["tokens"], properties: { tokens: { type: "object", description: "The whole design system JSON object." }, summary: { type: "string", description: "Two or three sentences: what you built and what the owner should check." } } },
+};
+// Listed only when the project has a design system.
 const DESIGN_TOOLS = [
   { name: "design_rules", description: "The project's design system: colors, fonts, type sizes, radius, spacing, button and section styles, module variants and rules.", inputSchema: { type: "object", properties: {} } },
   {
@@ -82,6 +89,10 @@ async function callTool(project: Project, name: string, args: Record<string, any
     case "set_status": return text(await actOn(project, { comment_id: args.id, status: args.status, reply: args.reply }, args.agent_name || "AI assistant"));
     case "assign": return text(await actOn(project, { comment_id: args.id, assignee: args.email ?? "" }, "AI assistant"));
     case "triage": return text(await actOn(project, { comment_id: args.id, labels: args.labels, effort: args.effort }, "AI assistant"));
+    case "design_submit_draft": {
+      const r = await submitDesignDraft(project, args.tokens, String(args.summary || ""), "AI assistant (MCP)");
+      return r.ok ? text(r.review) : errorResult(r.error || `Fix these and send it again:\n- ${(r.problems || []).join("\n- ")}`);
+    }
     case "design_rules": case "design_check": {
       const ds = await designFor(project);
       if (!ds) return errorResult("Design rules aren't switched on for this project.");
@@ -130,8 +141,8 @@ Deno.serve(async (req) => {
         }
         case "ping": out.push(rpc(m.id, {})); break;
         case "tools/list": {
-          const design = await designFor(project).catch(() => null);
-          out.push(rpc(m.id, { tools: design ? [...TOOLS, ...DESIGN_TOOLS] : TOOLS }));
+          const [design, enabled] = await Promise.all([designFor(project).catch(() => null), designEnabled(project).catch(() => false)]);
+          out.push(rpc(m.id, { tools: [...TOOLS, ...(enabled ? [DRAFT_TOOL] : []), ...(design ? DESIGN_TOOLS : [])] }));
           break;
         }
         case "tools/call": {

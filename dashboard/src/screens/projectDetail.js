@@ -406,9 +406,10 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
 // and runs the checks; a site connector is optional and adds apply, preview
 // and affected pages on staging. Keys are write-only.
 async function designRulesCard(id, user, project = {}) {
-  const [cfg, ds, keys, members] = await Promise.all([
+  const [cfg, ds, keys, members, aiKey] = await Promise.all([
     designSettings(id).catch(() => ({})), designSystem(id).catch(() => null),
     designKeyStatus(id).catch(() => ({})), listInvites(id).catch(() => []),
+    agentKey(id).catch(() => ''),
   ]);
   const conn = cfg.connector || {};
   const enabled = h('input', { type: 'checkbox' });
@@ -530,6 +531,7 @@ async function designRulesCard(id, user, project = {}) {
   return card('Design rules',
     h('p', { class: 'hint' }, 'Optional. When it’s on, members get a “Style change” option on the site. PinPoint checks each change against the design system and offers the closest approved style, a logged exception, or a rule change for the approver.'),
     h('h4', {}, '1. Design system'),
+    draftNotice(id, ds),
     status,
     hasDs ? h('div', { class: 'btn-row ds-left' }, h('a', { class: 'btn btn-ghost', href: `#/projects/${id}/design` }, 'View design system page'), reimport) : null,
     h('div', { class: 'field', style: 'margin-top:12px' }, h('label', {}, hasDs ? 'Import from a different page' : 'Your design system page'),
@@ -538,7 +540,8 @@ async function designRulesCard(id, user, project = {}) {
     h('details', { class: 'ds-advanced ds-claude' },
       h('summary', {}, hasDs ? 'Rebuild it with Claude Code' : 'No design system yet? Create one with Claude Code'),
       h('p', { class: 'hint' }, 'Copy this prompt into Claude Code, opened in the site’s theme or project folder. It reads the site’s own CSS and writes design-system/tokens.json in the format PinPoint uses, then reports colors and spacing that don’t fit. Import that file here, or paste it under Advanced if the site is password-protected.'),
-      copyBox(designPrompt({ name: project.name || 'this site', site: project.site_url || '' }), { multiline: true })),
+      copyBox(designPrompt({ name: project.name || 'this site', site: project.site_url || '', agentUrl: `${FUNCTIONS_URL}/agent`, mcpUrl: MCP_URL, agentKey: aiKey }), { multiline: true }),
+      h('p', { class: 'hint' }, 'The prompt includes this project’s AI assistant key so Claude Code can send the result straight here as a draft. Treat it like a password.')),
     hasDs ? h('label', { class: 'check' }, share, ' Shareable view-only link to the design system page') : null,
     h('h4', {}, '2. Turn it on'),
     h('label', { class: 'check' }, enabled, ' Turn on design rules for this project'),
@@ -548,4 +551,25 @@ async function designRulesCard(id, user, project = {}) {
       h('div', { class: 'field' }, h('label', {}, 'Who can make exceptions'), exceptions)),
     h('div', { class: 'btn-row' }, saveBtn),
     advanced);
+}
+
+// A design system an AI assistant sent in, waiting for the owner.
+function draftNotice(id, ds) {
+  if (!ds || !ds.draft || !ds.draft.color) return null;
+  const d = ds.draft;
+  const when = ds.draft_at ? new Date(ds.draft_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+  const use = h('button', { class: 'btn btn-sm', type: 'button' }, ds.tokens && ds.tokens.color ? 'Replace with this draft' : 'Use this design system');
+  const drop = h('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Discard');
+  const act = (action, btn, msg) => btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try { const r = await designFn({ project_id: id, action }); toast(msg(r)); location.reload(); }
+    catch (e) { btn.disabled = false; toast(e.message); }
+  });
+  act('draft_approve', use, (r) => `Design system v${r.version} is in use`);
+  act('draft_discard', drop, () => 'Draft discarded');
+  return h('div', { class: 'ds-draft' },
+    h('div', {}, h('b', {}, `Draft from ${ds.draft_by || 'an AI assistant'}`), when ? ` · ${when}` : ''),
+    h('div', { class: 'hint' }, `${d.name || 'Design system'} v${d.version || '1.0.0'} · ${Object.keys(d.color || {}).length} colors, ${Object.keys(d.buttons || {}).length} button styles, ${Object.keys(d.surfaces || {}).length} section styles`),
+    ds.draft_summary ? h('p', { class: 'ds-draft-sum' }, ds.draft_summary) : null,
+    h('div', { class: 'btn-row ds-left' }, h('a', { class: 'btn btn-ghost btn-sm', href: `#/projects/${id}/design?draft=1` }, 'Preview'), use, drop));
 }

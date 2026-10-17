@@ -262,12 +262,33 @@ export async function designScreen({ id, query = {} }) {
   const tabs = projectHeader(p, 'design', { openCount: counts[id] || 0, design: true });
   const back = h('a', { class: 'btn btn-ghost btn-sm', href: `#/projects/${id}?to=design` }, 'Design rules settings');
   const subhead = (title, meta) => h('div', { class: 'ds-subhead' }, h('div', {}, h('h2', {}, title), meta ? h('div', { class: 'sub' }, meta) : null), back);
+  // A draft an AI assistant sent in: preview it in full, with Use / Discard.
+  const draft = ds && ds.draft && ds.draft.color ? ds.draft : null;
+  if (draft && (query.draft || !(ds.tokens && ds.tokens.color))) {
+    const boss = ['owner', 'operator'].includes(access.role);
+    const use = h('button', { class: 'btn btn-sm', type: 'button' }, ds.tokens && ds.tokens.color ? 'Replace the current design system' : 'Use this design system');
+    const drop = h('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, 'Discard');
+    const act = (action, btn, msg, to) => btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try { const r = await designFn({ project_id: id, action }); toast(msg(r)); location.hash = to; location.reload(); }
+      catch (e) { btn.disabled = false; toast(e.message); }
+    });
+    act('draft_approve', use, (r) => `Design system v${r.version} is in use`, `#/projects/${id}/design`);
+    act('draft_discard', drop, () => 'Draft discarded', `#/projects/${id}?to=design`);
+    const banner = h('div', { class: 'ds-draft' },
+      h('div', {}, h('b', {}, 'Draft, not in use yet'), ` · sent by ${ds.draft_by || 'an AI assistant'}${ds.draft_at ? ` on ${fmtDate(ds.draft_at)}` : ''}`),
+      ds.draft_summary ? h('p', { class: 'ds-draft-sum' }, ds.draft_summary) : null,
+      boss ? h('div', { class: 'btn-row ds-left' }, use, drop) : h('p', { class: 'hint' }, 'The project owner decides whether to use it.'));
+    focusFrom(query);
+    return h('div', { class: 'ds-page' }, tabs, subhead(`${draft.name || 'Design system'} (draft)`, `Version ${draft.version || '1.0.0'}`), banner, ...renderSystem(draft));
+  }
   if (!ds || !ds.tokens || !ds.tokens.color) {
-    return h('div', {}, tabs, subhead('Design system', ''), card('No design system yet', h('p', {}, 'The owner can import it from the site’s design system page under Design rules in the project settings.')));
+    return h('div', {}, tabs, subhead('Design system', ''), card('No design system yet', h('p', {}, 'The owner can import it from the site’s design system page under Design rules in the project settings, or create one with Claude Code from there.')));
   }
   const t = ds.tokens;
   const head = h('div', {}, tabs, subhead(t.name || 'Design system', `Version ${ds.version} · updated ${fmtDate(ds.updated_at)}${ds.updated_by ? ` by ${ds.updated_by}` : ''}${ds.source === 'connector' || ds.source === 'url' ? ' · imported from the site' : ''}`));
   const extra = [];
+  if (draft) extra.push(h('div', { class: 'ds-draft' }, h('b', {}, `A new draft is waiting`), ` from ${ds.draft_by || 'an AI assistant'}. `, h('a', { href: `#/projects/${id}/design?draft=1` }, 'Preview it')));
 
   // Pending rule changes, with approve / reject for the approver.
   const props = await designProposals(id).catch(() => []);
@@ -301,7 +322,7 @@ export async function designScreen({ id, query = {} }) {
   const share = ds.share_token ? card('Share link', h('p', { class: 'hint' }, 'Anyone with this link can view the design system (colors, type, buttons, rules). Not the exceptions or changelog.'), copyBox(`${location.origin}${location.pathname}#/design/${ds.share_token}`)) : null;
 
   focusFrom(query);
-  return h('div', { class: 'ds-page' }, head, ...renderSystem(t), ...extra, share);
+  return h('div', { class: 'ds-page' }, head, ...extra.filter((x) => x.classList && x.classList.contains('ds-draft')), ...renderSystem(t), ...extra.filter((x) => !(x.classList && x.classList.contains('ds-draft'))), share);
 }
 
 export async function sharedDesignScreen(token, query = {}) {

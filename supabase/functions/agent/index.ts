@@ -4,6 +4,7 @@
 //   GET  /agent?pages=1                       -> pages with open counts
 //   GET  /agent?design=1                      -> design system + how to use it (when design rules are on)
 //   POST /agent  { design_check: { element, property, value, page_path?, selector?, context? } }
+//   POST /agent  { design_draft: { …tokens… }, summary? }  -> saved as a draft for the owner
 //   POST /agent  { comment_id, reply?, status?, resolve?, reopen?, assignee?, labels?, effort?, agent_name? }
 //   POST /agent  { items: [ … ], agent_name? }
 // Auth: x-pinpoint-agent-key (or Authorization: Bearer pp_…). The same key
@@ -11,7 +12,7 @@
 // Deploy: supabase functions deploy agent --no-verify-jwt --use-api
 
 import { json } from "../_shared/db.ts";
-import { resolveProject, listFeedback, listPages, actOn, designFor, DESIGN_GUIDE } from "../_shared/feedback.ts";
+import { resolveProject, listFeedback, listPages, actOn, designFor, submitDesignDraft, DESIGN_GUIDE } from "../_shared/feedback.ts";
 import { check as designCheck } from "../_shared/designEngine.ts";
 
 const noStore = { "Cache-Control": "no-store" };
@@ -43,6 +44,10 @@ Deno.serve(async (req) => {
     body = await req.json();
   } catch {
     return json(400, { error: "bad JSON" }, noStore);
+  }
+  if (body.design_draft !== undefined) {
+    const r = await submitDesignDraft(project, body.design_draft, String(body.summary || ""), "AI assistant");
+    return json(r.ok ? 200 : r.problems ? 422 : 403, r, noStore);
   }
   if (body.design_check && typeof body.design_check === "object") {
     const ds = await designFor(project);

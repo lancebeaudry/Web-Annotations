@@ -3,7 +3,9 @@
 // box renders it with the project filled in, and the README points here.
 // Keep the schema in step with supabase/functions/_shared/designEngine.ts.
 
-export function designPrompt({ name = 'this site', site = '' } = {}) {
+export function designPrompt({ name = 'this site', site = '', agentUrl = '', mcpUrl = '', agentKey = '' } = {}) {
+  const key = agentKey || '<this project’s AI assistant key from PinPoint>';
+  const endpoint = agentUrl || '<PinPoint agent endpoint>';
   return `You are building a design system for ${name}${site ? ` (${site})` : ''} for PinPoint, the feedback tool that checks style requests against it. Work from this site's own source in the current folder. Do not change any existing CSS, templates or content; you are only writing one new file and a report.
 
 ## Output
@@ -74,11 +76,26 @@ Write \`design-system/tokens.json\` inside the active theme (for WordPress, the 
 - Every bg, text, heading and accent reference exists in "color", and every "space.<key>" in anatomy exists in "space".
 - Every "match" selector exists in the site's CSS.
 
+## Send it to PinPoint
+
+When the file passes the checks above, send it to PinPoint as a draft. Nothing on the site or in PinPoint changes until the project owner approves it.
+
+- If a \`pinpoint\` MCP server is connected in this Claude Code session, call its \`design_submit_draft\` tool with \`tokens\` set to the whole JSON object and a two or three sentence \`summary\` of what the owner should check.
+- Otherwise, send it with this command from the theme folder (the key is a secret: don't write it into any file):
+
+\`\`\`bash
+python3 -c "import json,sys; print(json.dumps({'design_draft': json.load(open('design-system/tokens.json')), 'summary': sys.argv[1]}))" "WRITE A SHORT SUMMARY HERE" | curl -s -X POST '${endpoint}' -H 'x-pinpoint-agent-key: ${key}' -H 'Content-Type: application/json' --data-binary @-
+\`\`\`
+
+A reply with "ok": true means it's saved as a draft. If the reply lists problems, fix them in the file and send it again.${mcpUrl ? `
+
+(To connect the MCP server instead: \`claude mcp add --transport http pinpoint "${mcpUrl}" --header "x-pinpoint-agent-key: ${key}"\`.)` : ''}
+
 ## Report back
 
 In your reply, not in the file:
 - A short summary: how many colors, type sizes, button styles, surfaces and spacing steps.
 - Drift: colors used in the CSS that aren't in the palette (value, how many times, closest palette color), and spacing or font sizes that aren't on the scales. Show the top 15 of each.
 - Decisions a person should make: anything you merged, guessed or left out.
-- How to load it into PinPoint: if the site is public, PinPoint can import it from the project's Design rules card using the site's design system page or this file's address (for WordPress: ${site ? site.replace(/\/$/, '') : 'https://example.com'}/wp-content/themes/<theme>/design-system/tokens.json). If the site is password-protected, paste the file's contents under Design rules → Advanced → "Edit the design system" and click Save.`;
+- Whether the draft reached PinPoint, and that the owner can now review it under Design rules in the PinPoint project settings (Preview, then "Use this design system").`;
 }

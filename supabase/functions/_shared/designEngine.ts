@@ -511,6 +511,24 @@ export function applyChanges(tokens: Tokens, changes: { path: string; value: any
   return out;
 }
 /** A rule change still has to pass the hard rules. Returns a reason or null. */
+/** Problems with a design system file, in plain words (empty = fine). */
+export function validateTokens(t: any): string[] {
+  const out: string[] = [];
+  if (!t || typeof t !== "object" || Array.isArray(t)) return ["The design system must be a JSON object."];
+  if (!t.color || typeof t.color !== "object" || !Object.keys(t.color).length) return ["It needs a \"color\" section with at least one color."];
+  for (const [k, c] of Object.entries<any>(t.color)) if (!normalizeHex(c?.value)) out.push(`color.${k} needs a hex "value".`);
+  const ref = (where: string, key: any) => { if (key && !t.color[key]) out.push(`${where} uses "${key}", which isn't in "color".`); };
+  for (const [k, s] of Object.entries<any>(t.surfaces || {})) for (const f of ["bg", "text", "heading", "accent"]) ref(`surfaces.${k}.${f}`, s?.[f]);
+  for (const [k, b] of Object.entries<any>(t.buttons || {})) { ref(`buttons.${k}.bg`, b?.bg); ref(`buttons.${k}.text`, b?.text); if (!b?.bg || !b?.text) out.push(`buttons.${k} needs "bg" and "text".`); }
+  for (const g of ["type", "radius", "space", "shadow"]) for (const [k, v] of Object.entries<any>(t[g] || {})) if (v == null || typeof v !== "object" || !String(v.value ?? "").trim()) out.push(`${g}.${k} needs a "value".`);
+  for (const a of Array.isArray(t.anatomy) ? t.anatomy : []) {
+    const m = String(a?.value ?? "").match(/^space\.([A-Za-z0-9_-]+)$/);
+    if (m && !t.space?.[m[1]]) out.push(`anatomy "${a.id || a.label}" uses space.${m[1]}, which isn't in "space".`);
+  }
+  if (t.anatomy && !Array.isArray(t.anatomy)) out.push("\"anatomy\" must be a list.");
+  return out.slice(0, 30);
+}
+
 export function hardRuleProblem(tokens: Tokens): string | null {
   for (const [k, b] of Object.entries<any>(tokens.buttons || {})) {
     const r = contrast(colorOf(b.bg, tokens), colorOf(b.text, tokens));

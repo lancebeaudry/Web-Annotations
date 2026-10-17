@@ -307,3 +307,7 @@ label.check.mgr { margin: 0; align-items: center; font-size: 13px; color: var(--
 .ds-btn-row > div:last-child { flex: 1 1 300px; min-width: 0; }
 .ds-claude { margin-top: 10px; padding-top: 10px; }
 .ds-claude textarea.code { min-height: 160px; }
+.ds-draft { margin: 4px 0 14px; padding: 12px 14px; border: 1px solid #F0D9A2; background: var(--warn-bg); border-radius: 10px; font-size: 14px; }
+.ds-draft .hint { margin-top: 2px; }
+.ds-draft-sum { margin: 8px 0 0; font-size: 14px; color: var(--ink); white-space: pre-wrap; }
+.ds-draft .btn-row { margin-top: 10px; }

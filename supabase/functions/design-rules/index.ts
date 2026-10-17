@@ -11,6 +11,7 @@
 //   approve, reject  an approver decides a rule change or an exception request
 //   revert           undo an applied change (connector sites)
 //   test, import     owner: test the site connector / pull its design system
+//   draft_approve, draft_discard  owner: act on a draft an AI assistant sent in
 //   import_url       owner: import from a style guide page or tokens file
 //                      ({ url }; no url = re-import from the last address)
 //
@@ -128,6 +129,27 @@ Deno.serve(async (req) => {
   const acc = await access(authz, pid);
   const me = caller.email.toLowerCase();
   const action = String(b.action || "");
+
+  // ---- owner: use or discard a draft an AI assistant sent in
+  if (action === "draft_approve" || action === "draft_discard") {
+    if (!(await isOwnerOrOperator(caller.id, project))) return json(403, { error: "Only the project owner can do this." }, h);
+    const row = (await db<any[]>(`design_systems?project_id=eq.${pid}&select=tokens,version,draft,draft_by&limit=1`))[0];
+    if (!row?.draft) return json(404, { error: "There's no draft waiting." }, h);
+    const clear = { draft: null, draft_summary: null, draft_by: null, draft_at: null };
+    if (action === "draft_discard") {
+      await db(`design_systems?project_id=eq.${pid}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(clear) });
+      return json(200, { ok: true, discarded: true }, h);
+    }
+    const problems = E.validateTokens(row.draft);
+    if (problems.length) return json(422, { error: `The draft has problems: ${problems.slice(0, 3).join(" ")}` }, h);
+    const had = row.tokens?.color ? row.version : null;
+    let version = String(row.draft.version || "1.0.0").slice(0, 20);
+    if (had && !E.semverGt(version, had)) version = E.bumpVersion(had);
+    await saveTokens(pid, row.draft, version, me, "assistant");
+    await db(`design_systems?project_id=eq.${pid}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(clear) });
+    await log(pid, version, "import", `Draft from ${row.draft_by || "an AI assistant"} approved`, me);
+    return json(200, { ok: true, version }, h);
+  }
 
   // ---- owner: import from a style guide page or tokens file
   if (action === "import_url") {

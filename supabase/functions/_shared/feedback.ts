@@ -2,6 +2,7 @@
 // `mcp` server (tool-shaped). Both authenticate with a per-project agent key.
 
 import { db } from "./db.ts";
+import { validateTokens } from "./designEngine.ts";
 
 export type Row = Record<string, any>;
 export type Project = { id: string; name: string; site_url: string; token: string };
@@ -42,6 +43,25 @@ export async function designFor(project: Project): Promise<{ tokens: any; versio
   const ds = (await db<any[]>(`design_systems?project_id=eq.${project.id}&select=tokens,version&limit=1`))[0];
   return ds?.tokens?.color ? { tokens: ds.tokens, version: ds.version } : null;
 }
+/** Design rules switched on for this project (and its plan includes them)? */
+export async function designEnabled(project: Project): Promise<boolean> {
+  const p = (await db<any[]>(`projects?id=eq.${project.id}&select=owner_id,design_rules&limit=1`))[0];
+  if (!p?.design_rules?.enabled) return false;
+  return (await db<boolean>("rpc/plan_has", { method: "POST", body: JSON.stringify({ p_user: p.owner_id, p_feature: "design_rules" }) }).catch(() => false)) === true;
+}
+/** Keep a design system sent in by an AI assistant as a draft for the owner to review. */
+export async function submitDesignDraft(project: Project, tokens: any, summary: string, by: string): Promise<{ ok: boolean; problems?: string[]; error?: string; review?: string }> {
+  if (!(await designEnabled(project))) return { ok: false, error: "Design rules aren't switched on for this project." };
+  if (JSON.stringify(tokens ?? null).length > 200_000) return { ok: false, error: "That design system is too large." };
+  const problems = validateTokens(tokens);
+  if (problems.length) return { ok: false, problems };
+  await db(`design_systems?on_conflict=project_id`, {
+    method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ project_id: project.id, draft: tokens, draft_summary: String(summary || "").slice(0, 2000), draft_by: by.slice(0, 80), draft_at: new Date().toISOString() }),
+  });
+  return { ok: true, review: "Saved as a draft. The project owner reviews it under Design rules in the PinPoint project settings and chooses Use this design system or Discard." };
+}
+
 export const DESIGN_GUIDE = "This project has design rules. Before changing a color, button, type size, radius or spacing, run design_check. Make the change only if it comes back allowed, or use its closest approved option. Anything else goes back to the people on the project: reply with the check's message and leave the item open. Items with a design_check field already have a decision recorded; follow its task text.";
 
 // Who a reply written through the agent key is signed as. Projects default
