@@ -2,7 +2,7 @@
 /**
  * Plugin Name: PinPoint by Avalanche
  * Description: Click-to-comment website feedback, by Avalanche Creative. Paste the site's project token under Settings → PinPoint. The overlay only appears for visits with ?pinpoint=TOKEN in the URL — normal visitors never see anything.
- * Version: 2.8.6
+ * Version: 2.8.7
  * Author: Avalanche Creative
  * Author URI: https://avalanchegr.com
  * Update URI: https://pinpoint.avalanchegr.com/
@@ -357,8 +357,39 @@ add_action( 'add_option_' . AVMK_OPEN_OPTION, function ( $option, $value ) {
 	avmk_sync_open( $value );
 }, 10, 2 );
 add_action( 'update_option_' . AVMK_OPEN_OPTION, function ( $old, $new ) {
+	if ( ! empty( $GLOBALS['avmk_skip_open_sync'] ) ) {
+		return;
+	}
 	avmk_sync_open( $new );
 }, 10, 2 );
+
+/**
+ * Read the project's own open-feedback setting from PinPoint and keep the
+ * local option in step with it, without pushing it back. Returns true/false,
+ * or null when it can't be read (no secret, not registered yet, offline).
+ */
+function avmk_pull_open() {
+	if ( ! avmk_project_secret() ) {
+		return null;
+	}
+	$res = wp_remote_post( avmk_supabase_url() . '/functions/v1/project-settings', [
+		'headers' => avmk_bridge_headers(),
+		'body'    => wp_json_encode( [ 'token' => get_option( AVMK_OPTION, '' ) ] ),
+		'timeout' => 8,
+	] );
+	if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
+		return null;
+	}
+	$body = json_decode( wp_remote_retrieve_body( $res ), true );
+	if ( ! is_array( $body ) || ! array_key_exists( 'open_access', $body ) ) {
+		return null;
+	}
+	$on = (bool) $body['open_access'];
+	$GLOBALS['avmk_skip_open_sync'] = true;
+	update_option( AVMK_OPEN_OPTION, $on ? '1' : '' );
+	unset( $GLOBALS['avmk_skip_open_sync'] );
+	return $on;
+}
 
 /**
  * Sync the open-feedback flag (and site name) to the project via this
@@ -438,6 +469,8 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function ( $li
 function avmk_settings_page() {
 	$token  = get_option( AVMK_OPTION, '' );
 	$notify = get_option( AVMK_NOTIFY_OPTION, '' );
+	// The project's own setting wins; fall back to the local copy.
+	$pulled = avmk_pull_open();
 	$open   = get_option( AVMK_OPEN_OPTION, '' );
 	?>
 	<div class="wrap">
@@ -471,7 +504,12 @@ function avmk_settings_page() {
 			</label>
 			<p class="description">
 				Best for staging review. Guests can add, reply to and delete their own comments, and see the whole conversation; they can't resolve, export, or invite.
-				On by default for new installs. <strong>Heads up:</strong> the project token appears in this site's page source, so in practice anyone who can reach this site can comment — turn this off on a public production site.
+				<?php if ( null === $pulled ) : ?>
+					This is a local copy; with the site secret set it stays in step with the project's setting in PinPoint.
+				<?php else : ?>
+					This is the project's setting in PinPoint — changing it here or in the dashboard changes both.
+				<?php endif; ?>
+				On by default for new projects. <strong>Heads up:</strong> the project token appears in this site's page source, so in practice anyone who can reach this site can comment — turn this off on a public production site.
 			</p>
 
 			<?php submit_button( 'Save settings' ); ?>

@@ -4,7 +4,9 @@
 // toggle, and the site name) using only the site's own bridge secret
 // (x-avmk-project-secret; see _shared/bridge.ts).
 //
-// POST { token, open_access?, name? }
+// POST { token, open_access?, name? }  -> the fields it changed
+// POST { token }                       -> { open_access, name } as stored
+//   (the plugin's settings page reads the project's own setting this way)
 // Deploy: supabase functions deploy project-settings --no-verify-jwt
 
 import { db, json } from "../_shared/db.ts";
@@ -31,7 +33,7 @@ Deno.serve(async (req) => {
   if ("open_access" in body) patch.open_access = body.open_access === true || body.open_access === "1";
   const name = (body.name ?? "").toString().trim().slice(0, 120);
   if (name) patch.name = name;
-  if (!Object.keys(patch).length) return json(400, { error: "nothing to update" }, noStore);
+  if (!Object.keys(patch).length) return json(200, { open_access: project.open_access, name: project.name }, noStore);
 
   await db(`projects?id=eq.${project.id}`, {
     method: "PATCH",

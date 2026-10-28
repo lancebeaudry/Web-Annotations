@@ -16,6 +16,18 @@ export async function fetchProject(supabase, token) {
   return data;
 }
 
+// Whether this project takes guest feedback (open feedback), asked before
+// anyone signs in. null when PinPoint can't be reached, so the caller can
+// fall back to the site's data-open flag.
+export async function projectIsOpen(supabase, token) {
+  const { data, error } = await supabase.rpc('project_open_by_token', { p_token: token });
+  if (error) {
+    console.warn('[markup] open feedback lookup failed:', error.message);
+    return null;
+  }
+  return data === true;
+}
+
 // Register a site the first time a signed-in account opens it. The DB
 // forces owner_id = the caller and enforces their plan's project limit
 // (raises PROJECT_LIMIT_REACHED). The unique token index makes concurrent

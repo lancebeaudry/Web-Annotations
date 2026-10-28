@@ -1,11 +1,11 @@
 {
   "name": "PinPoint by Avalanche",
   "slug": "avalanche-markup",
-  "version": "2.8.6",
-  "download_url": "https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/avalanche-markup-2.8.6.zip",
+  "version": "2.8.7",
+  "download_url": "https://vaculezzigjtgbysnajf.supabase.co/storage/v1/object/public/markup/plugin/avalanche-markup-2.8.7.zip",
   "homepage": "https://pinpoint.avalanchegr.com",
   "tested": "6.6",
   "requires": "5.8",
   "requires_php": "7.4",
-  "changelog": "2.8.6 — New installs start with open feedback on: anyone with the share link can comment after typing their name."
+  "changelog": "2.8.7 — Open feedback follows the project's own setting in PinPoint, so the plugin and the dashboard can no longer disagree."
 }

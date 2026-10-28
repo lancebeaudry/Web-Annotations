@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, DASHBOARD_URL } from './config.js';
-import { fetchProject, fetchComments, subscribeRealtime, fetchAccess, createProject, getAgentKey, approvePage, revokeApproval, listAssignees } from './data.js';
+import { fetchProject, projectIsOpen, fetchComments, subscribeRealtime, fetchAccess, createProject, getAgentKey, approvePage, revokeApproval, listAssignees } from './data.js';
 import { installErrorLog } from './screenshot.js';
 import { mountOverlay, toast, h } from './ui/overlay.js';
 import { renderAuthCard, renderGuestCard, removeAuthCard, savedName } from './ui/auth.js';
@@ -52,10 +52,13 @@ export async function init(token, options = {}) {
     role: 'none',
     writable: false,
     canManage: false,
-    // "Open feedback" is on for this site (plugin data-open): visitors can
-    // comment as a guest with just a name. RLS enforces the same flag
-    // server-side via projects.open_access.
+    // "Open feedback": visitors can comment as a guest with just a name.
+    // The project's own setting (projects.open_access, also what RLS
+    // enforces) decides; it's looked up before the sign-in card is drawn.
+    // siteOpen is the site's data-open flag: the fallback when that lookup
+    // fails, and the starting value when this visit registers the project.
     openAccess: !!options.openAccess,
+    siteOpen: !!options.openAccess,
     isGuest: false,
     started: false,
     commentMode: false,
@@ -122,6 +125,8 @@ export async function init(token, options = {}) {
     // display name; everywhere else fall back to the email code form.
     const bridged = await tryWordPressSession(app);
     if (!bridged) {
+      const open = await projectIsOpen(supabase, app.token);
+      if (open !== null) app.openAccess = open;
       if (app.openAccess && !forceEmail) renderGuestCard(app);
       else renderAuthCard(app);
     }
@@ -202,8 +207,8 @@ async function fetchProjectSettled(app) {
 // Create the project row for a site being opened for the first time, OWNED
 // by the signed-in account (the DB forces owner = caller and enforces the
 // plan limit). The display name is taken from the page title (trimmed to
-// the part before a " – Tagline" separator); open_access mirrors the
-// plugin's data-open flag. If the insert loses a race with someone else's
+// the part before a " – Tagline" separator); open_access starts from the
+// site's data-open flag. If the insert loses a race with someone else's
 // first visit (unique token), re-read the row they created.
 async function registerProject(app) {
   const titled = (document.title || '').split(/[|–—-]/)[0].trim();
@@ -212,7 +217,7 @@ async function registerProject(app) {
     token: app.token,
     name,
     site_url: location.origin,
-    open_access: app.openAccess,
+    open_access: app.siteOpen,
   });
   if (created) {
     toast(app.ui, `Markup: registered “${created.name}”`);

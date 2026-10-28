@@ -53,7 +53,7 @@ export function createClient() {
 
   const store = {
     projects: [
-      { id: 'mock-project-1', token: 'test-token', name: 'Mock Project', site_url: 'http://localhost:8123', owner_id: 'mock-owner', open_access: role === 'guest' },
+      { id: 'mock-project-1', token: 'test-token', name: 'Mock Project', site_url: 'http://localhost:8123', owner_id: 'mock-owner', open_access: role === 'guest' || (noAuth && params.get('mockClosed') !== '1') },
     ],
     comments: seeded,
     project_members: [{ project_id: 'mock-project-1', email: 'guest@client.com', note: 'demo client' }],
@@ -161,6 +161,10 @@ export function createClient() {
           const r = ok(p ? [{ id: p.id, name: p.name, site_url: p.site_url, open_access: p.open_access }] : []);
           r.maybeSingle = () => ok(p ? { id: p.id, name: p.name, site_url: p.site_url, open_access: p.open_access } : null);
           return r;
+        }
+        case 'project_open_by_token': {
+          const p = store.projects.find((x) => x.token === args.p_token);
+          return ok(!!(p && p.open_access));
         }
         case 'my_project_role': {
           const r = roleOn(pid);

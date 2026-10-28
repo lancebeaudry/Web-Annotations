@@ -14,10 +14,11 @@ window.__avalancheMarkupVersion = MARKUP_VERSION;
 const script = document.currentScript;
 const params = new URLSearchParams(location.search);
 
-// data-open="1" means the plugin's "open feedback" toggle is on: visitors
-// who aren't signed in can comment after entering just a display name.
-// Captured here because document.currentScript is only valid during this
-// synchronous pass.
+// data-open="1" means the site has "open feedback" on: visitors who aren't
+// signed in can comment after entering just a display name. The project's
+// own setting overrides it once looked up (see app.js). Captured here
+// because document.currentScript is only valid during this synchronous
+// pass.
 const openAccess = !!(script && script.dataset.open);
 
 // ?pinpoint=TOKEN is the share link; ?markup=TOKEN still works for links
