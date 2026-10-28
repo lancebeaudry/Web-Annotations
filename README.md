@@ -20,7 +20,7 @@ Click-to-comment website feedback, by Avalanche Creative. (Product name since 2.
 - **Operator** — Avalanche staff. A row in `operators` (not an email-domain rule). Sees and can moderate every project. Disclosed in the privacy policy. Manage with `add_operator(email)` / `remove_operator(email)` (operator-only RPCs).
 - **Owner** — the account that created a project (`projects.owner_id`). Full control of that project: invite, export, resolve, settings, site secret, delete.
 - **Collaborator** — an email the owner invited (`project_members`). Comment, reply, edit/delete own.
-- **Guest** — on a project with *open feedback*, anyone with the link who types a name (anonymous session). Comment, reply, edit/delete own.
+- **Guest** — on a project with *open feedback* (on by default for new projects), anyone with the link who types a name (anonymous session). Comment, reply, edit/delete own.
 
 Plans: **free = 1 project, 50 comments + 10 images per project**, **Pro = 10 projects ($19/mo or $149/yr)**, **Agency = unlimited projects + integrations + page approvals ($39/mo or $349/yr)**. Limits are enforced by the database (a `BEFORE INSERT` trigger on `projects`, error `PROJECT_LIMIT_REACHED`). If a plan lapses, the owner's *oldest* projects stay live up to the free limit and newer ones become read-only — nothing is deleted. `subscriptions.plan` is written **only** by the Stripe webhook.
 

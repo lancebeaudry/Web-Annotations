@@ -9,6 +9,9 @@ export function projectNewScreen({ query }) {
   const name = h('input', { type: 'text', placeholder: 'Acme Landscaping', required: true });
   const site = h('input', { type: 'url', placeholder: 'https://staging.acme.com', required: true, value: query.site || '' });
   const token = h('input', { type: 'text', class: 'code', placeholder: 'acme', required: true, value: (query.token || '').toLowerCase() });
+  // Open feedback starts on for new projects; owners can switch it off here
+  // or later in the project settings.
+  const open = h('input', { type: 'checkbox', checked: true });
   const submit = h('button', { class: 'btn', type: 'submit' }, 'Create project');
   let touched = !!query.token;
   name.addEventListener('input', () => {
@@ -34,6 +37,7 @@ export function projectNewScreen({ query }) {
     field('Project name', name, 'Shown in exports and notification emails.'),
     field('Site URL', site, 'The site you\'ll be reviewing. Just the origin, e.g. https://staging.acme.com'),
     field('Token', token, 'Short, lowercase, unique. Your share link becomes  site/?pinpoint=TOKEN'),
+    h('label', { class: 'check' }, open, ' Open feedback — anyone with the link can comment after entering their name. Turn this off to invite people by email instead.'),
     limitCard,
     h('div', { class: 'btn-row' }, h('a', { class: 'btn btn-ghost', href: '#/projects' }, 'Cancel'), submit)
   );
@@ -49,7 +53,7 @@ export function projectNewScreen({ query }) {
       return toast('Enter a full site URL, e.g. https://staging.acme.com');
     }
     submit.disabled = true;
-    const { data, error } = await createProject({ name: name.value.trim(), site_url: origin, token: t, open_access: false });
+    const { data, error } = await createProject({ name: name.value.trim(), site_url: origin, token: t, open_access: open.checked });
     submit.disabled = false;
     if (error) {
       if (/PROJECT_LIMIT/.test(error.message)) {
