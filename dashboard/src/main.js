@@ -68,7 +68,14 @@ async function render() {
 }
 
 onRoute(render);
+// supabase-js re-announces the session whenever the tab regains focus and
+// on every token refresh. Only a different person needs a redraw: a redraw
+// rebuilds the screen, which would wipe anything half-typed.
+let authedUser;
 supabase.auth.onAuthStateChange((_e, session) => {
+  const id = session?.user?.id ?? null;
+  if (id === authedUser) return;
+  authedUser = id;
   if (session && parseRoute().name === 'signin') go('#/projects');
   else render();
 });
