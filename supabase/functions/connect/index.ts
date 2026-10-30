@@ -13,6 +13,7 @@
 //
 // POST { action: "check" | "connect", token, origin }   (user JWT)
 //   check   -> { project, host, allowed, email }      no session minted
+//              (project is null when no project uses that token yet)
 //   connect -> { access_token, refresh_token, email } only if allowed
 //
 // The origin must be one of the project's addresses: its site URL, or an
@@ -57,7 +58,11 @@ Deno.serve(async (req) => {
   if (!token || token.length > 200) return json(400, { error: "Missing project." }, h);
 
   const project = (await db<any[]>(`projects?token=eq.${encodeURIComponent(token)}&select=id,name,site_url&limit=1`))[0];
-  if (!project) return json(404, { error: "That project doesn't exist." }, h);
+  const host = new URL(origin).host;
+  if (!project) {
+    if (action === "check") return json(200, { project: null, host, allowed: false, email: caller.email }, h);
+    return json(404, { error: "That project doesn't exist." }, h);
+  }
 
   // Must be a real member of this project (owner, staff, collaborator).
   const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/my_project_role`, {
@@ -74,7 +79,6 @@ Deno.serve(async (req) => {
     const hit = await db<any[]>(`comments?project_id=eq.${project.id}&page_url=like.${encodeURIComponent(origin + "/*")}&select=id&limit=1`);
     allowed = hit.length > 0;
   }
-  const host = new URL(origin).host;
   if (action === "check") return json(200, { project: project.name, host, allowed, email: caller.email }, h);
   if (!allowed) return json(403, { error: `${host} isn't one of this project's addresses. Update the site URL in the project settings.` }, h);
 

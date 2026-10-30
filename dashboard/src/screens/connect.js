@@ -16,6 +16,13 @@ export async function connectScreen({ query = {}, user }) {
   let info;
   try { info = await callFn('connect', { action: 'check', origin, token }); }
   catch (e) { return card('Can’t sign in here', h('p', {}, e.message)); }
+  if (!info.project) {
+    const add = `#/projects/new?site=${encodeURIComponent(origin)}&token=${encodeURIComponent(token)}`;
+    return card('This site isn’t in PinPoint yet',
+      h('p', {}, 'No project uses the token ', h('b', {}, token), ', which is the token on ', h('b', {}, info.host), '.'),
+      h('p', { class: 'hint' }, 'Add it as a new project with that exact token, then sign in again. If you already added this site under a different token, change the token in its PinPoint code to match.'),
+      h('div', { class: 'btn-row', style: 'justify-content:flex-start' }, h('a', { class: 'btn', href: add, target: '_blank', rel: 'noopener' }, 'Add this site')));
+  }
   if (!info.allowed) {
     return card('Can’t sign in here', h('p', {}, `${info.host} isn’t one of the addresses for ${info.project}.`), h('p', { class: 'hint' }, 'If this is the project’s staging or live site, update the site URL in the project settings, then try again.'));
   }

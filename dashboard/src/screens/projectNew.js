@@ -1,4 +1,4 @@
-import { h, field, toast, slugify } from '../ui/dom.js';
+import { h, field, toast, slugify, cleanSiteUrl } from '../ui/dom.js';
 import { card } from '../ui/shell.js';
 import { createProject } from '../api.js';
 import { go } from '../router.js';
@@ -35,7 +35,7 @@ export function projectNewScreen({ query }) {
     'form',
     {},
     field('Project name', name, 'Shown in exports and notification emails.'),
-    field('Site URL', site, 'The site you\'ll be reviewing. Just the origin, e.g. https://staging.acme.com'),
+    field('Site URL', site, 'The site you\'ll be reviewing, e.g. https://staging.acme.com. Include the folder if it lives in one.'),
     field('Token', token, 'Short, lowercase, unique. Your share link becomes  site/?pinpoint=TOKEN'),
     h('label', { class: 'check' }, open, ' Open feedback — anyone with the link can comment after entering their name. Turn this off to invite people by email instead.'),
     limitCard,
@@ -46,14 +46,14 @@ export function projectNewScreen({ query }) {
     e.preventDefault();
     const t = token.value.trim();
     if (!/^[a-z0-9][a-z0-9-]{1,60}$/.test(t)) return toast('Token: lowercase letters, numbers and dashes, 2–60 characters.');
-    let origin;
+    let siteUrl;
     try {
-      origin = new URL(site.value.trim()).origin;
+      siteUrl = cleanSiteUrl(site.value);
     } catch {
       return toast('Enter a full site URL, e.g. https://staging.acme.com');
     }
     submit.disabled = true;
-    const { data, error } = await createProject({ name: name.value.trim(), site_url: origin, token: t, open_access: open.checked });
+    const { data, error } = await createProject({ name: name.value.trim(), site_url: siteUrl, token: t, open_access: open.checked });
     submit.disabled = false;
     if (error) {
       if (/PROJECT_LIMIT/.test(error.message)) {

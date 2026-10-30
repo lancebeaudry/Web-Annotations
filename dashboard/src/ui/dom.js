@@ -53,6 +53,13 @@ export function toast(message) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
 }
 
+// A project's address, keeping any folder: a site can live at
+// example.com/client, and share links are built from this.
+export const cleanSiteUrl = (raw) => {
+  const u = new URL(raw.trim());
+  return (u.origin + u.pathname).replace(/\/+$/, '');
+};
+
 export const slugify = (s) =>
   (s || '')
     .toLowerCase()

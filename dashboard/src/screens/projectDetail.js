@@ -1,4 +1,4 @@
-import { h, field, toast, copyBox } from '../ui/dom.js';
+import { h, field, toast, copyBox, cleanSiteUrl } from '../ui/dom.js';
 import { card, anchored, pageHead, projectHeader } from '../ui/shell.js';
 import { getProject, updateSettings, saveTriage, setManager, setNotifyMode, listInvites, invite, revoke, listNotify, setNotify, bridgeSecret, rotateSecret, agentKey, rotateAgentKey, agentPersona, saveAgentPersona, assignees as listAssignees, deleteProject, projectAccess, approvals as listApprovals, reopenPage, integrations as listIntegrations, saveIntegration, removeIntegration, callFn, listComments, designSettings, setDesignRules, setDesignKey, designKeyStatus, saveDesignTokens, setDesignShare, designSystem, designFn } from '../api.js';
 import { bumpVersion } from '../../../supabase/functions/_shared/designEngine.ts';
@@ -68,7 +68,7 @@ export async function projectDetailScreen({ id, user, acct, query = {} }) {
     e.preventDefault();
     save.disabled = true;
     try {
-      await updateSettings(id, { name: name.value.trim(), site_url: new URL(site.value.trim()).origin, open_access: open.checked, auto_screenshot: shots.checked });
+      await updateSettings(id, { name: name.value.trim(), site_url: cleanSiteUrl(site.value), open_access: open.checked, auto_screenshot: shots.checked });
       await saveTriage(id, { status: tri.status.checked, effort: tri.effort.checked, assignee: tri.assignee.checked, labels: tri.labels.checked });
       toast('Saved');
       go(`#/projects/${id}`);
