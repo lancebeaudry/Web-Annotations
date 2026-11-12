@@ -1,6 +1,6 @@
 import { h, toast } from './overlay.js';
 import { updateComment, deleteComment } from '../data.js';
-import { resolveElement, looksAddressed, deviceOf, DEVICE_TEXT, currentDevice } from '../capture.js';
+import { resolveElement, isShown, looksAddressed, deviceOf, DEVICE_TEXT, currentDevice } from '../capture.js';
 import { openThread, closePopovers } from './popover.js';
 import { authorEmail } from '../app.js';
 import { STATUS_ORDER, statusLabel, isOpenStatus, labelText, effortText } from '../status.js';
@@ -359,7 +359,7 @@ function jumpTo(app, comment, onThisPage) {
   }
   // Keep the sidebar open — just scroll to the pin and open its thread.
   closePopovers(app);
-  const target = resolveElement(comment);
+  const target = shownTarget(comment);
   if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
   setTimeout(() => openThread(app, comment.id), target ? 450 : 0);
 }
@@ -387,9 +387,17 @@ export function resumeJumpAfterNav(app) {
   // Inside a device frame the sidebar would cover the whole page, so only
   // reopen it at the top level.
   if (!app.sidebarEl && window.self === window.top) toggleSidebar(app);
-  const target = resolveElement(comment);
+  const target = shownTarget(comment);
   if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
   setTimeout(() => openThread(app, comment.id), target ? 600 : 0);
+}
+
+// Where to scroll for a comment: its element, or when that's hidden (a
+// closed menu, another tab) the nearest part of the page that is showing.
+function shownTarget(comment) {
+  let el = resolveElement(comment);
+  while (el && el !== document.body && !isShown(el)) el = el.parentElement;
+  return el && el !== document.body ? el : null;
 }
 
 // A comment left on a page that now redirects here (the page was moved or

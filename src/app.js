@@ -535,9 +535,11 @@ function watchLayout(app) {
     clearTimeout(timer);
     timer = setTimeout(() => renderPins(app), 120);
   };
-  window.addEventListener('resize', () => schedule(false));
+  // A resize can swap which copy of a responsive element is showing (desktop
+  // vs mobile menu), so it re-locates too.
+  window.addEventListener('resize', () => schedule(true));
   window.addEventListener('load', () => schedule(false));
-  window.addEventListener('orientationchange', () => schedule(false));
+  window.addEventListener('orientationchange', () => schedule(true));
   // Images/iframes/videos that finish loading after our first render.
   document.addEventListener('load', (e) => {
     const t = e.target;

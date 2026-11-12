@@ -1,4 +1,4 @@
-import { locateElement, looksAddressed, deviceOf, DEVICE_TEXT } from '../capture.js';
+import { locateElement, isShown, looksAddressed, deviceOf, DEVICE_TEXT } from '../capture.js';
 import { h } from './overlay.js';
 import { openThread } from './popover.js';
 import { isOpenStatus } from '../status.js';
@@ -35,12 +35,13 @@ function locate(comment) {
 
 // Position pins against the *live* element (selector -> fingerprint
 // match), so they survive responsive reflow. Unresolvable pins are
-// skipped — they still appear in the sidebar and exports.
+// skipped — they still appear in the sidebar and exports. So are pins
+// whose element is hidden right now (a closed menu, another tab): they
+// come back when it opens.
 export function pinPosition(comment) {
   const hit = locate(comment);
-  if (!hit) return null;
+  if (!hit || !isShown(hit.el)) return null;
   const rect = hit.el.getBoundingClientRect();
-  if (!rect.width && !rect.height) return null;
   return {
     x: rect.left + window.scrollX + (rect.width * (Number(comment.x_pct) || 50)) / 100,
     y: rect.top + window.scrollY + (rect.height * (Number(comment.y_pct) || 50)) / 100,

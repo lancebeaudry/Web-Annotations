@@ -275,9 +275,11 @@ function textScore(candText, fbText, fbLen) {
   return s;
 }
 
+const SELECTOR_BONUS = 15;
+
 function scoreCandidate(el, comment, viaSelector) {
   const fb = comment.selector_fallback || {};
-  let s = viaSelector ? 15 : 0;
+  let s = viaSelector ? SELECTOR_BONUS : 0;
   const tag = el.tagName.toLowerCase();
   if (fb.tag) s += tag === fb.tag ? 8 : -25;
 
@@ -303,10 +305,29 @@ function scoreCandidate(el, comment, viaSelector) {
   if (fb.idAncestor) s += idAncestor(el) === fb.idAncestor ? 10 : -4;
   else if (fb.heading) s += precedingHeading(el) === fb.heading ? 8 : 0;
   if (fb.parentTag && el.parentElement) s += el.parentElement.tagName.toLowerCase() === fb.parentTag ? 3 : 0;
-
-  const rect = el.getBoundingClientRect();
-  if (!rect.width && !rect.height) s -= 100; // hidden / collapsed
   return s;
+}
+
+// Laid out and not visibility:hidden. Closed menus, inactive tabs and
+// collapsed accordions hide their contents one of those two ways.
+export function isShown(el) {
+  const rect = el.getBoundingClientRect();
+  if (!rect.width && !rect.height) return false;
+  return getComputedStyle(el).visibility === 'visible';
+}
+
+// The best match is hidden right now. A responsive site often renders the
+// same link twice (desktop and mobile menus), so a shown copy that scores
+// nearly as well stands in for it. Anything weaker is a different element
+// that merely looks alike (the next tab's logo), so keep the hidden target
+// and let its pin wait until that part of the page is open.
+function shownStandIn(ranked, top, floor) {
+  const base = (r) => r.score - (r.viaSelector ? SELECTOR_BONUS : 0);
+  const need = Math.max(floor, base(top) * 0.75);
+  for (const r of ranked) {
+    if (base(r) >= need && r !== top && isShown(r.el)) return r;
+  }
+  return null;
 }
 
 // Locate the live element for a stored comment. Returns
@@ -319,7 +340,7 @@ export function locateElement(comment) {
   const consider = (el, viaSelector) => {
     if (!el || seen.has(el) || el.closest('#markup-root')) return;
     seen.add(el);
-    ranked.push({ el, score: scoreCandidate(el, comment, viaSelector) });
+    ranked.push({ el, viaSelector, score: scoreCandidate(el, comment, viaSelector) });
   };
 
   if (comment.selector) {
@@ -340,10 +361,11 @@ export function locateElement(comment) {
     return best ? { el: best.el, confidence: 'likely' } : null;
   }
 
-  // If the selector's own match is convincing, stop there (cheap path).
+  // If the selector's own match is convincing and on screen, stop there
+  // (cheap path). A hidden one still needs the full scan, for a shown copy.
   ranked.sort((a, b) => b.score - a.score);
   const strong = fb.text ? 70 : 45;
-  if (ranked.length && ranked[0].score >= strong) return { el: ranked[0].el, confidence: 'exact' };
+  if (ranked.length && ranked[0].score >= strong && isShown(ranked[0].el)) return { el: ranked[0].el, confidence: 'exact' };
 
   // Otherwise rank every element of that tag on the page.
   if (tag) {
@@ -354,7 +376,7 @@ export function locateElement(comment) {
   if (!ranked.length) return null;
 
   // Identical twins (two "Learn more" buttons): pick by original ordinal.
-  const top = ranked[0];
+  let top = ranked[0];
   if (fb.twin != null && fb.twin > 0 && fb.text) {
     const twins = ranked.filter((r) => r.score === top.score);
     if (twins.length > fb.twin) {
@@ -365,6 +387,7 @@ export function locateElement(comment) {
 
   const floor = fb.text ? 30 : 18;
   if (top.score < floor) return null;
+  if (!isShown(top.el)) top = shownStandIn(ranked, top, floor) || top;
   return { el: top.el, confidence: top.score >= strong ? 'exact' : top.score >= floor + 15 ? 'likely' : 'weak' };
 }
 

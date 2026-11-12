@@ -1,8 +1,12 @@
 import { listMentionable } from '../data.js';
 import { h } from './overlay.js';
 
-// Fetch the project's mentionable roster once and cache it on app.
+// Fetch the project's mentionable roster once and cache it on app. Guests
+// have none: list_mentionable refuses anonymous sessions so that an open
+// feedback link never hands out the team's email addresses, and the refused
+// 400 would otherwise land in the error log attached to every comment.
 async function roster(app) {
+  if (app.isGuest) return [];
   if (!app._mentionables) {
     app._mentionables = await listMentionable(app.supabase, app.project.id);
   }
